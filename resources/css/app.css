@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import "../../node_modules/preline/variants.css";
+@import "../../node_modules/preline/css/themes/theme.css";
+@import "../../node_modules/preline/css/themes/olive.css";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
