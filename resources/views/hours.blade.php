@@ -2,13 +2,28 @@
     <div class="max-w-2xl mx-auto px-4 py-10">
 
         {{-- Intestazione pagina --}}
-        <div class="mb-8">
-            <h1 class="text-2xl font-bold text-foreground">Registra ore</h1>
-            <p class="mt-1 text-sm text-muted-foreground">Inserisci le ore lavorate per un cliente.</p>
+        <div class="mb-8 flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-foreground">Ore</h1>
+                <p class="mt-1 text-sm text-muted-foreground">Inserisci le ore lavorate.</p>
+            </div>
+            <button
+                type="button"
+                id="toggleFormBtn"
+                onclick="toggleHourForm()"
+                class="py-2.5 px-5 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-primary text-primary-foreground hover:bg-primary-hover focus:outline-none focus:bg-primary-hover disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            >
+                <svg class="size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span id="btnText">Aggiungi</span>
+            </button>
         </div>
 
         {{-- Card form --}}
-        <div class="bg-layer border border-layer-line rounded-xl shadow-sm p-6 sm:p-8">
+        <div id="hourFormCard" class="bg-layer border border-layer-line rounded-xl shadow-sm p-6 sm:p-8 hidden">
             <form action="/hours" method="POST" class="space-y-5">
                 @csrf
 
@@ -144,7 +159,7 @@
                         <tbody>
                             @foreach($hours as $hour)
                                 <tr class="border-b border-layer-line last:border-b-0 text-foreground">
-                                    <td class="py-3 pr-4">{{ \Carbon\Carbon::parse($hour->date)->locale('it')->translatedFormat('d/m/Y') }}</td>
+                                    <td class="py-3 pr-4">{{ \Carbon\Carbon::parse($hour->date)->locale('it')->translatedFormat('d F Y') }}</td>
                                     <td class="py-3 pr-4">{{ $hour->hours }}</td>
                                     <td class="py-3 pr-4">#{{ $hour->client_id }}</td>
                                     <td class="py-3 pr-4">{{ $hour->billable ? 'Sì' : 'No' }}</td>
@@ -159,4 +174,27 @@
             @endif
         </div>
     </div>
+
+    <script>
+        function toggleHourForm() {
+            const formCard = document.getElementById('hourFormCard');
+            const btnText = document.getElementById('btnText');
+            const btn = document.getElementById('toggleFormBtn');
+            const icon = btn.querySelector('svg');
+
+            if (formCard.classList.contains('hidden')) {
+                // Mostra il form
+                formCard.classList.remove('hidden');
+                btnText.textContent = 'Chiudi';
+                // Cambia icona in X
+                icon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+            } else {
+                // Nascondi il form
+                formCard.classList.add('hidden');
+                btnText.textContent = 'Aggiungi';
+                // Ripristina icona +
+                icon.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
+            }
+        }
+    </script>
 </x-layout>
