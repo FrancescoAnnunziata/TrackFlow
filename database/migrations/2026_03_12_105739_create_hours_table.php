@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('hours', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('client_id');
             $table->date('date');
             $table->decimal('hours', 3, 1);
