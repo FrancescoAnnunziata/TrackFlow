@@ -28,9 +28,11 @@
                         id="date"
                         name="date"
                         value="{{ old('date', \Carbon\Carbon::parse($hour->date)->format('Y-m-d')) }}"
-                        required
-                        class="py-2.5 px-4 block w-full rounded-lg border border-layer-line bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none"
+                        class="py-2.5 px-4 block w-full rounded-lg border {{ $errors->has('date') ? 'border-red-400 focus:border-red-400 focus:ring-red-400/30' : 'border-layer-line focus:border-primary focus:ring-primary/30' }} bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:ring-2 disabled:opacity-50 disabled:pointer-events-none"
                     />
+                    @error('date')
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -41,12 +43,16 @@
                         type="number"
                         id="hours"
                         name="hours"
-                        min="0"
+                        min="0.5"
+                        max="24"
                         step="0.5"
                         value="{{ old('hours', $hour->hours) }}"
-                        required
-                        class="py-2.5 px-4 block w-full rounded-lg border border-layer-line bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none"
+                        class="py-2.5 px-4 block w-full rounded-lg border {{ $errors->has('hours') ? 'border-red-400 focus:border-red-400 focus:ring-red-400/30' : 'border-layer-line focus:border-primary focus:ring-primary/30' }} bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:ring-2 disabled:opacity-50 disabled:pointer-events-none"
+                        placeholder="Inserisci il numero di ore da registrare"
                     />
+                    @error('hours')
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -56,13 +62,15 @@
                     <select
                         id="client_id"
                         name="client_id"
-                        required
-                        class="py-2.5 px-4 block w-full rounded-lg border border-layer-line bg-layer text-foreground text-sm focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none"
+                        class="py-2.5 px-4 block w-full rounded-lg border {{ $errors->has('client_id') ? 'border-red-400 focus:border-red-400 focus:ring-red-400/30' : 'border-layer-line focus:border-primary focus:ring-primary/30' }} bg-layer text-foreground text-sm focus:ring-2 disabled:opacity-50 disabled:pointer-events-none"
                     >
-                        <option value="">- Seleziona cliente -</option>
+                        <option value="">— Seleziona cliente —</option>
                         <option value="1" @selected(old('client_id', $hour->client_id) == 1)>Cliente Example 1</option>
                         <option value="2" @selected(old('client_id', $hour->client_id) == 2)>Cliente Example 2</option>
                     </select>
+                    @error('client_id')
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -74,9 +82,13 @@
                         id="notes"
                         name="notes"
                         rows="3"
-                        class="py-2.5 px-4 block w-full rounded-lg border border-layer-line bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none"
-                        placeholder="Descrivi brevemente l'attivita svolta..."
+                        maxlength="1000"
+                        class="py-2.5 px-4 block w-full rounded-lg border {{ $errors->has('notes') ? 'border-red-400 focus:border-red-400 focus:ring-red-400/30' : 'border-layer-line focus:border-primary focus:ring-primary/30' }} bg-layer text-foreground text-sm placeholder:text-muted-foreground focus:ring-2 disabled:opacity-50 disabled:pointer-events-none"
+                        placeholder="Descrivi brevemente l'attività svolta..."
                     >{{ old('notes', $hour->notes) }}</textarea>
+                    @error('notes')
+                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="flex items-center justify-between p-4 rounded-lg border border-layer-line bg-layer-hover">

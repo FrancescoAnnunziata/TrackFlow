@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Hour;
-use Illuminate\Http\Request;
+use App\Http\Requests\HourRequest;
 
 class HourController extends Controller
 {
@@ -30,15 +30,15 @@ class HourController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(HourRequest $request)
     {
         Hour::create([
-            'user_id' => 1, // TODO: sostituire con auth()->id() quando implementi l'autenticazione
-            'date' => request('date'),
-            'hours' => request('hours'),
-            'client_id' => request('client_id'),
-            'notes' => request('notes'),
-            'billable' => request()->has('billable'),
+            'user_id'   => 1,
+            'date'      => $request->date,
+            'hours'     => $request->hours,
+            'client_id' => $request->client_id,
+            'notes'     => $request->notes,
+            'billable'  => $request->boolean('billable'),
         ]);
 
         return redirect('/hours');
@@ -67,14 +67,14 @@ class HourController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Hour $hour)
+    public function update(HourRequest $request, Hour $hour)
     {
         $hour->update([
-            'date' => request('date'),
-            'hours' => request('hours'),
-            'client_id' => request('client_id'),
-            'notes' => request('notes'),
-            'billable' => request()->has('billable'),
+            'date'      => $request->date,
+            'hours'     => $request->hours,
+            'client_id' => $request->client_id,
+            'notes'     => $request->notes,
+            'billable'  => $request->boolean('billable'),
         ]);
 
         return redirect("/hours/{$hour->id}");
