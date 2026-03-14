@@ -11,12 +11,19 @@ Route::view('/expenses', 'expenses');
 Route::view('/profile', 'profile');
 
 // Routes ORE
+// Tutte le istanze registrate
 Route::get('/hours', function() {
     $hours = Hour::all();
 
-
-    return view('hours', [
+    return view('hours.index', [
         'hours' => $hours
+    ]);
+});
+
+// Modifica di un'istanza
+Route::get('/hours/{hour}/edit', function(Hour $hour) {
+    return view('hours.edit', [
+        'hour' => Hour::findOrFail($hour)
     ]);
 });
 
@@ -32,3 +39,4 @@ Route::post('/hours', function() {
 
     return redirect('/hours');
 });
+
