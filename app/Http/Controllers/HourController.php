@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Hour;
 use App\Http\Requests\HourRequest;
+use Illuminate\Auth\Access\Gate;
+use Illuminate\Support\Facades\Auth;
 
 class HourController extends Controller
 {
@@ -12,10 +14,8 @@ class HourController extends Controller
      */
     public function index()
     {
-        $hours = Hour::all();
-
         return view('hours.index', [
-            'hours' => $hours
+            'hours' => Auth::user()->hours
         ]);
     }
 
@@ -32,8 +32,7 @@ class HourController extends Controller
      */
     public function store(HourRequest $request)
     {
-        Hour::create([
-            'user_id'   => 1,
+        Auth::user()->hours()->create([
             'date'      => $request->date,
             'hours'     => $request->hours,
             'client_id' => $request->client_id,
@@ -49,6 +48,8 @@ class HourController extends Controller
      */
     public function show(Hour $hour)
     {
+        Gate::authorize('update', $hour);
+
         return view('hours.show', [
             'hour' => $hour
         ]);
@@ -59,6 +60,8 @@ class HourController extends Controller
      */
     public function edit(Hour $hour)
     {
+        Gate::authorize('update', $hour);
+
         return view('hours.edit', [
             'hour' => $hour
         ]);
@@ -69,6 +72,8 @@ class HourController extends Controller
      */
     public function update(HourRequest $request, Hour $hour)
     {
+        Gate::authorize('update', $hour);
+
         $hour->update([
             'date'      => $request->date,
             'hours'     => $request->hours,
@@ -85,6 +90,8 @@ class HourController extends Controller
      */
     public function destroy(Hour $hour)
     {
+        Gate::authorize('update', $hour);
+        
         $hour->delete();
 
         return redirect('/hours');

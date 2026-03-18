@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Hour extends Model
 {
@@ -19,4 +20,8 @@ class Hour extends Model
         'date' => 'date',
         'billable' => 'boolean',
     ];
+
+    public function user():BelongsTo {
+        return $this->belongsTo(User::class);
+    }
 }
