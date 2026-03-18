@@ -35,14 +35,28 @@
                 <a class="font-medium text-primary-active focus:outline-hidden" href="/" aria-current="page">Home</a>
                 <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/hours">Ore</a>
                 <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/expenses">Spese</a>
-                <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/profile">Profilo</a>
+                @auth
+                    <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/profile">Profilo</a>
+                    <form action="/logout" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90">Log Out</button>
+                    </form>
+                @endauth
+
+                @guest
+                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="/register">Registrati</a>
+                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="/login">Accedi</a>
+                @endguest
             </div>
         </div>
     </nav>
 </header>
 
 <main>
-    {{ $slot }}
+    <div class="max-w-2xl mx-auto px-4 py-10">
+        {{ $slot }}
+    </div>
 </main>
 
 </body>

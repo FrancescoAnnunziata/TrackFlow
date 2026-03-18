@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Controllers\HourController;
-use App\Models\Hour;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\SessionController;
 
 Route::view('/', 'index', [
     'user' => request('user')
@@ -20,4 +21,9 @@ Route::get('/hours/{hour}/edit', [HourController::class, 'edit']);
 Route::patch('/hours/{hour}', [HourController::class, 'update']);
 Route::delete('/hours/{hour}', [HourController::class, 'destroy']);
 
+Route::get('/register', [RegisteredUserController::class, 'create']);
+Route::post('/register', [RegisteredUserController::class, 'store']);
 
+Route::get('/login', [SessionController::class, 'create']);
+Route::post('/login', [SessionController::class, 'store']);
+Route::delete('/logout', [SessionController::class, 'destroy']);
