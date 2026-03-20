@@ -1,5 +1,4 @@
 <x-layout title="Spese">
-    <div class="max-w-2xl mx-auto px-4 py-10">
 
         {{-- Intestazione pagina --}}
         <div class="mb-8">
@@ -191,8 +190,6 @@
 
             </form>
         </div>
-
-    </div>
 
     <script>
         function updateFileName(input) {
