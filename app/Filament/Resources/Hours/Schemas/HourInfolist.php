@@ -14,8 +14,9 @@ class HourInfolist
             ->components([
                 TextEntry::make('user.name')
                     ->label('User'),
-                TextEntry::make('client_id')
-                    ->numeric(),
+                TextEntry::make('client.name')
+                    ->label('Cliente')
+                    ->placeholder('-'),
                 TextEntry::make('date')
                     ->date(),
                 TextEntry::make('hours')

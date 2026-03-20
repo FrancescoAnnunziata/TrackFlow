@@ -16,8 +16,9 @@ class HoursTable
     {
         return $table
             ->columns([
-                TextColumn::make('client_id')
-                    ->numeric()
+                TextColumn::make('client.name')
+                    ->label('Cliente')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('date')
                     ->date()

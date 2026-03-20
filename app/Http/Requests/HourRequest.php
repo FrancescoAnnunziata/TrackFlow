@@ -24,7 +24,7 @@ class HourRequest extends FormRequest
         return [
             'date'      => ['required', 'date', 'before_or_equal:today'],
             'hours'     => ['required', 'numeric', 'min:0.5', 'max:24'],
-            'client_id' => ['required', 'integer', 'min:1'],
+            'client_id' => ['required', 'integer', 'exists:clients,id'],
             'notes'     => ['nullable', 'string', 'max:1000'],
             'billable'  => ['nullable', 'boolean'],
         ];
@@ -42,6 +42,7 @@ class HourRequest extends FormRequest
             'hours.max'            => 'Non è possibile registrare più di 24 ore al giorno.',
             'client_id.required'   => 'Seleziona un cliente.',
             'client_id.integer'    => 'Il cliente non è valido.',
+            'client_id.exists'     => 'Il cliente selezionato non esiste.',
             'notes.max'            => 'Le note non possono superare i 1000 caratteri.',
         ];
     }

@@ -17,8 +17,11 @@ class HourForm
             ->components([
                 Select::make('client_id')
                     ->label('Cliente')
-                    ->helperText('Scegli il cliente per cui stai registrando le ore')
-                    ->required(),
+                    ->relationship(name: 'client', titleAttribute: 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->helperText('Scegli il cliente per cui stai registrando le ore'),
                 DatePicker::make('date')
                     ->default(now())
                     ->required(),
