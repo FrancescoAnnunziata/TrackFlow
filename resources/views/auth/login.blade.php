@@ -57,7 +57,6 @@
                             >
                             <span class="ml-2 text-sm text-muted-foreground">Ricordami</span>
                         </label>
-                        <a href="#" class="text-sm text-primary hover:opacity-90 focus:outline-hidden">Password dimenticata?</a>
                     </div>
 
                     <button
