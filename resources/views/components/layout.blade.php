@@ -30,23 +30,23 @@
                 </button>
             </div>
         </div>
-        <div id="hs-navbar-example" class="hidden hs-collapse overflow-hidden transition-all duration-300 basis-full grow sm:block" aria-labelledby="hs-navbar-example-collapse" role="region">
+            <div id="hs-navbar-example" class="hidden hs-collapse overflow-hidden transition-all duration-300 basis-full grow sm:block" aria-labelledby="hs-navbar-example-collapse" role="region">
             <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:justify-end sm:mt-0 sm:ps-5">
                 <a class="font-medium text-primary-active focus:outline-hidden" href="/" aria-current="page">Home</a>
-                <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/hours">Ore</a>
-                <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/expenses">Spese</a>
                 @auth
+                    <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/hours">Ore</a>
+                    <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/expenses">Spese</a>
                     <a class="text-sm text-navbar-nav-foreground hover:text-primary-hover focus:outline-hidden focus:text-primary-focus" href="/profile">Profilo</a>
-                    <form action="/logout" method="POST">
+                    <form action="{{ route('filament.app.auth.logout') }}" method="POST">
                         @csrf
-                        @method('DELETE')
+                        @method('POST')
                         <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90">Log Out</button>
                     </form>
                 @endauth
 
                 @guest
-                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="/register">Registrati</a>
-                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="/login">Accedi</a>
+                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="{{ route('filament.app.auth.register') }}">Registrati</a>
+                    <a class="inline-flex items-center justify-center rounded-lg border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-hidden focus:opacity-90" href="{{ route('filament.app.auth.login') }}">Accedi</a>
                 @endguest
 
                 @can('view-admin')

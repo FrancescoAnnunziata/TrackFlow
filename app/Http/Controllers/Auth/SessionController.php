@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 
 class SessionController extends Controller
 {
@@ -24,12 +23,13 @@ class SessionController extends Controller
     {
         $validated = $request->validate([
             'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string', Password::defaults()],
+            'password' => ['required', 'string'],
         ]);
 
-        if(Auth::attempt($validated)) {
+        if (Auth::attempt($validated, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            return redirect('/');
+
+            return redirect()->intended('/');
         }
 
         return back()->withErrors([
@@ -44,6 +44,6 @@ class SessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

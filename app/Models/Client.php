@@ -17,4 +17,9 @@ class Client extends Model
     {
         return $this->hasMany(Hour::class);
     }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
 }
