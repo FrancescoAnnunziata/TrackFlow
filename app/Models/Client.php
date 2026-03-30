@@ -13,6 +13,7 @@ class Client extends Model
         'notes',
     ];
 
+
     public function hours(): HasMany
     {
         return $this->hasMany(Hour::class);

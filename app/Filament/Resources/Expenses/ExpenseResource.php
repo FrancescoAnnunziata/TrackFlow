@@ -11,6 +11,7 @@ use App\Filament\Resources\Expenses\Schemas\ExpenseInfolist;
 use App\Filament\Resources\Expenses\Tables\ExpensesTable;
 use App\Models\Expense;
 use BackedEnum;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -37,6 +38,11 @@ class ExpenseResource extends Resource
     public static function table(Table $table): Table
     {
         return ExpensesTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('user_id', auth()->id());
     }
 
     public static function getRelations(): array

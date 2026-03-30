@@ -11,6 +11,7 @@ use App\Filament\Resources\Hours\Schemas\HourInfolist;
 use App\Filament\Resources\Hours\Tables\HoursTable;
 use App\Models\Hour;
 use BackedEnum;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -37,6 +38,11 @@ class HourResource extends Resource
     public static function table(Table $table): Table
     {
         return HoursTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('user_id', auth()->id());
     }
 
     public static function getRelations(): array
