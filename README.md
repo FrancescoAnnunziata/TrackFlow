@@ -9,7 +9,6 @@
 -   **Time Tracking:** Quickly log work sessions and associate them with specific clients.
 -   **Expense Management:** Track out-of-pocket costs, materials, and travel expenses.
 -   **Minimalist Dashboard:** A clean overview of total hours worked and expenses incurred.
--   **Professional UI:** A crisp, high-end interface built with Preline UI components.
 -   **Mobile-First Design:** Fully responsive layout optimized for quick entries on the go.
 
 ## Tech Stack (TALL Stack)
@@ -20,4 +19,3 @@ This project leverages the power of the TALL stack for a modern, reactive develo
 -   **Livewire** – Dynamic interfaces without leaving the comfort of PHP.
 -   **Alpine.js** – Lightweight JavaScript for client-side interactivity.
 -   **Tailwind CSS** – Utility-first CSS framework for rapid UI development.
--   **Preline UI** – Professional-grade component library for a polished look.
