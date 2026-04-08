@@ -3,7 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
-use App\Filament\Pages\Auth\Register;
+use App\Http\Middleware\MustChangePassword;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -32,7 +32,6 @@ class AppPanelProvider extends PanelProvider
             ->id('app')
             ->path('/')
             ->login(Login::class)
-            ->registration(Register::class)
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -59,6 +58,7 @@ class AppPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                MustChangePassword::class,
             ]);
     }
 
