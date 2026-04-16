@@ -19,7 +19,6 @@ class UserForm
                     ->maxLength(255),
                 TextInput::make('surname')
                     ->label('Cognome')
-                    ->required()
                     ->maxLength(255),
                 TextInput::make('email')
                     ->label('Email')
