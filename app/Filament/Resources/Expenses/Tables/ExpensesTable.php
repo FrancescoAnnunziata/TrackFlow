@@ -15,6 +15,11 @@ class ExpensesTable
     {
         return $table
             ->columns([
+                TextColumn::make('user.name')
+                    ->label('Utente')
+                    ->searchable()
+                    ->sortable()
+                    ->visible(fn (): bool => auth()->user()->isAdmin()),
                 TextColumn::make('client.name')
                     ->label('Cliente')
                     ->searchable()
