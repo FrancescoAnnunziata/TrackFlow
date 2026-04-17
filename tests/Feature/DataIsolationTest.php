@@ -39,21 +39,21 @@ it('shows only owned hours in filament hours index', function () {
         'name' => 'Cliente Ore B',
     ]);
 
-    Hour::create([
+    $hourA = Hour::create([
         'user_id' => $userA->id,
-        'client_id' => $clientA->id,
         'date' => '2026-03-10',
         'hours' => 2.5,
         'billable' => true,
     ]);
+    $hourA->clients()->attach($clientA);
 
-    Hour::create([
+    $hourB = Hour::create([
         'user_id' => $userB->id,
-        'client_id' => $clientB->id,
         'date' => '2026-03-11',
         'hours' => 1.0,
         'billable' => false,
     ]);
+    $hourB->clients()->attach($clientB);
 
     $this->actingAs($userA)
         ->get('/hours')

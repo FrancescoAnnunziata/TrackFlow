@@ -16,10 +16,10 @@ class HoursTable
     {
         return $table
             ->columns([
-                TextColumn::make('client.name')
-                    ->label('Cliente')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('clients.name')
+                    ->label('Clienti')
+                    ->badge()
+                    ->searchable(),
                 TextColumn::make('date')
                     ->date()
                     ->sortable(),

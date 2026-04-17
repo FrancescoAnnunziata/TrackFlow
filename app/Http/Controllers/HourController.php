@@ -32,13 +32,14 @@ class HourController extends Controller
      */
     public function store(HourRequest $request)
     {
-        Auth::user()->hours()->create([
+        $hour = Auth::user()->hours()->create([
             'date'      => $request->date,
             'hours'     => $request->hours,
-            'client_id' => $request->client_id,
             'notes'     => $request->notes,
             'billable'  => $request->boolean('billable'),
         ]);
+
+        $hour->clients()->sync($request->client_ids);
 
         return redirect('/hours');
     }
@@ -77,10 +78,11 @@ class HourController extends Controller
         $hour->update([
             'date'      => $request->date,
             'hours'     => $request->hours,
-            'client_id' => $request->client_id,
             'notes'     => $request->notes,
             'billable'  => $request->boolean('billable'),
         ]);
+
+        $hour->clients()->sync($request->client_ids);
 
         return redirect("/hours/{$hour->id}");
     }
