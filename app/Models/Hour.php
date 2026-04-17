@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Hour extends Model
 {
@@ -11,7 +12,6 @@ class Hour extends Model
         'user_id',
         'date',
         'hours',
-        'client_id',
         'notes',
         'billable',
     ];
@@ -26,8 +26,8 @@ class Hour extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function client(): BelongsTo
+    public function clients(): BelongsToMany
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsToMany(Client::class)->withTimestamps();
     }
 }

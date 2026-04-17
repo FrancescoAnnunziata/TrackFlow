@@ -15,13 +15,14 @@ class HourForm
     {
         return $schema
             ->components([
-                Select::make('client_id')
-                    ->label('Cliente')
-                    ->relationship(name: 'client', titleAttribute: 'name')
+                Select::make('clients')
+                    ->label('Clienti')
+                    ->relationship(name: 'clients', titleAttribute: 'name')
+                    ->multiple()
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->helperText('Scegli il cliente per cui stai registrando le ore'),
+                    ->helperText('Scegli i clienti per cui stai registrando le ore'),
                 DatePicker::make('date')
                     ->default(now())
                     ->required(),

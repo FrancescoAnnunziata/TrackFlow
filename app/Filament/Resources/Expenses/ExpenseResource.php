@@ -21,9 +21,14 @@ class ExpenseResource extends Resource
 {
     protected static ?string $model = Expense::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
 
     protected static ?string $recordTitleAttribute = 'date';
+
+    protected static ?string $modelLabel = 'Spesa';
+
+    protected static ?string $pluralModelLabel = 'Spese';
+
 
     public static function form(Schema $schema): Schema
     {
@@ -42,7 +47,13 @@ class ExpenseResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('user_id', auth()->id());
+        $query = parent::getEloquentQuery();
+
+        if (! auth()->user()->isAdmin()) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query;
     }
 
     public static function getRelations(): array

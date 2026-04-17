@@ -3,7 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
-use App\Filament\Pages\Auth\Register;
+use App\Http\Middleware\MustChangePassword;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -12,6 +12,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\HtmlString;
 use Filament\Support\Facades\FilamentView;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -31,8 +32,9 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->id('app')
             ->path('/')
+            ->brandName('TrackFlow')
+            ->brandLogo(new HtmlString('<div style="display:flex;align-items:center;gap:0.5rem;"><img src="' . asset('images/LogoBlack.png') . '" alt="TrackFlow" style="height:2rem;"><span style="font-weight:700;font-size:1.25rem;">TrackFlow</span></div>'))
             ->login(Login::class)
-            ->registration(Register::class)
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -59,6 +61,7 @@ class AppPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                MustChangePassword::class,
             ]);
     }
 

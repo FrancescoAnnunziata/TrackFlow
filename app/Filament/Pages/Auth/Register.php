@@ -37,7 +37,6 @@ class Register extends BaseRegister
     {
         return TextInput::make('surname')
             ->label('Cognome')
-            ->required()
             ->maxLength(255);
     }
 
