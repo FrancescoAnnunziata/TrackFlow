@@ -11,13 +11,14 @@ class Hour extends Model
     protected $fillable = [
         'user_id',
         'date',
-        'hours',
+        'minutes',
         'notes',
         'billable',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'minutes' => 'integer',
         'billable' => 'boolean',
     ];
 

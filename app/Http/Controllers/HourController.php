@@ -34,7 +34,7 @@ class HourController extends Controller
     {
         $hour = Auth::user()->hours()->create([
             'date'      => $request->date,
-            'hours'     => $request->hours,
+            'minutes'   => ((int) $request->hours_part) * 60 + ((int) $request->minutes_part),
             'notes'     => $request->notes,
             'billable'  => $request->boolean('billable'),
         ]);
@@ -77,7 +77,7 @@ class HourController extends Controller
 
         $hour->update([
             'date'      => $request->date,
-            'hours'     => $request->hours,
+            'minutes'   => ((int) $request->hours_part) * 60 + ((int) $request->minutes_part),
             'notes'     => $request->notes,
             'billable'  => $request->boolean('billable'),
         ]);

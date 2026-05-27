@@ -26,9 +26,20 @@ class HourForm
                 DatePicker::make('date')
                     ->default(now())
                     ->required(),
-                TextInput::make('hours')
-                    ->required()
-                    ->numeric(),
+                TextInput::make('hours_part')
+                    ->label('Ore')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(23)
+                    ->default(0)
+                    ->required(),
+                TextInput::make('minutes_part')
+                    ->label('Minuti')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(59)
+                    ->default(0)
+                    ->required(),
                 Textarea::make('notes')
                     ->columnSpanFull()
                     ->label('Note')

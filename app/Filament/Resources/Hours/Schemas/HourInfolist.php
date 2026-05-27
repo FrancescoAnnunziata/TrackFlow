@@ -20,8 +20,9 @@ class HourInfolist
                     ->placeholder('-'),
                 TextEntry::make('date')
                     ->date(),
-                TextEntry::make('hours')
-                    ->numeric(),
+                TextEntry::make('minutes')
+                    ->label('Tempo')
+                    ->formatStateUsing(fn ($state): string => sprintf('%d:%02d', intdiv((int) $state, 60), ((int) $state) % 60)),
                 TextEntry::make('notes')
                     ->placeholder('-')
                     ->columnSpanFull(),

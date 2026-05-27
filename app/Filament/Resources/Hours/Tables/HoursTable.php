@@ -28,8 +28,9 @@ class HoursTable
                 TextColumn::make('date')
                     ->date()
                     ->sortable(),
-                TextColumn::make('hours')
-                    ->numeric()
+                TextColumn::make('minutes')
+                    ->label('Tempo')
+                    ->formatStateUsing(fn ($state): string => sprintf('%d:%02d', intdiv((int) $state, 60), ((int) $state) % 60))
                     ->sortable(),
                 IconColumn::make('billable')
                     ->boolean(),
