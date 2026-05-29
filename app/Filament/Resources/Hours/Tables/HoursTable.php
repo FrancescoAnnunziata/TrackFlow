@@ -50,11 +50,18 @@ class HoursTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('user')
+                    ->label('Utente')
+                    ->relationship('user', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (): bool => auth()->user()->isAdmin()),
                 SelectFilter::make('clients')
                     ->label('Cliente')
                     ->relationship('clients', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->visible(fn (): bool => ! auth()->user()->isClient()),
                 Filter::make('date')
                     ->label('Data')
                     ->schema([

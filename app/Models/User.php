@@ -6,6 +6,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -24,6 +25,7 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'surname',
         'role',
+        'client_id',
         'email',
         'password',
         'must_change_password',
@@ -62,8 +64,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Expense::class);
     }
 
+    public function client(): BelongsTo {
+        return $this->belongsTo(Client::class);
+    }
+
     public function isAdmin(): bool {
         return $this->role === 'admin';
+    }
+
+    public function isClient(): bool {
+        return $this->role === 'client';
     }
 
     public function canAccessPanel(Panel $panel): bool

@@ -45,6 +45,11 @@ class ExpenseResource extends Resource
         return ExpensesTable::configure($table);
     }
 
+    public static function canViewAny(): bool
+    {
+        return ! auth()->user()->isClient();
+    }
+
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();

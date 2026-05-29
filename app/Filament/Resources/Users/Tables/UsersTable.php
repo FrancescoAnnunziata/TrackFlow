@@ -29,8 +29,13 @@ class UsersTable
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'admin' => 'Admin',
                         'member' => 'Membro',
+                        'client' => 'Cliente',
                         default => $state,
                     })
+                    ->sortable(),
+                TextColumn::make('client.name')
+                    ->label('Cliente associato')
+                    ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Creato il')

@@ -48,12 +48,32 @@ class HourResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
+        $user = auth()->user();
 
-        if (! auth()->user()->isAdmin()) {
-            $query->where('user_id', auth()->id());
+        if ($user->isAdmin()) {
+            return $query;
         }
 
-        return $query;
+        if ($user->isClient()) {
+            return $query->whereHas('clients', fn (Builder $q) => $q->whereKey($user->client_id));
+        }
+
+        return $query->where('user_id', $user->id);
+    }
+
+    public static function canCreate(): bool
+    {
+        return ! auth()->user()->isClient();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return ! auth()->user()->isClient();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return ! auth()->user()->isClient();
     }
 
     public static function getRelations(): array

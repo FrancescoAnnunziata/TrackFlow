@@ -43,6 +43,11 @@ class UserResource extends Resource
         return UsersTable::configure($table);
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->isAdmin();
+    }
+
     public static function getRelations(): array
     {
         return [

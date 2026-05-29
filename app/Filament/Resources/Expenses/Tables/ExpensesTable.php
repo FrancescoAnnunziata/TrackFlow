@@ -51,6 +51,12 @@ class ExpensesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('user')
+                    ->label('Utente')
+                    ->relationship('user', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (): bool => auth()->user()->isAdmin()),
                 SelectFilter::make('client')
                     ->label('Cliente')
                     ->relationship('client', 'name')
