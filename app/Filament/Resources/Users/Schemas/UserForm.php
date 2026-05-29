@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Filament\Resources\Clients\Schemas\ClientForm;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -49,7 +50,8 @@ class UserForm
                     ->searchable()
                     ->preload()
                     ->visible(fn (Get $get): bool => $get('role') === 'client')
-                    ->required(fn (Get $get): bool => $get('role') === 'client'),
+                    ->required(fn (Get $get): bool => $get('role') === 'client')
+                    ->createOptionForm(fn (Schema $schema): Schema => ClientForm::configure($schema)),
                 TextInput::make('password')
                     ->label('Password')
                     ->password()
