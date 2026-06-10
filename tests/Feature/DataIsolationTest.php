@@ -42,7 +42,7 @@ it('shows only owned hours in filament hours index', function () {
     $hourA = Hour::create([
         'user_id' => $userA->id,
         'date' => '2026-03-10',
-        'minutes' => 170,
+        'hours' => 2.5,
         'billable' => true,
     ]);
     $hourA->clients()->attach($clientA);
@@ -50,7 +50,7 @@ it('shows only owned hours in filament hours index', function () {
     $hourB = Hour::create([
         'user_id' => $userB->id,
         'date' => '2026-03-11',
-        'minutes' => 60,
+        'hours' => 1.0,
         'billable' => false,
     ]);
     $hourB->clients()->attach($clientB);

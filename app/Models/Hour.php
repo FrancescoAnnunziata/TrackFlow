@@ -11,14 +11,13 @@ class Hour extends Model
     protected $fillable = [
         'user_id',
         'date',
-        'minutes',
+        'hours',
         'notes',
         'billable',
     ];
 
     protected $casts = [
         'date' => 'date',
-        'minutes' => 'integer',
         'billable' => 'boolean',
     ];
 
@@ -30,5 +29,10 @@ class Hour extends Model
     public function clients(): BelongsToMany
     {
         return $this->belongsToMany(Client::class)->withTimestamps();
+    }
+
+    public function invoices(): BelongsToMany
+    {
+        return $this->belongsToMany(Invoice::class)->withTimestamps();
     }
 }

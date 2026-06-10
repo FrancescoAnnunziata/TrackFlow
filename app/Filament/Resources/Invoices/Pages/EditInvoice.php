@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Filament\Resources\Hours\Pages;
+namespace App\Filament\Resources\Invoices\Pages;
 
-use App\Filament\Resources\Hours\HourResource;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 
-class EditHour extends EditRecord
+class EditInvoice extends EditRecord
 {
-    protected static string $resource = HourResource::class;
+    protected static string $resource = InvoiceResource::class;
 
     protected function getHeaderActions(): array
     {
