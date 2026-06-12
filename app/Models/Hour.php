@@ -30,4 +30,9 @@ class Hour extends Model
     {
         return $this->belongsToMany(Client::class)->withTimestamps();
     }
+
+    public function invoices(): BelongsToMany
+    {
+        return $this->belongsToMany(Invoice::class)->withTimestamps();
+    }
 }

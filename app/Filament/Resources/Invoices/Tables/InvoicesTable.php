@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\Expenses\Tables;
+namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Filament\Resources\Hours\HourResource;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -15,63 +17,85 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class ExpensesTable
+class InvoicesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')
-                    ->label('Utente')
+                TextColumn::make('number')
+                    ->label('Numero')
                     ->searchable()
                     ->sortable()
-                    ->visible(fn (): bool => auth()->user()->isAdmin()),
+                    ->color('primary')
+                    ->icon('heroicon-o-clock')
+                    ->tooltip('Vedi le ore di questa fattura')
+                    ->url(fn (Invoice $record): string => HourResource::getUrl('index', [
+                        'tableFilters' => [
+                            'invoice' => ['value' => $record->getKey()],
+                        ],
+                    ])),
+                TextColumn::make('issue_date')
+                    ->label('Data')
+                    ->date()
+                    ->sortable(),
                 TextColumn::make('client.name')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('date')
-                    ->label('Data')
-                    ->date()
-                    ->sortable(),
-                TextColumn::make('amount')
-                    ->label('Importo')
+                TextColumn::make('total')
+                    ->label('Totale')
+                    ->state(fn ($record): float => $record->total())
                     ->money('EUR')
+                    ->sortable(false),
+                TextColumn::make('status')
+                    ->label('Stato')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'draft' => 'Bozza',
+                        'sent' => 'Inviata',
+                        'paid' => 'Pagata',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'sent' => 'warning',
+                        'paid' => 'success',
+                        default => 'gray',
+                    })
                     ->sortable(),
-                TextColumn::make('attachaments')
-                    ->label('Allegati')
-                    ->formatStateUsing(fn ($state): string => is_array($state) ? (string) count($state) : '0'),
+                TextColumn::make('user.name')
+                    ->label('Creata da')
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('issue_date', 'desc')
             ->filters([
-                SelectFilter::make('user')
-                    ->label('Utente')
-                    ->relationship('user', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->visible(fn (): bool => auth()->user()->isAdmin()),
                 SelectFilter::make('client')
                     ->label('Cliente')
                     ->relationship('client', 'name')
                     ->searchable()
                     ->preload(),
-                Filter::make('date')
-                    ->label('Data')
+                SelectFilter::make('status')
+                    ->label('Stato')
+                    ->options([
+                        'draft' => 'Bozza',
+                        'sent' => 'Inviata',
+                        'paid' => 'Pagata',
+                    ]),
+                Filter::make('issue_date')
+                    ->label('Data emissione')
                     ->schema([
                         DatePicker::make('from')->label('Dal'),
                         DatePicker::make('until')->label('Al'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->whereDate('date', '>=', $date))
-                            ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->whereDate('date', '<=', $date));
+                            ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->whereDate('issue_date', '>=', $date))
+                            ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->whereDate('issue_date', '<=', $date));
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];

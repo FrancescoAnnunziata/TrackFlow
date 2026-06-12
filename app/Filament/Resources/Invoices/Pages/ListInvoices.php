@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Filament\Resources\Hours\Pages;
+namespace App\Filament\Resources\Invoices\Pages;
 
-use App\Filament\Resources\Hours\HourResource;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
-class ListHours extends ListRecords
+class ListInvoices extends ListRecords
 {
-    protected static string $resource = HourResource::class;
+    protected static string $resource = InvoiceResource::class;
 
     /**
      * Espone lo stato dei filtri della tabella nella query string, così i
-     * filtri sono condivisibili via link (es. il link "ore della fattura").
+     * filtri (cliente, stato, periodo) sono condivisibili via link.
      */
     public function queryString(): array
     {
