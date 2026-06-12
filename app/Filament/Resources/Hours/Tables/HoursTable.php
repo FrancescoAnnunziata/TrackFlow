@@ -23,10 +23,10 @@ class HoursTable
         return $table
             ->columns([
                 TextColumn::make('user.name')
-                    ->label('Utente')
+                    ->label('Operatore')
                     ->searchable()
                     ->sortable()
-                    ->visible(fn (): bool => auth()->user()->isAdmin()),
+                    ->visible(fn (): bool => auth()->user()->isAdmin() || auth()->user()->isClient()),
                 TextColumn::make('clients.name')
                     ->label('Clienti')
                     ->badge()
@@ -55,6 +55,19 @@ class HoursTable
                     ->searchable()
                     ->preload()
                     ->visible(fn (): bool => auth()->user()->isAdmin()),
+                SelectFilter::make('operatore')
+                    ->label('Operatore')
+                    ->relationship(
+                        'user',
+                        'name',
+                        fn (Builder $query): Builder => $query->whereHas(
+                            'hours.clients',
+                            fn (Builder $q): Builder => $q->whereKey(auth()->user()->client_id)
+                        )
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (): bool => auth()->user()->isClient()),
                 SelectFilter::make('clients')
                     ->label('Cliente')
                     ->relationship('clients', 'name')

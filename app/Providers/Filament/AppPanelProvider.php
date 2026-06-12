@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Http\Middleware\MustChangePassword;
+use App\Support\Impersonation;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -69,5 +70,15 @@ class AppPanelProvider extends PanelProvider
     {
         parent::register();
         FilamentView::registerRenderHook('panels::body.end', fn ():string => Blade::render("@vite('resources/js/app.js')"));
+
+        FilamentView::registerRenderHook(
+            'panels::body.start',
+            fn (): string => Impersonation::isImpersonating()
+                ? view('filament.impersonation-banner', [
+                    'impersonator' => Impersonation::impersonator(),
+                    'impersonated' => auth()->user(),
+                ])->render()
+                : '',
+        );
     }
 }
