@@ -74,6 +74,17 @@ class HoursTable
                     ->searchable()
                     ->preload()
                     ->visible(fn (): bool => ! auth()->user()->isClient()),
+                SelectFilter::make('invoice')
+                    ->label('Fattura')
+                    ->relationship(
+                        'invoices',
+                        'number',
+                        fn (Builder $query): Builder => auth()->user()->isClient()
+                            ? $query->where('client_id', auth()->user()->client_id)
+                            : $query
+                    )
+                    ->searchable()
+                    ->preload(),
                 Filter::make('date')
                     ->label('Data')
                     ->schema([

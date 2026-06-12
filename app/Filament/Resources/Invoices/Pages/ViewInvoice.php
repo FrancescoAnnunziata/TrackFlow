@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Pages;
 
+use App\Filament\Resources\Hours\HourResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\Invoice;
 use Filament\Actions\Action;
@@ -17,6 +18,15 @@ class ViewInvoice extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('viewHours')
+                ->label('Vedi ore fatturate')
+                ->icon(Heroicon::OutlinedClock)
+                ->color('primary')
+                ->url(fn (Invoice $record): string => HourResource::getUrl('index', [
+                    'tableFilters' => [
+                        'invoice' => ['value' => $record->getKey()],
+                    ],
+                ])),
             EditAction::make(),
             Action::make('ficPayload')
                 ->label('Payload Fatture in Cloud')

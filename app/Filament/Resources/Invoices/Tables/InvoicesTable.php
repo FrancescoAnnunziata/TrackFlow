@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Filament\Resources\Hours\HourResource;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -24,7 +26,15 @@ class InvoicesTable
                 TextColumn::make('number')
                     ->label('Numero')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->color('primary')
+                    ->icon('heroicon-o-clock')
+                    ->tooltip('Vedi le ore di questa fattura')
+                    ->url(fn (Invoice $record): string => HourResource::getUrl('index', [
+                        'tableFilters' => [
+                            'invoice' => ['value' => $record->getKey()],
+                        ],
+                    ])),
                 TextColumn::make('issue_date')
                     ->label('Data')
                     ->date()
