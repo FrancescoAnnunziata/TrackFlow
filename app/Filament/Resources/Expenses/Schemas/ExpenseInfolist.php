@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Expenses\Schemas;
 
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 
@@ -23,15 +24,12 @@ class ExpenseInfolist
                 TextEntry::make('amount')
                     ->label('Importo')
                     ->money('EUR'),
-                TextEntry::make('attachaments')
+                ImageEntry::make('attachaments')
                     ->label('Allegati')
-                    ->formatStateUsing(function ($state): string {
-                        if (! is_array($state) || $state === []) {
-                            return '-';
-                        }
-
-                        return implode(', ', $state);
-                    })
+                    ->disk('public')
+                    ->height(140)
+                    ->stacked()
+                    ->placeholder('-')
                     ->columnSpanFull(),
                 TextEntry::make('notes')
                     ->label('Note')
