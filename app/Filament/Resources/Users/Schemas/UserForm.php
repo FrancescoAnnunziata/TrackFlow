@@ -56,7 +56,11 @@ class UserForm
                     ->label('Password')
                     ->password()
                     ->revealable()
-                    ->required(fn (string $context): bool => $context === 'create')
+                    // I clienti accedono via magic link: nessuna password richiesta.
+                    ->required(fn (string $context, Get $get): bool => $context === 'create' && $get('role') !== 'client')
+                    ->helperText(fn (Get $get): ?string => $get('role') === 'client'
+                        ? 'I clienti accedono via magic link dal preventivo: lasciare vuoto.'
+                        : null)
                     ->dehydrated(fn (?string $state): bool => filled($state))
                     ->rule(Password::default()),
             ]);

@@ -49,6 +49,24 @@ class Invoice extends Model
         return $this->belongsToMany(Expense::class)->withTimestamps();
     }
 
+    /**
+     * Propone il prossimo numero fattura dell'anno corrente, saltando i numeri
+     * già usati (es. dopo cancellazioni o numerazioni manuali) per non collidere
+     * con il vincolo di unicità.
+     */
+    public static function suggestNextNumber(): string
+    {
+        $year = now()->year;
+        $count = self::whereYear('issue_date', $year)->count();
+
+        do {
+            $count++;
+            $number = sprintf('%d-%03d', $year, $count);
+        } while (self::where('number', $number)->exists());
+
+        return $number;
+    }
+
     public function hoursSubtotal(): float
     {
         $totalMinutes = (int) $this->hours()->sum('minutes');

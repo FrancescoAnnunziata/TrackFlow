@@ -12,7 +12,11 @@ class MustChangePassword
     {
         $user = $request->user();
 
-        if ($user?->must_change_password && ! $request->routeIs('filament.app.pages.change-password')) {
+        // Le sessioni autenticate via magic link (clienti senza password) non
+        // sono soggette al cambio password obbligatorio.
+        if ($user?->must_change_password
+            && ! $request->session()->get('quote_magic_login')
+            && ! $request->routeIs('filament.app.pages.change-password')) {
             return redirect()->route('filament.app.pages.change-password');
         }
 
