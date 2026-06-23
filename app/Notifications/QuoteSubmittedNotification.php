@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\Quotes\QuoteResource;
 use App\Models\Quote;
 use App\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,13 +25,16 @@ class QuoteSubmittedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         /** @var User $notifiable */
-        $issuer = $this->quote->user;
-        $url = $this->quote->magicLinkFor($notifiable);
+        // L'emittente riceve una copia per conoscenza, ma con link al pannello
+        // (NON il magic link, che autenticherebbe chi clicca COME il cliente).
+        if ($notifiable->getKey() === $this->quote->user_id) {
+            return $this->issuerCopy($notifiable);
+        }
 
         $mail = (new MailMessage)
             ->subject("Preventivo {$this->quote->number} da approvare")
             ->greeting("Ciao {$notifiable->name},")
-            ->line("{$issuer->name} ti ha inviato il preventivo {$this->quote->number} da approvare.");
+            ->line("{$this->quote->user->name} ti ha inviato il preventivo {$this->quote->number} da approvare.");
 
         if (filled($this->quote->description)) {
             $mail->line($this->quote->description);
@@ -39,10 +43,18 @@ class QuoteSubmittedNotification extends Notification
         return $mail
             ->line('Ore stimate: ' . self::formatHours($this->quote->estimated_hours)
                 . ' — Totale (IVA inclusa): € ' . number_format($this->quote->total(), 2, ',', '.'))
-            ->action('Visualizza e approva', $url)
-            ->line('Il link di accesso è valido ' . Quote::MAGIC_LINK_DAYS . ' giorni e ti permette di entrare senza password.')
-            // In copia chi ha emesso il preventivo.
-            ->cc($issuer->email);
+            ->action('Visualizza e approva', $this->quote->magicLinkFor($notifiable))
+            ->line('Il link di accesso è valido ' . Quote::MAGIC_LINK_DAYS . ' giorni e ti permette di entrare senza password.');
+    }
+
+    private function issuerCopy(User $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject("Preventivo {$this->quote->number} inviato al cliente")
+            ->greeting("Ciao {$notifiable->name},")
+            ->line("Hai inviato il preventivo {$this->quote->number} ai referenti di {$this->quote->client->name}.")
+            ->line('Totale (IVA inclusa): € ' . number_format($this->quote->total(), 2, ',', '.'))
+            ->action('Apri il preventivo', QuoteResource::getUrl('view', ['record' => $this->quote]));
     }
 
     private static function formatHours(string|float $hours): string

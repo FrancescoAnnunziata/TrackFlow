@@ -40,10 +40,9 @@ class QuoteDecidedNotification extends Notification
                 ->line("Il preventivo {$this->quote->number} è stato {$word} da {$this->decidedBy->name}.")
                 ->action('Apri il preventivo', QuoteResource::getUrl('view', ['record' => $this->quote]));
         } else {
+            // Solo il cliente riceve il magic link, mai in CC ad altri.
             $mail
                 ->line("Hai {$word} il preventivo {$this->quote->number}.")
-                // Email al cliente: in copia chi ha emesso il preventivo.
-                ->cc($issuer->email)
                 ->action('Apri il preventivo', $this->quote->magicLinkFor($notifiable));
         }
 

@@ -24,14 +24,7 @@ class QuoteInfolist
                             ->label('Stato')
                             ->formatStateUsing(fn (string $state): string => QuoteForm::statusOptions()[$state] ?? $state)
                             ->badge()
-                            ->color(fn (string $state): string => match ($state) {
-                                Quote::STATUS_DRAFT => 'gray',
-                                Quote::STATUS_SENT => 'warning',
-                                Quote::STATUS_ACCEPTED => 'success',
-                                Quote::STATUS_REJECTED => 'danger',
-                                Quote::STATUS_INVOICED => 'info',
-                                default => 'gray',
-                            }),
+                            ->color(fn (string $state): string => QuoteForm::statusColor($state)),
                     ]),
 
                 Section::make('Intervento e stima')

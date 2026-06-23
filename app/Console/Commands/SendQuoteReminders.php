@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Quote;
-use App\Models\User;
 use App\Notifications\QuoteReminderNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Notification;
@@ -30,7 +29,7 @@ class SendQuoteReminders extends Command
         $quotes = Quote::query()
             ->where('status', Quote::STATUS_SENT)
             ->whereNotNull('sent_at')
-            ->with('user')
+            ->with(['user', 'client.contacts'])
             ->get();
 
         $sent = 0;
@@ -38,7 +37,9 @@ class SendQuoteReminders extends Command
         foreach ($quotes as $quote) {
             $days = (int) $quote->sent_at->startOfDay()->diffInDays(now()->startOfDay());
 
-            // Scegli il sollecito più avanzato dovuto (gestisce anche giorni saltati).
+            // Sollecito dovuto: avanza di una soglia per esecuzione. Se più soglie
+            // sono scadute insieme (es. scheduler fermo), parte la più bassa
+            // ancora dovuta e le successive nelle esecuzioni seguenti.
             $due = null;
             foreach (self::MILESTONES as $milestone) {
                 if ($days >= $milestone['days'] && $quote->reminders_sent === $milestone['after']) {
@@ -51,10 +52,7 @@ class SendQuoteReminders extends Command
                 continue;
             }
 
-            $recipients = User::query()
-                ->where('role', 'client')
-                ->where('client_id', $quote->client_id)
-                ->get();
+            $recipients = $quote->client->contacts;
 
             if ($recipients->isEmpty()) {
                 $this->warn("Preventivo {$quote->number}: nessun referente, salto.");
@@ -72,7 +70,9 @@ class SendQuoteReminders extends Command
             ));
 
             if (! $dryRun) {
+                // Magic link ai referenti; copia per conoscenza all'emittente.
                 Notification::send($recipients, new QuoteReminderNotification($quote, $days));
+                Notification::send($quote->user, new QuoteReminderNotification($quote, $days));
                 $quote->update(['reminders_sent' => $due['after'] + 1]);
             }
 

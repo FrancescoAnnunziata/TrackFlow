@@ -26,7 +26,7 @@ class InvoiceForm
                             ->label('Numero')
                             ->required()
                             ->maxLength(50)
-                            ->default(fn () => self::suggestNextNumber()),
+                            ->default(fn () => Invoice::suggestNextNumber()),
                         DatePicker::make('issue_date')
                             ->label('Data emissione')
                             ->required()
@@ -175,13 +175,5 @@ class InvoiceForm
                 $q->orWhereHas('invoices', fn (Builder $qi) => $qi->whereKey($record->id));
             }
         });
-    }
-
-    private static function suggestNextNumber(): string
-    {
-        $year = now()->year;
-        $count = Invoice::whereYear('issue_date', $year)->count();
-
-        return sprintf('%d-%03d', $year, $count + 1);
     }
 }

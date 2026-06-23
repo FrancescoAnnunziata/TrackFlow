@@ -6,16 +6,15 @@ use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Quotes\QuoteResource;
 use App\Models\Invoice;
 use App\Models\Quote;
-use App\Models\User;
 use App\Notifications\QuoteDecidedNotification;
 use App\Notifications\QuoteSubmittedNotification;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
+use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Notification as Mail;
+use Illuminate\Support\Facades\Notification;
 
 class ViewQuote extends ViewRecord
 {
@@ -48,10 +47,10 @@ class ViewQuote extends ViewRecord
             ->requiresConfirmation()
             ->modalDescription('Invia il preventivo via email a tutti i referenti del cliente, con un link di accesso per approvarlo.')
             ->action(function (Quote $record): void {
-                $recipients = self::clientRecipients($record);
+                $recipients = $record->client->contacts;
 
                 if ($recipients->isEmpty()) {
-                    Notification::make()
+                    FilamentNotification::make()
                         ->warning()
                         ->title('Nessun referente')
                         ->body('Il cliente non ha utenti referente a cui inviare il preventivo. Creane uno dalla sezione Utenti.')
@@ -66,9 +65,11 @@ class ViewQuote extends ViewRecord
                     'reminders_sent' => 0,
                 ]);
 
-                Mail::send($recipients, new QuoteSubmittedNotification($record));
+                // Magic link ai referenti; copia per conoscenza all'emittente.
+                Notification::send($recipients, new QuoteSubmittedNotification($record));
+                Notification::send($record->user, new QuoteSubmittedNotification($record));
 
-                Notification::make()
+                FilamentNotification::make()
                     ->success()
                     ->title('Preventivo inviato')
                     ->body('Email inviata a ' . $recipients->count() . ' referente/i.')
@@ -121,11 +122,11 @@ class ViewQuote extends ViewRecord
 
         $decidedBy = auth()->user();
 
-        // All'emittente (admin) e a tutti i referenti del cliente.
-        Mail::send($record->user, new QuoteDecidedNotification($record, $decidedBy));
-        Mail::send(self::clientRecipients($record), new QuoteDecidedNotification($record, $decidedBy));
+        // All'emittente (admin, link al pannello) e ai referenti (magic link).
+        Notification::send($record->user, new QuoteDecidedNotification($record, $decidedBy));
+        Notification::send($record->client->contacts, new QuoteDecidedNotification($record, $decidedBy));
 
-        Notification::make()
+        FilamentNotification::make()
             ->color($accepted ? 'success' : 'danger')
             ->title($accepted ? 'Preventivo accettato' : 'Preventivo rifiutato')
             ->send();
@@ -149,7 +150,7 @@ class ViewQuote extends ViewRecord
                 $invoice = Invoice::create([
                     'user_id' => auth()->id(),
                     'client_id' => $record->client_id,
-                    'number' => self::suggestNextInvoiceNumber(),
+                    'number' => Invoice::suggestNextNumber(),
                     'issue_date' => now(),
                     'period_from' => now()->startOfMonth(),
                     'period_to' => now()->endOfMonth(),
@@ -164,7 +165,7 @@ class ViewQuote extends ViewRecord
                     'invoice_id' => $invoice->getKey(),
                 ]);
 
-                Notification::make()
+                FilamentNotification::make()
                     ->success()
                     ->title('Fattura creata')
                     ->body("Fattura {$invoice->number} generata in bozza.")
@@ -172,26 +173,5 @@ class ViewQuote extends ViewRecord
 
                 return redirect(InvoiceResource::getUrl('edit', ['record' => $invoice]));
             });
-    }
-
-    /**
-     * Tutti gli utenti referente del cliente del preventivo.
-     *
-     * @return \Illuminate\Support\Collection<int, User>
-     */
-    private static function clientRecipients(Quote $quote): \Illuminate\Support\Collection
-    {
-        return User::query()
-            ->where('role', 'client')
-            ->where('client_id', $quote->client_id)
-            ->get();
-    }
-
-    private static function suggestNextInvoiceNumber(): string
-    {
-        $year = now()->year;
-        $count = Invoice::whereYear('issue_date', $year)->count();
-
-        return sprintf('%d-%03d', $year, $count + 1);
     }
 }

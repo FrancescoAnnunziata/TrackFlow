@@ -41,4 +41,18 @@ class Client extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * Utenti referente del cliente (ruolo client): destinatari delle
+     * comunicazioni indirizzate al cliente (preventivi, solleciti, ...).
+     */
+    public function contacts(): HasMany
+    {
+        return $this->users()->where('role', 'client');
+    }
 }

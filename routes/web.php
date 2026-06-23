@@ -30,12 +30,12 @@ Route::get('/q/{quote}/access', function (Request $request, Quote $quote) {
         403,
     );
 
-    // Il magic link sostituisce la password: niente cambio password forzato.
-    if ($user->must_change_password) {
-        $user->forceFill(['must_change_password' => false])->save();
-    }
-
     Auth::login($user);
+
+    // Il magic link sostituisce la password: salta il gate "cambio password
+    // obbligatorio" solo per QUESTA sessione, senza disattivarlo in modo
+    // permanente sull'account (vedi MustChangePassword middleware).
+    session()->put('quote_magic_login', true);
 
     return redirect(QuoteResource::getUrl('view', ['record' => $quote]));
 })->middleware('signed')->name('quote.magic');

@@ -42,7 +42,10 @@ class QuoteForm
                             ->default(Quote::STATUS_DRAFT)
                             ->required()
                             ->disabled(fn (?Quote $record): bool => $record !== null)
-                            ->dehydrated()
+                            // In creazione lo persistiamo (default 'draft'); in modifica
+                            // NON lo dehydratiamo, così non sovrascrive uno stato fatto
+                            // avanzare nel frattempo dalle azioni (Invia/Accetta/...).
+                            ->dehydrated(fn (?Quote $record): bool => $record === null)
                             ->helperText('Lo stato avanza con le azioni Invia / Accetta / Genera fattura.'),
                     ]),
 
@@ -111,11 +114,31 @@ class QuoteForm
         ];
     }
 
+    /**
+     * Colore del badge di stato, condiviso da tabella e infolist.
+     */
+    public static function statusColor(string $state): string
+    {
+        return match ($state) {
+            Quote::STATUS_DRAFT => 'gray',
+            Quote::STATUS_SENT => 'warning',
+            Quote::STATUS_ACCEPTED => 'success',
+            Quote::STATUS_REJECTED => 'danger',
+            Quote::STATUS_INVOICED => 'info',
+            default => 'gray',
+        };
+    }
+
     private static function suggestNextNumber(): string
     {
         $year = now()->year;
         $count = Quote::whereYear('issue_date', $year)->count();
 
-        return sprintf('P%d-%03d', $year, $count + 1);
+        do {
+            $count++;
+            $number = sprintf('P%d-%03d', $year, $count);
+        } while (Quote::where('number', $number)->exists());
+
+        return $number;
     }
 }
