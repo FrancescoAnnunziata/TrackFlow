@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 class CreateUser extends CreateRecord
 {
@@ -11,6 +12,19 @@ class CreateUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        if (($data['role'] ?? null) === 'client') {
+            // I clienti accedono via magic link: password non necessaria e
+            // nessun cambio password forzato. Se non impostata, ne generiamo una
+            // casuale solo per soddisfare il vincolo NOT NULL della colonna.
+            $data['must_change_password'] = false;
+
+            if (empty($data['password'])) {
+                $data['password'] = Str::random(40);
+            }
+
+            return $data;
+        }
+
         $data['must_change_password'] = true;
 
         return $data;
