@@ -24,6 +24,7 @@ class ViewQuote extends ViewRecord
     {
         return [
             $this->sendAction(),
+            $this->resendAction(),
             $this->acceptAction(),
             $this->rejectAction(),
             $this->generateInvoiceAction(),
@@ -46,35 +47,56 @@ class ViewQuote extends ViewRecord
             ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->status === Quote::STATUS_DRAFT)
             ->requiresConfirmation()
             ->modalDescription('Invia il preventivo via email a tutti i referenti del cliente, con un link di accesso per approvarlo.')
-            ->action(function (Quote $record): void {
-                $recipients = $record->client->contacts;
+            ->action(fn (Quote $record) => $this->dispatchToClient($record));
+    }
 
-                if ($recipients->isEmpty()) {
-                    FilamentNotification::make()
-                        ->warning()
-                        ->title('Nessun referente')
-                        ->body('Il cliente non ha utenti referente a cui inviare il preventivo. Creane uno dalla sezione Utenti.')
-                        ->send();
+    /**
+     * Admin: reinvia un preventivo già inviato (nuovo link, conteggio solleciti azzerato).
+     */
+    private function resendAction(): Action
+    {
+        return Action::make('resend')
+            ->label('Reinvia al cliente')
+            ->icon(Heroicon::OutlinedArrowPath)
+            ->color('gray')
+            ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->status === Quote::STATUS_SENT)
+            ->requiresConfirmation()
+            ->modalDescription('Reinvia il preventivo ai referenti del cliente con un nuovo link di accesso. La data di invio e il conteggio dei solleciti ripartono da zero.')
+            ->action(fn (Quote $record) => $this->dispatchToClient($record, resend: true));
+    }
 
-                    return;
-                }
+    /**
+     * Invia (o reinvia) il preventivo: magic link ai referenti, copia per
+     * conoscenza all'emittente, e (re)imposta stato/data invio/solleciti.
+     */
+    private function dispatchToClient(Quote $record, bool $resend = false): void
+    {
+        $recipients = $record->client->contacts;
 
-                $record->update([
-                    'status' => Quote::STATUS_SENT,
-                    'sent_at' => now(),
-                    'reminders_sent' => 0,
-                ]);
+        if ($recipients->isEmpty()) {
+            FilamentNotification::make()
+                ->warning()
+                ->title('Nessun referente')
+                ->body('Il cliente non ha utenti referente a cui inviare il preventivo. Creane uno dalla sezione Utenti.')
+                ->send();
 
-                // Magic link ai referenti; copia per conoscenza all'emittente.
-                Notification::send($recipients, new QuoteSubmittedNotification($record));
-                Notification::send($record->user, new QuoteSubmittedNotification($record));
+            return;
+        }
 
-                FilamentNotification::make()
-                    ->success()
-                    ->title('Preventivo inviato')
-                    ->body('Email inviata a ' . $recipients->count() . ' referente/i.')
-                    ->send();
-            });
+        $record->update([
+            'status' => Quote::STATUS_SENT,
+            'sent_at' => now(),
+            'reminders_sent' => 0,
+        ]);
+
+        Notification::send($recipients, new QuoteSubmittedNotification($record));
+        Notification::send($record->user, new QuoteSubmittedNotification($record));
+
+        FilamentNotification::make()
+            ->success()
+            ->title($resend ? 'Preventivo reinviato' : 'Preventivo inviato')
+            ->body('Email inviata a ' . $recipients->count() . ' referente/i.')
+            ->send();
     }
 
     /**
