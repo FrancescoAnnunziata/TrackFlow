@@ -31,7 +31,7 @@ class QuoteSubmittedNotification extends Notification
             return $this->issuerCopy($notifiable);
         }
 
-        $mail = (new MailMessage)
+        $mail = (new MailMessage)->from(config('mail.from.address'), 'g8labs')
             ->subject("Preventivo {$this->quote->number} da approvare")
             ->greeting("Ciao {$notifiable->name},")
             ->line("{$this->quote->user->name} ti ha inviato il preventivo {$this->quote->number} da approvare.");
@@ -49,7 +49,7 @@ class QuoteSubmittedNotification extends Notification
 
     private function issuerCopy(User $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new MailMessage)->from(config('mail.from.address'), 'g8labs')
             ->subject("Preventivo {$this->quote->number} inviato al cliente")
             ->greeting("Ciao {$notifiable->name},")
             ->line("Hai inviato il preventivo {$this->quote->number} ai referenti di {$this->quote->client->name}.")
