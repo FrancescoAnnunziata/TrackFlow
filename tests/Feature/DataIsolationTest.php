@@ -1,26 +1,29 @@
 <?php
 
+use App\Filament\Resources\Expenses\Pages\ListExpenses;
+use App\Filament\Resources\Hours\Pages\ListHours;
 use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Hour;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+});
+
 it('shows all clients in filament clients index', function () {
-    $userA = User::factory()->create();
-    $userB = User::factory()->create();
+    // L'anagrafica clienti è riservata agli admin (ClientResource::canViewAny).
+    $admin = User::factory()->admin()->create();
 
-    Client::create([
-        'name' => 'Cliente Mario',
-    ]);
+    Client::create(['name' => 'Cliente Mario']);
+    Client::create(['name' => 'Cliente Luigi']);
 
-    Client::create([
-        'name' => 'Cliente Luigi',
-    ]);
-
-    $this->actingAs($userA)
+    $this->actingAs($admin)
         ->get('/clients')
         ->assertOk()
         ->assertSee('Cliente Mario')
@@ -31,13 +34,8 @@ it('shows only owned hours in filament hours index', function () {
     $userA = User::factory()->create();
     $userB = User::factory()->create();
 
-    $clientA = Client::create([
-        'name' => 'Cliente Ore A',
-    ]);
-
-    $clientB = Client::create([
-        'name' => 'Cliente Ore B',
-    ]);
+    $clientA = Client::create(['name' => 'Cliente Ore A']);
+    $clientB = Client::create(['name' => 'Cliente Ore B']);
 
     $hourA = Hour::create([
         'user_id' => $userA->id,
@@ -55,44 +53,37 @@ it('shows only owned hours in filament hours index', function () {
     ]);
     $hourB->clients()->attach($clientB);
 
-    $this->actingAs($userA)
-        ->get('/hours')
-        ->assertOk()
-        ->assertSee('Cliente Ore A')
-        ->assertDontSee('Cliente Ore B');
+    // Isolamento verificato sui record della tabella (non sull'HTML grezzo,
+    // dove i nomi cliente comparirebbero anche nelle opzioni dei filtri).
+    Livewire::actingAs($userA)
+        ->test(ListHours::class)
+        ->assertCanSeeTableRecords([$hourA])
+        ->assertCanNotSeeTableRecords([$hourB]);
 });
 
 it('shows only owned expenses in filament expenses index', function () {
     $userA = User::factory()->create();
     $userB = User::factory()->create();
 
-    $clientA = Client::create([
-        'name' => 'Cliente Spese A',
-    ]);
+    $clientA = Client::create(['name' => 'Cliente Spese A']);
+    $clientB = Client::create(['name' => 'Cliente Spese B']);
 
-    $clientB = Client::create([
-        'name' => 'Cliente Spese B',
-    ]);
-
-    Expense::create([
+    $expenseA = Expense::create([
         'user_id' => $userA->id,
         'client_id' => $clientA->id,
         'date' => '2026-03-10',
         'amount' => 100,
     ]);
 
-    Expense::create([
+    $expenseB = Expense::create([
         'user_id' => $userB->id,
         'client_id' => $clientB->id,
         'date' => '2026-03-11',
         'amount' => 220,
     ]);
 
-    $this->actingAs($userA)
-        ->get('/expenses')
-        ->assertOk()
-        ->assertSee('Cliente Spese A')
-        ->assertDontSee('Cliente Spese B');
+    Livewire::actingAs($userA)
+        ->test(ListExpenses::class)
+        ->assertCanSeeTableRecords([$expenseA])
+        ->assertCanNotSeeTableRecords([$expenseB]);
 });
-
-

@@ -1,6 +1,8 @@
 <?php
 
 use App\Filament\Resources\Quotes\QuoteResource;
+use App\Http\Controllers\AssetLabelController;
+use App\Http\Controllers\AssetLookupController;
 use App\Models\Quote;
 use App\Models\User;
 use App\Support\Impersonation;
@@ -39,6 +41,17 @@ Route::get('/q/{quote}/access', function (Request $request, Quote $quote) {
 
     return redirect(QuoteResource::getUrl('view', ['record' => $quote]));
 })->middleware('signed')->name('quote.magic');
+
+// Asset Management: lookup pubblico via QR (qr_token). Mostra la scheda
+// completa se l'utente è autenticato e autorizzato, altrimenti una pagina
+// minimale senza dati sensibili.
+Route::get('/assets/lookup/{qrToken}', AssetLookupController::class)->name('assets.lookup');
+
+// Etichette stampabili (tipo Dymo). Richiedono autenticazione.
+Route::middleware('auth')->group(function () {
+    Route::get('/assets/labels', [AssetLabelController::class, 'bulk'])->name('assets.labels');
+    Route::get('/assets/{device}/label', [AssetLabelController::class, 'show'])->name('assets.label');
+});
 
 
 

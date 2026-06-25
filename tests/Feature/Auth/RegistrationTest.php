@@ -3,26 +3,32 @@
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
-it('shows the registration screen', function () {
-    $this->get(route('filament.app.auth.register'))
-        ->assertOk()
-        ->assertSee('Sign up');
+// La self-registration pubblica è disattivata di proposito: gli utenti sono
+// creati dagli admin (o tramite magic link per i clienti). Questi test
+// fotografano quel comportamento invece di una pagina di registrazione.
+
+it('does not expose a public registration route', function () {
+    expect(Route::has('filament.app.auth.register'))->toBeFalse();
 });
 
-it('can create a new user via filament registration', function () {
-    // Verifichiamo che la pagina di registrazione sia raggiungibile
-    $response = $this->get(route('filament.app.auth.register'));
-    $response->assertOk();
+it('redirects guests from the panel to the login screen', function () {
+    $this->get('/clients')
+        ->assertRedirect(route('filament.app.auth.login'));
+});
 
-    // Verifichiamo che l'utente non esista ancora
-    expect(User::where('email', 'mario.rossi@example.com')->count())->toBe(0);
+it('lets authenticated admins reach the panel', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get('/clients')
+        ->assertOk();
 });
 
 it('model has required fields for registration', function () {
-    // Verifichiamo che il modello User supporti i campi richiesti
     $user = new User([
         'name' => 'Mario',
         'surname' => 'Rossi',
@@ -34,12 +40,6 @@ it('model has required fields for registration', function () {
     expect($user->surname)->toBe('Rossi');
     expect($user->email)->toBe('mario.rossi@example.com');
     expect(Hash::check('Password123!', $user->password))->toBeTrue();
-});
-
-it('register page includes login link', function () {
-    $this->get(route('filament.app.auth.register'))
-        ->assertOk();
-    // Filament ha i suoi link interni per login
 });
 
 it('shows the login screen', function () {
@@ -66,4 +66,3 @@ it('prevents duplicate email creation', function () {
 
     expect(User::where('email', 'mario.rossi@example.com')->count())->toBe(1);
 });
-

@@ -10,6 +10,7 @@ class Client extends Model
 {
     protected $fillable = [
         'name',
+        'asset_prefix',
         'logo',
         'notes',
         'entity_type',
@@ -54,5 +55,25 @@ class Client extends Model
     public function contacts(): HasMany
     {
         return $this->users()->where('role', 'client');
+    }
+
+    public function devices(): HasMany
+    {
+        return $this->hasMany(Device::class);
+    }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
+    public function securityChecks(): HasMany
+    {
+        return $this->hasMany(DeviceSecurityCheck::class);
+    }
+
+    public function findings(): HasMany
+    {
+        return $this->hasMany(SecurityFinding::class);
     }
 }

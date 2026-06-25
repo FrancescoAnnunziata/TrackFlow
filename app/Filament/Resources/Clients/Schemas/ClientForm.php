@@ -30,6 +30,11 @@ class ClientForm
                             ])
                             ->default('company')
                             ->required(),
+                        TextInput::make('asset_prefix')
+                            ->label('Prefisso asset')
+                            ->maxLength(8)
+                            ->placeholder('Es. FED')
+                            ->helperText('Usato nei codici asset (G8-FED-0001). Se vuoto, derivato dal nome.'),
                         FileUpload::make('logo')
                             ->image()
                             ->disk('public')
