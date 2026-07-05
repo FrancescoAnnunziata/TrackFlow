@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -76,6 +78,49 @@ class InvoiceForm
                             ->step(0.01)
                             ->default(22)
                             ->required(),
+                    ]),
+
+                Section::make('Righe fattura')
+                    ->description('Righe effettive che finiscono in fattura (generate dal motore, modificabili). Se presenti, sono la fonte dei totali e del payload FIC.')
+                    ->components([
+                        Repeater::make('items')
+                            ->label('')
+                            ->relationship()
+                            ->columns(12)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Descrizione')
+                                    ->required()
+                                    ->columnSpan(5),
+                                TextInput::make('qty')
+                                    ->label('Q.tà')
+                                    ->numeric()
+                                    ->default(1)
+                                    ->required()
+                                    ->columnSpan(1),
+                                TextInput::make('measure')
+                                    ->label('U.m.')
+                                    ->maxLength(8)
+                                    ->columnSpan(1),
+                                TextInput::make('net_price')
+                                    ->label('Prezzo')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->required()
+                                    ->columnSpan(2),
+                                Select::make('vat_kind')
+                                    ->label('IVA')
+                                    ->options([
+                                        InvoiceItem::VAT_STANDARD => 'Standard',
+                                        InvoiceItem::VAT_ART15 => 'Art. 15',
+                                    ])
+                                    ->default(InvoiceItem::VAT_STANDARD)
+                                    ->required()
+                                    ->columnSpan(3),
+                            ])
+                            ->orderColumn('sort')
+                            ->addActionLabel('Aggiungi riga')
+                            ->collapsible(),
                     ]),
 
                 Section::make('Ore da fatturare')

@@ -8,6 +8,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
 {
+    public const PROVIDER_FIC = 'fatture_in_cloud';
+
+    public const MODEL_FORFAIT = 'forfait';
+
+    public const MODEL_HOURLY = 'hourly';
+
+    public const TIMING_ARREARS = 'arrears';
+
+    public const TIMING_ADVANCE = 'advance';
+
     protected $fillable = [
         'name',
         'asset_prefix',
@@ -25,8 +35,54 @@ class Client extends Model
         'email',
         'certified_email',
         'ei_code',
+        'invoicing_provider',
+        'billing_model',
+        'billing_period_months',
+        'billing_timing',
+        'reconcile_previous_period',
+        'forfait_amount',
+        'default_hourly_rate',
+        'minimum_hours_per_month',
+        'monthly_extra_amount',
+        'vat_rate',
+        'consulting_label',
+        'payment_method_id',
     ];
 
+    protected $casts = [
+        'billing_period_months' => 'integer',
+        'reconcile_previous_period' => 'boolean',
+        'forfait_amount' => 'decimal:2',
+        'default_hourly_rate' => 'decimal:2',
+        'minimum_hours_per_month' => 'decimal:2',
+        'monthly_extra_amount' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
+    ];
+
+    /**
+     * True se il cliente è fatturabile da TrackFlow (provider Fatture in Cloud).
+     * Gli altri (es. Fiscozen, no API) si fatturano fuori.
+     */
+    public function isBillableHere(): bool
+    {
+        return $this->invoicing_provider === self::PROVIDER_FIC;
+    }
+
+    /**
+     * Tariffa oraria applicabile a un utente su questo cliente: override
+     * specifico se presente, altrimenti la tariffa di default.
+     */
+    public function rateForUser(int $userId): ?float
+    {
+        $override = $this->userRates->firstWhere('user_id', $userId);
+
+        return (float) ($override->hourly_rate ?? $this->default_hourly_rate);
+    }
+
+    public function userRates(): HasMany
+    {
+        return $this->hasMany(ClientUserRate::class);
+    }
 
     public function hours(): BelongsToMany
     {

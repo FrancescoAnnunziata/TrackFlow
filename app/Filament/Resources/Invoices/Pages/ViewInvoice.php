@@ -58,7 +58,7 @@ class ViewInvoice extends ViewRecord
             ->label(fn (Invoice $record): string => $record->isSentToFic() ? 'Già su Fatture in Cloud' : 'Invia a Fatture in Cloud')
             ->icon(Heroicon::OutlinedPaperAirplane)
             ->color('primary')
-            ->visible(fn (): bool => FicCredential::isConnected())
+            ->visible(fn (Invoice $record): bool => FicCredential::isConnected() && ($record->client?->isBillableHere() ?? false))
             ->disabled(fn (Invoice $record): bool => $record->isSentToFic())
             ->requiresConfirmation()
             ->modalDescription('Crea la fattura su Fatture in Cloud come documento registrato (non viene inviato al SDI). L\'invio elettronico resta da fare a mano dal pannello FIC.')

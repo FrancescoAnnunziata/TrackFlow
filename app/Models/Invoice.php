@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Invoice extends Model
 {
@@ -22,6 +24,7 @@ class Invoice extends Model
         'fic_document_id',
         'fic_document_token',
         'fic_sent_at',
+        'imported',
     ];
 
     protected $casts = [
@@ -31,6 +34,7 @@ class Invoice extends Model
         'hourly_rate' => 'decimal:2',
         'vat_rate' => 'decimal:2',
         'fic_sent_at' => 'datetime',
+        'imported' => 'boolean',
     ];
 
     /**
@@ -59,6 +63,21 @@ class Invoice extends Model
     public function expenses(): BelongsToMany
     {
         return $this->belongsToMany(Expense::class)->withTimestamps();
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(InvoiceItem::class)->orderBy('sort');
+    }
+
+    /**
+     * True se la fattura ha righe esplicite (generate dal motore): in tal caso
+     * sono la fonte di totali e payload. Altrimenti si usa il calcolo legacy
+     * ore×tariffa.
+     */
+    public function usesItems(): bool
+    {
+        return $this->items->isNotEmpty();
     }
 
     /**
@@ -91,8 +110,37 @@ class Invoice extends Model
         return round((float) $this->expenses()->sum('amount'), 2);
     }
 
+    /**
+     * Somma delle righe soggette a IVA piena (base imponibile IVA).
+     */
+    public function standardBase(): float
+    {
+        return round($this->items
+            ->where('vat_kind', InvoiceItem::VAT_STANDARD)
+            ->sum(fn (InvoiceItem $i): float => $i->lineTotal()), 2);
+    }
+
+    /**
+     * Somma delle righe art. 15 (rimborsi esclusi da IVA): entrano nel totale
+     * ma non nella base IVA.
+     */
+    public function art15Total(): float
+    {
+        return round($this->items
+            ->where('vat_kind', InvoiceItem::VAT_ART15)
+            ->sum(fn (InvoiceItem $i): float => $i->lineTotal()), 2);
+    }
+
+    /**
+     * Imponibile (base IVA). Con righe esplicite = somma righe standard;
+     * altrimenti calcolo legacy ore + spese.
+     */
     public function taxableAmount(): float
     {
+        if ($this->usesItems()) {
+            return $this->standardBase();
+        }
+
         return round($this->hoursSubtotal() + $this->expensesSubtotal(), 2);
     }
 
@@ -103,7 +151,9 @@ class Invoice extends Model
 
     public function total(): float
     {
-        return round($this->taxableAmount() + $this->vatAmount(), 2);
+        $art15 = $this->usesItems() ? $this->art15Total() : 0.0;
+
+        return round($this->taxableAmount() + $this->vatAmount() + $art15, 2);
     }
 
     /**
@@ -116,14 +166,99 @@ class Invoice extends Model
      */
     public function toFicPayload(): array
     {
-        $this->loadMissing(['client', 'hours.user', 'expenses.user']);
+        $this->loadMissing(['client', 'hours.user', 'expenses.user', 'items']);
 
         [$numerationPrefix, $numericNumber] = $this->splitNumber($this->number);
 
+        if ($this->usesItems()) {
+            $items = $this->buildItemsFromLines();
+            $notes = $this->buildNotesHtml();
+            $subject = '';
+            $visibleSubject = $this->buildVisibleSubject();
+        } else {
+            $items = $this->buildLegacyItems();
+            $notes = (string) ($this->notes ?? '');
+            $subject = sprintf(
+                'Periodo %s - %s',
+                optional($this->period_from)->format('d/m/Y') ?? '',
+                optional($this->period_to)->format('d/m/Y') ?? '',
+            );
+            $visibleSubject = '';
+        }
+
+        $data = [
+            'type' => 'invoice',
+            'entity' => $this->buildEntity(),
+            'date' => optional($this->issue_date)->format('Y-m-d'),
+            'number' => $numericNumber,
+            'numeration' => $numerationPrefix,
+            'subject' => $subject,
+            'visible_subject' => $visibleSubject,
+            'notes' => $notes,
+            'currency' => [
+                'id' => 'EUR',
+                'symbol' => '€',
+                'exchange_rate' => '1.00000',
+                'html_symbol' => '&euro;',
+            ],
+            'language' => [
+                'code' => 'it',
+                'name' => 'italiano',
+            ],
+            'use_gross_prices' => false,
+            'e_invoice' => false,
+            'items_list' => $items,
+            'payments_list' => [
+                [
+                    'amount' => $this->total(),
+                    'due_date' => optional($this->issue_date)->format('Y-m-d'),
+                    'status' => $this->status === 'paid' ? 'paid' : 'not_paid',
+                ],
+            ],
+        ];
+
+        if ($this->client?->payment_method_id) {
+            $data['payment_method'] = ['id' => (int) $this->client->payment_method_id];
+        }
+
+        return ['data' => $data];
+    }
+
+    /**
+     * Righe FIC dalle invoice_items: le art. 15 usano l'id IVA "escluso"
+     * configurato, le altre l'aliquota standard della fattura.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildItemsFromLines(): array
+    {
+        $art15VatId = (int) config('services.fic.art15_vat_id');
+
+        return $this->items->map(fn (InvoiceItem $item): array => [
+            'name' => $item->name,
+            'description' => (string) ($item->description ?? ''),
+            'qty' => (float) $item->qty,
+            'measure' => (string) ($item->measure ?? ''),
+            'net_price' => (float) $item->net_price,
+            'category' => '',
+            'discount' => 0,
+            'vat' => $item->isArt15()
+                ? ['id' => $art15VatId]
+                : ['value' => (float) $this->vat_rate],
+        ])->values()->all();
+    }
+
+    /**
+     * Payload legacy (fatture senza righe esplicite): una riga per ora e una
+     * per spesa, come prima dell'introduzione del motore.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildLegacyItems(): array
+    {
         $items = [];
 
         foreach ($this->hours as $hour) {
-            $qty = round((float) $hour->hours, 2);
             $items[] = [
                 'name' => 'Ore di consulenza',
                 'description' => trim(sprintf(
@@ -132,14 +267,12 @@ class Invoice extends Model
                     $hour->user?->name ?? '',
                     $hour->notes ? ' — '.$hour->notes : '',
                 ), ' —'),
-                'qty' => $qty,
+                'qty' => round((float) $hour->hours, 2),
                 'measure' => 'h',
                 'net_price' => (float) $this->hourly_rate,
                 'category' => '',
                 'discount' => 0,
-                'vat' => [
-                    'value' => (float) $this->vat_rate,
-                ],
+                'vat' => ['value' => (float) $this->vat_rate],
             ];
         }
 
@@ -154,48 +287,77 @@ class Invoice extends Model
                 'net_price' => (float) $expense->amount,
                 'category' => '',
                 'discount' => 0,
-                'vat' => [
-                    'value' => (float) $this->vat_rate,
-                ],
+                'vat' => ['value' => (float) $this->vat_rate],
             ];
         }
 
-        return [
-            'data' => [
-                'type' => 'invoice',
-                'entity' => $this->buildEntity(),
-                'date' => optional($this->issue_date)->format('Y-m-d'),
-                'number' => $numericNumber,
-                'numeration' => $numerationPrefix,
-                'subject' => sprintf(
-                    'Periodo %s - %s',
-                    optional($this->period_from)->format('d/m/Y') ?? '',
-                    optional($this->period_to)->format('d/m/Y') ?? '',
-                ),
-                'visible_subject' => '',
-                'notes' => (string) ($this->notes ?? ''),
-                'currency' => [
-                    'id' => 'EUR',
-                    'symbol' => '€',
-                    'exchange_rate' => '1.00000',
-                    'html_symbol' => '&euro;',
-                ],
-                'language' => [
-                    'code' => 'it',
-                    'name' => 'italiano',
-                ],
-                'use_gross_prices' => false,
-                'e_invoice' => false,
-                'items_list' => $items,
-                'payments_list' => [
-                    [
-                        'amount' => $this->total(),
-                        'due_date' => optional($this->issue_date)->format('Y-m-d'),
-                        'status' => $this->status === 'paid' ? 'paid' : 'not_paid',
-                    ],
-                ],
-            ],
-        ];
+        return $items;
+    }
+
+    /**
+     * Titolo umano della fattura (visible_subject FIC): etichetta consulenza
+     * del cliente + periodo.
+     */
+    public function buildVisibleSubject(): string
+    {
+        $label = trim((string) ($this->client?->consulting_label ?? '')) ?: 'Consulenza';
+
+        if ($this->period_from && $this->period_to) {
+            $period = $this->period_from->isSameMonth($this->period_to)
+                ? $this->period_from->locale('it')->translatedFormat('F Y')
+                : $this->period_from->format('d/m/Y').' - '.$this->period_to->format('d/m/Y');
+
+            return trim($label.' '.$period);
+        }
+
+        return $label;
+    }
+
+    /**
+     * Note a piè di pagina: eventuali note manuali + tabella dettaglio spese
+     * (Data | Importo | Note | Giustificativo con link alla foto).
+     */
+    public function buildNotesHtml(): string
+    {
+        $manual = trim((string) ($this->notes ?? ''));
+        $table = $this->expensesNotesTable();
+
+        return trim($manual.($table !== '' ? ($manual !== '' ? "\n" : '').$table : ''));
+    }
+
+    private function expensesNotesTable(): string
+    {
+        if ($this->expenses->isEmpty()) {
+            return '';
+        }
+
+        $cell = 'padding:2px 6px;vertical-align:top;';
+        $header = sprintf(
+            '<tr><td style="%s">Data</td><td style="%s">Importo</td><td style="%s">Note</td><td style="%s">Giustificativo</td></tr>',
+            $cell, $cell, $cell, $cell,
+        );
+
+        $rows = '';
+        foreach ($this->expenses->sortBy('date') as $expense) {
+            $atts = $expense->attachaments ?? [];
+            $links = collect($atts)
+                ->map(fn (string $path, int $i): string => sprintf(
+                    '<a href="%s">foto%s</a>',
+                    e(Storage::disk('public')->url($path)),
+                    count($atts) > 1 ? ' '.($i + 1) : '',
+                ))
+                ->implode(' ');
+
+            $rows .= sprintf(
+                '<tr><td style="%s">%s</td><td style="%stext-align:right;">%s</td><td style="%s">%s</td><td style="%s">%s</td></tr>',
+                $cell, e(optional($expense->date)->format('d/m/Y') ?? ''),
+                $cell, e(number_format((float) $expense->amount, 2, ',', '.')),
+                $cell, e((string) ($expense->notes ?? '')),
+                $cell, $links !== '' ? $links : '—',
+            );
+        }
+
+        return '<table style="font-size:10pt;font-family:Arial;border-collapse:collapse;"><tbody>'.$header.$rows.'</tbody></table>';
     }
 
     /**

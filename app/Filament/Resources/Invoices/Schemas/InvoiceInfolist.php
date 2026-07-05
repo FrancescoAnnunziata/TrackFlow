@@ -45,7 +45,7 @@ class InvoiceInfolist
                     ]),
 
                 Section::make('Totali')
-                    ->columns(3)
+                    ->columns(4)
                     ->components([
                         TextEntry::make('taxable_amount')
                             ->label('Imponibile')
@@ -55,6 +55,11 @@ class InvoiceInfolist
                             ->label('IVA')
                             ->state(fn ($record): float => $record->vatAmount())
                             ->money('EUR'),
+                        TextEntry::make('art15_amount')
+                            ->label('Rimborsi art. 15')
+                            ->state(fn ($record): float => $record->usesItems() ? $record->art15Total() : 0.0)
+                            ->money('EUR')
+                            ->visible(fn ($record): bool => $record->usesItems() && $record->art15Total() > 0),
                         TextEntry::make('total')
                             ->label('Totale')
                             ->state(fn ($record): float => $record->total())

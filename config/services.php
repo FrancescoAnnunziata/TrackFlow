@@ -44,6 +44,10 @@ return [
         'base_url' => env('FIC_BASE_URL', 'https://api-v2.fattureincloud.it'),
         // Scope minimi: creare/gestire fatture emesse.
         'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a'),
+        // ID del tipo IVA "Escluso Art.15" nell'azienda FIC (per i rimborsi
+        // spese). Per-azienda: leggibile solo con scope aggiuntivo, quindi
+        // configurabile con default noto.
+        'art15_vat_id' => (int) env('FIC_ART15_VAT_ID', 32),
     ],
 
 ];

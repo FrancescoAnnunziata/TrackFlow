@@ -163,6 +163,55 @@ class FicClient
     }
 
     /**
+     * Elenca le fatture emesse (una pagina). Ritorna il nodo `data`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listInvoices(int $page = 1, int $perPage = 50): array
+    {
+        $credential = FicCredential::current();
+
+        if ($credential === null || blank($credential->company_id)) {
+            throw new FicException('Connessione a Fatture in Cloud non configurata correttamente.');
+        }
+
+        $response = $this->client()
+            ->withToken($this->accessToken())
+            ->get(sprintf('%s/c/%s/issued_documents', $this->baseUrl, $credential->company_id), [
+                'type' => 'invoice',
+                'per_page' => $perPage,
+                'page' => $page,
+                'sort' => '-date',
+            ]);
+
+        if ($response->failed()) {
+            throw new FicException($this->errorMessage($response->json(), $response->status()));
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
+     * Dettaglio completo di una fattura emessa (con items_list).
+     *
+     * @return array<string, mixed>
+     */
+    public function getInvoice(int $documentId): array
+    {
+        $credential = FicCredential::current();
+
+        $response = $this->client()
+            ->withToken($this->accessToken())
+            ->get(sprintf('%s/c/%s/issued_documents/%d', $this->baseUrl, $credential->company_id, $documentId));
+
+        if ($response->failed()) {
+            throw new FicException($this->errorMessage($response->json(), $response->status()));
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
      * Prima azienda associata all'utente autenticato.
      *
      * @return array<string, mixed>|null
