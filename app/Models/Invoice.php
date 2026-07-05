@@ -209,7 +209,7 @@ class Invoice extends Model
                 'name' => 'italiano',
             ],
             'use_gross_prices' => false,
-            'e_invoice' => false,
+            'e_invoice' => (bool) config('services.fic.e_invoice', true),
             'items_list' => $items,
             'payments_list' => [
                 [

@@ -51,6 +51,9 @@ return [
         // ID del tipo IVA standard (22%) nell'azienda FIC. FIC richiede vat.id
         // su ogni riga: 0 è il 22% predefinito.
         'standard_vat_id' => (int) env('FIC_STANDARD_VAT_ID', 0),
+        // Crea documenti come fattura elettronica (trasmissibile al SDI). Con
+        // false FIC fa un documento cartaceo (solo invio per email).
+        'e_invoice' => (bool) env('FIC_E_INVOICE', true),
     ],
 
 ];

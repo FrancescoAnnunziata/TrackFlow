@@ -58,7 +58,7 @@ it('builds a FIC payload with art.15 vat id on expense lines', function () {
     expect($payload['items_list'][0]['vat'])->toBe(['id' => 0, 'value' => 22.0]);
     // Rimborsi: id IVA art.15.
     expect($payload['items_list'][2]['vat'])->toBe(['id' => 32]);
-    expect($payload['e_invoice'])->toBeFalse();
+    expect($payload['e_invoice'])->toBeTrue();
     expect($payload['visible_subject'])->toContain('Consulenza digitale');
     expect($payload['payment_method'])->toBe(['id' => 2411414]);
 });

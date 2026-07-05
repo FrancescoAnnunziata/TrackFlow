@@ -61,7 +61,7 @@ class ViewInvoice extends ViewRecord
             ->visible(fn (Invoice $record): bool => FicCredential::isConnected() && ($record->client?->isBillableHere() ?? false))
             ->disabled(fn (Invoice $record): bool => $record->isSentToFic())
             ->requiresConfirmation()
-            ->modalDescription('Crea la fattura su Fatture in Cloud come documento registrato (non viene inviato al SDI). L\'invio elettronico resta da fare a mano dal pannello FIC.')
+            ->modalDescription('Crea la fattura elettronica su Fatture in Cloud. La trasmissione al SDI la fai/verifichi dal pannello FIC (a seconda delle tue impostazioni di invio automatico).')
             ->action(function (Invoice $record): void {
                 $client = $record->client;
 
@@ -100,7 +100,7 @@ class ViewInvoice extends ViewRecord
                 Notification::make()
                     ->success()
                     ->title('Fattura creata su Fatture in Cloud')
-                    ->body("Numero assegnato da FIC: {$record->number}. Documento registrato — ricordati di trasmetterlo al SDI dal pannello FIC.")
+                    ->body("Numero assegnato da FIC: {$record->number}. Fattura elettronica pronta — trasmettila/verificala al SDI dal pannello FIC.")
                     ->send();
             });
     }
