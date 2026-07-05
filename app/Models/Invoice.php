@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class Invoice extends Model
@@ -104,6 +105,26 @@ class Invoice extends Model
         } while (self::where('number', $number)->exists());
 
         return $number;
+    }
+
+    /**
+     * Ricostruisce il numero "N/anno" dal documento restituito da FIC (la
+     * numerazione è decisa da FIC, TrackFlow la eredita).
+     *
+     * @param  array<string, mixed>  $doc
+     */
+    public static function formatFicNumber(array $doc): ?string
+    {
+        $num = $doc['number'] ?? null;
+
+        if ($num === null || $num === '') {
+            return null;
+        }
+
+        $numeration = trim((string) ($doc['numeration'] ?? ''));
+        $year = isset($doc['date']) ? Carbon::parse($doc['date'])->year : now()->year;
+
+        return ($numeration !== '' ? $numeration.' ' : '').(int) $num.'/'.$year;
     }
 
     public function hoursSubtotal(): float

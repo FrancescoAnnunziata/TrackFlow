@@ -15,7 +15,11 @@ class InvoiceInfolist
                 Section::make('Intestazione')
                     ->columns(2)
                     ->components([
-                        TextEntry::make('number')->label('Numero'),
+                        TextEntry::make('number')
+                            ->label('Numero')
+                            ->helperText(fn ($record): ?string => $record->isSentToFic()
+                                ? null
+                                : 'Provvisorio — il definitivo lo assegna Fatture in Cloud all\'invio'),
                         TextEntry::make('issue_date')->label('Data emissione')->date(),
                         TextEntry::make('client.name')->label('Cliente'),
                         TextEntry::make('status')

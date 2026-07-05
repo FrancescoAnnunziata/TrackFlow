@@ -94,7 +94,8 @@ it('does not refresh a still-valid access token', function () {
 
 it('creates an issued document with the invoice payload', function () {
     Http::fake([
-        '*/c/*/issued_documents' => Http::response(['data' => ['id' => 555, 'token' => 'doc-tok']]),
+        '*/issued_documents/info*' => Http::response(['data' => ['numerations' => ['2026' => ['' => 7]]]]),
+        '*/c/*/issued_documents' => Http::response(['data' => ['id' => 555, 'token' => 'doc-tok', 'number' => 7, 'numeration' => '', 'date' => '2026-07-05']]),
     ]);
 
     FicCredential::create([
@@ -123,10 +124,13 @@ it('creates an issued document with the invoice payload', function () {
     $document = FicClient::fromConfig()->createIssuedDocument($invoice);
 
     expect($document['id'])->toBe(555);
+    // Il numero è quello che FIC ha assegnato (dalla serie), non uno locale.
+    expect(Invoice::formatFicNumber($document))->toBe('7/2026');
 
     Http::assertSent(function ($request) {
         return $request->url() === 'https://api-v2.fattureincloud.it/c/123/issued_documents'
             && $request['data']['type'] === 'invoice'
+            && $request['data']['number'] === 7               // prossimo numero da FIC, non "2026-002"
             && $request['data']['items_list'][0]['qty'] === 3.0
             && $request->hasHeader('Authorization', 'Bearer a/valid');
     });

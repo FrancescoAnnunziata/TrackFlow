@@ -26,6 +26,7 @@ class InvoicesTable
             ->columns([
                 TextColumn::make('number')
                     ->label('Numero')
+                    ->description(fn (Invoice $record): ?string => $record->isSentToFic() ? null : 'provvisorio')
                     ->searchable()
                     ->sortable()
                     ->color('primary')

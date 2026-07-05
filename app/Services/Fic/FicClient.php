@@ -148,11 +148,22 @@ class FicClient
             throw new FicException('Connessione a Fatture in Cloud non configurata correttamente.');
         }
 
+        $payload = $invoice->toFicPayload();
+
+        // FIC è la fonte della numerazione: usa il prossimo progressivo della
+        // serie (niente numeri decisi/forzati da TrackFlow, così è senza buchi).
+        $year = optional($invoice->issue_date)->year ?? now()->year;
+        $next = $this->nextInvoiceNumber($year);
+        if ($next !== null) {
+            $payload['data']['number'] = $next;
+            $payload['data']['numeration'] = '';
+        }
+
         $response = $this->client()
             ->withToken($this->accessToken())
             ->post(
                 sprintf('%s/c/%s/issued_documents', $this->baseUrl, $credential->company_id),
-                $invoice->toFicPayload(),
+                $payload,
             );
 
         if ($response->failed()) {
@@ -160,6 +171,45 @@ class FicClient
         }
 
         return (array) $response->json('data', []);
+    }
+
+    /**
+     * Nodo `info` degli issued documents: numerazioni, tipi IVA, metodi di
+     * pagamento, ecc. Leggibile con lo scope attuale.
+     *
+     * @return array<string, mixed>
+     */
+    public function info(): array
+    {
+        $credential = FicCredential::current();
+
+        if ($credential === null || blank($credential->company_id)) {
+            throw new FicException('Connessione a Fatture in Cloud non configurata correttamente.');
+        }
+
+        $response = $this->client()
+            ->withToken($this->accessToken())
+            ->get(sprintf('%s/c/%s/issued_documents/info', $this->baseUrl, $credential->company_id), [
+                'type' => 'invoice',
+            ]);
+
+        if ($response->failed()) {
+            throw new FicException($this->errorMessage($response->json(), $response->status()));
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
+     * Prossimo numero della serie default per l'anno, secondo FIC.
+     */
+    public function nextInvoiceNumber(int $year): ?int
+    {
+        $numerations = (array) ($this->info()['numerations'] ?? []);
+        $forYear = (array) ($numerations[$year] ?? $numerations[(string) $year] ?? []);
+        $next = $forYear[''] ?? null;
+
+        return $next !== null ? (int) $next : null;
     }
 
     /**

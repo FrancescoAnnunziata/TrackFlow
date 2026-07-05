@@ -89,6 +89,8 @@ class ViewInvoice extends ViewRecord
                 }
 
                 $record->update([
+                    // La numerazione è decisa da FIC: eredita il numero assegnato.
+                    'number' => Invoice::formatFicNumber($document) ?? $record->number,
                     'fic_document_id' => $document['id'] ?? null,
                     'fic_document_token' => $document['token'] ?? null,
                     'fic_sent_at' => now(),
@@ -98,7 +100,7 @@ class ViewInvoice extends ViewRecord
                 Notification::make()
                     ->success()
                     ->title('Fattura creata su Fatture in Cloud')
-                    ->body('Documento registrato. Ricordati di trasmetterlo al SDI dal pannello FIC.')
+                    ->body("Numero assegnato da FIC: {$record->number}. Documento registrato — ricordati di trasmetterlo al SDI dal pannello FIC.")
                     ->send();
             });
     }
