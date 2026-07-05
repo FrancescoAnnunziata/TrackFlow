@@ -68,6 +68,44 @@ it('builds a forfait invoice with a single consulting line', function () {
     expect($invoice->total())->toBe(1220.0);
 });
 
+it('splits a forfait into configured detail lines', function () {
+    $client = Client::create([
+        'name' => 'Fedespedi',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_FORFAIT,
+        'billing_period_months' => 1,
+        'forfait_amount' => 3600,
+        'forfait_lines' => [
+            ['name' => 'Consulenza Progetti digitali', 'amount' => 1800],
+            ['name' => 'Consulenza supporto Federazione', 'amount' => 1800],
+        ],
+        'vat_rate' => 22,
+    ]);
+
+    $invoice = app(InvoiceBuilder::class)->build($client, CarbonImmutable::parse('2026-06-01'));
+
+    $consulting = $invoice->items->where('line_kind', 'consulting');
+    expect($consulting)->toHaveCount(2);
+    expect($consulting->firstWhere('name', 'Consulenza Progetti digitali')->net_price + 0)->toBe(1800.0);
+    expect($invoice->taxableAmount())->toBe(3600.0);
+    expect($invoice->total())->toBe(4392.0); // 3600 + 22%
+});
+
+it('multiplies forfait detail lines by the number of months', function () {
+    $client = Client::create([
+        'name' => 'ForfaitTrim',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_FORFAIT,
+        'billing_period_months' => 3,
+        'forfait_lines' => [['name' => 'Canone', 'amount' => 1000]],
+        'vat_rate' => 22,
+    ]);
+
+    $invoice = app(InvoiceBuilder::class)->build($client, CarbonImmutable::parse('2026-04-01'));
+
+    expect($invoice->items->firstWhere('line_kind', 'consulting')->net_price + 0)->toBe(3000.0); // 1000 × 3 mesi
+});
+
 it('builds per-user hourly lines and ignores non-billable hours', function () {
     $giorgio = User::factory()->create(['name' => 'Giorgio']);
     $annunziata = User::factory()->create(['name' => 'Annunziata']);

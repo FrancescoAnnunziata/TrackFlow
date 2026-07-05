@@ -93,13 +93,26 @@ class InvoiceBuilder
      */
     private function forfaitLines(Client $client, int $months): array
     {
-        $amount = round((float) ($client->forfait_amount ?? 0) * $months, 2);
+        // Righe di dettaglio se configurate (importi mensili × mesi del periodo).
+        $lines = collect($client->forfait_lines ?? [])
+            ->filter(fn ($line): bool => filled($line['name'] ?? null) && filled($line['amount'] ?? null));
+
+        if ($lines->isNotEmpty()) {
+            return $lines->map(fn (array $line): array => [
+                'name' => (string) $line['name'],
+                'qty' => 1,
+                'measure' => '',
+                'net_price' => round((float) $line['amount'] * $months, 2),
+                'vat_kind' => InvoiceItem::VAT_STANDARD,
+                'line_kind' => 'consulting',
+            ])->values()->all();
+        }
 
         return [[
             'name' => $this->periodLabel($client),
             'qty' => 1,
             'measure' => '',
-            'net_price' => $amount,
+            'net_price' => round((float) ($client->forfait_amount ?? 0) * $months, 2),
             'vat_kind' => InvoiceItem::VAT_STANDARD,
             'line_kind' => 'consulting',
         ]];

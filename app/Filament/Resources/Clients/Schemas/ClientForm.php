@@ -120,7 +120,25 @@ class ClientForm
                             ->minValue(0)
                             ->step(0.01)
                             ->visible(fn (Get $get): bool => $get('billing_model') === Client::MODEL_FORFAIT)
-                            ->requiredIf('billing_model', Client::MODEL_FORFAIT),
+                            ->helperText('Riga unica. Per splittarlo in più righe usa "Righe forfait" sotto.'),
+                        Repeater::make('forfait_lines')
+                            ->label('Righe forfait (dettaglio)')
+                            ->helperText('Se compili qui, il forfait viene diviso in queste righe (importi mensili) e l\'importo unico sopra viene ignorato.')
+                            ->visible(fn (Get $get): bool => $get('billing_model') === Client::MODEL_FORFAIT)
+                            ->columnSpanFull()
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Descrizione')
+                                    ->required(),
+                                TextInput::make('amount')
+                                    ->label('Importo mensile (€)')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
+                                    ->required(),
+                            ])
+                            ->addActionLabel('Aggiungi riga forfait'),
                         TextInput::make('default_hourly_rate')
                             ->label('Tariffa oraria di default (€/h)')
                             ->numeric()
