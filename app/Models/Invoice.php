@@ -82,32 +82,6 @@ class Invoice extends Model
     }
 
     /**
-     * Propone il prossimo numero fattura dell'anno corrente, saltando i numeri
-     * già usati (es. dopo cancellazioni o numerazioni manuali) per non collidere
-     * con il vincolo di unicità.
-     */
-    public static function suggestNextNumber(): string
-    {
-        $year = now()->year;
-
-        // Prossimo progressivo per l'anno, in convenzione italiana "N/anno".
-        // Considera solo i numeri già in questo formato per l'anno corrente.
-        $max = 0;
-        foreach (self::whereYear('issue_date', $year)->pluck('number') as $n) {
-            if (preg_match('#^(\d+)/'.$year.'$#', (string) $n, $m) === 1) {
-                $max = max($max, (int) $m[1]);
-            }
-        }
-
-        do {
-            $max++;
-            $number = $max.'/'.$year;
-        } while (self::where('number', $number)->exists());
-
-        return $number;
-    }
-
-    /**
      * Ricostruisce il numero "N/anno" dal documento restituito da FIC (la
      * numerazione è decisa da FIC, TrackFlow la eredita).
      *
@@ -197,7 +171,7 @@ class Invoice extends Model
     {
         $this->loadMissing(['client', 'hours.user', 'expenses.user', 'items']);
 
-        [$numerationPrefix, $numericNumber] = $this->splitNumber($this->number);
+        [$numerationPrefix, $numericNumber] = $this->splitNumber((string) $this->number);
 
         if ($this->usesItems()) {
             $items = $this->buildItemsFromLines();

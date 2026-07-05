@@ -44,6 +44,8 @@ class HoursTable
                     ->label('Note')
                     ->limit(50)
                     ->tooltip(fn (Hour $record): ?string => $record->notes)
+                    ->copyable()
+                    ->copyMessage('Nota copiata')
                     ->searchable()
                     ->toggleable(),
                 TextColumn::make('created_at')

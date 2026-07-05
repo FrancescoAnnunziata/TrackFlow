@@ -34,7 +34,7 @@ class InvoiceBuilder
             $invoice = Invoice::create([
                 'user_id' => auth()->id(),
                 'client_id' => $client->id,
-                'number' => Invoice::suggestNextNumber(),
+                // Nessun numero inventato: lo assegna FIC all'invio.
                 'issue_date' => now(),
                 'period_from' => $from,
                 'period_to' => $to,

@@ -95,7 +95,7 @@ class ViewQuote extends ViewRecord
         FilamentNotification::make()
             ->success()
             ->title($resend ? 'Preventivo reinviato' : 'Preventivo inviato')
-            ->body('Email inviata a ' . $recipients->count() . ' referente/i.')
+            ->body('Email inviata a '.$recipients->count().' referente/i.')
             ->send();
     }
 
@@ -172,14 +172,14 @@ class ViewQuote extends ViewRecord
                 $invoice = Invoice::create([
                     'user_id' => auth()->id(),
                     'client_id' => $record->client_id,
-                    'number' => Invoice::suggestNextNumber(),
+                    // Numero assegnato da FIC all'invio (non inventato qui).
                     'issue_date' => now(),
                     'period_from' => now()->startOfMonth(),
                     'period_to' => now()->endOfMonth(),
                     'hourly_rate' => $record->hourly_rate,
                     'vat_rate' => $record->vat_rate,
                     'status' => 'draft',
-                    'notes' => trim("Da preventivo {$record->number}\n" . (string) $record->description),
+                    'notes' => trim("Da preventivo {$record->number}\n".(string) $record->description),
                 ]);
 
                 $record->update([

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Invoices\Schemas;
 
-use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -23,9 +22,9 @@ class InvoiceForm
                     ->components([
                         TextInput::make('number')
                             ->label('Numero')
-                            ->required()
                             ->maxLength(50)
-                            ->default(fn () => Invoice::suggestNextNumber()),
+                            ->placeholder('Assegnato da Fatture in Cloud')
+                            ->helperText('Vuoto per i clienti FIC (lo assegna FIC all\'invio). Per Fiscozen/esterni scrivilo a mano.'),
                         DatePicker::make('issue_date')
                             ->label('Data emissione')
                             ->required()
