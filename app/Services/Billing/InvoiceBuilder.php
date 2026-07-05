@@ -269,8 +269,10 @@ class InvoiceBuilder
             return [];
         }
 
+        $name = trim((string) ($client->monthly_extra_label ?? '')) ?: $this->periodLabel($client, 'extra');
+
         return [[
-            'name' => $this->periodLabel($client, 'extra'),
+            'name' => $name,
             'qty' => 1,
             'measure' => '',
             'net_price' => $extra,

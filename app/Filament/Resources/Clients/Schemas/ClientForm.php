@@ -175,6 +175,11 @@ class ClientForm
                             ->minValue(0)
                             ->step(0.01)
                             ->helperText('Voce ricorrente aggiuntiva, se prevista.'),
+                        TextInput::make('monthly_extra_label')
+                            ->label('Nome voce extra')
+                            ->maxLength(255)
+                            ->placeholder('Es. Canone gestione')
+                            ->helperText('Descrizione della riga extra in fattura. Vuoto = "Consulenza — extra".'),
 
                         TextInput::make('vat_rate')
                             ->label('IVA (%)')

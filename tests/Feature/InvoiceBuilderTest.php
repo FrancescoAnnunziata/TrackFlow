@@ -242,6 +242,28 @@ it('builds an Alsea-style advance + reconciliation invoice', function () {
     expect($invoice->total())->toBe(4413.5);
 });
 
+it('uses the configured label for the extra recurring line', function () {
+    $user = User::factory()->create();
+    $client = Client::create([
+        'name' => 'ExtraCliente',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_HOURLY,
+        'billing_period_months' => 1,
+        'default_hourly_rate' => 50,
+        'monthly_extra_amount' => 100,
+        'monthly_extra_label' => 'Canone gestione',
+        'vat_rate' => 22,
+    ]);
+    loggedHour($client, $user, '2026-06-05', 4);
+
+    $invoice = app(InvoiceBuilder::class)->build($client, CarbonImmutable::parse('2026-06-01'));
+
+    $extra = $invoice->items->firstWhere('line_kind', 'extra');
+    expect($extra)->not->toBeNull();
+    expect($extra->name)->toBe('Canone gestione');
+    expect((float) $extra->net_price)->toBe(100.0);
+});
+
 it('always aggregates expenses into a single art.15 line', function () {
     $user = User::factory()->create();
     $client = Client::create([

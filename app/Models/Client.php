@@ -49,6 +49,7 @@ class Client extends Model
         'daily_rate',
         'minimum_hours_per_month',
         'monthly_extra_amount',
+        'monthly_extra_label',
         'vat_rate',
         'consulting_label',
         'payment_method_id',
