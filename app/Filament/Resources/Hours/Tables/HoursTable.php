@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Hours\Tables;
 
+use App\Models\Hour;
 use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -39,6 +40,12 @@ class HoursTable
                     ->sortable(),
                 IconColumn::make('billable')
                     ->boolean(),
+                TextColumn::make('notes')
+                    ->label('Note')
+                    ->limit(50)
+                    ->tooltip(fn (Hour $record): ?string => $record->notes)
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -99,11 +106,11 @@ class HoursTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['from'] ?? null) {
-                            $indicators[] = Indicator::make('Dal ' . Carbon::parse($data['from'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Dal '.Carbon::parse($data['from'])->toFormattedDateString())
                                 ->removeField('from');
                         }
                         if ($data['until'] ?? null) {
-                            $indicators[] = Indicator::make('Al ' . Carbon::parse($data['until'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Al '.Carbon::parse($data['until'])->toFormattedDateString())
                                 ->removeField('until');
                         }
 
