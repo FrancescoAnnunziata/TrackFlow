@@ -106,6 +106,49 @@ it('multiplies forfait detail lines by the number of months', function () {
     expect($invoice->items->firstWhere('line_kind', 'consulting')->net_price + 0)->toBe(3000.0); // 1000 × 3 mesi
 });
 
+it('bills a daily-rate client in rounded-up days', function () {
+    $user = User::factory()->create();
+    $client = Client::create([
+        'name' => 'Calzedonia',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_DAILY,
+        'billing_period_months' => 1,
+        'hours_per_day' => 8,
+        'daily_rate' => 400,
+        'vat_rate' => 22,
+    ]);
+    loggedHour($client, $user, '2026-06-05', 40);
+    loggedHour($client, $user, '2026-06-10', 34); // totale 74h
+
+    $invoice = app(InvoiceBuilder::class)->build($client, CarbonImmutable::parse('2026-06-01'));
+
+    $line = $invoice->items->firstWhere('line_kind', 'consulting');
+    expect((float) $line->qty)->toBe(10.0);        // ceil(74 / 8)
+    expect($line->measure)->toBe('gg');
+    expect((float) $line->net_price)->toBe(400.0);
+    expect($invoice->taxableAmount())->toBe(4000.0); // 10 × 400
+});
+
+it('bills expenses for forfait clients too', function () {
+    $user = User::factory()->create();
+    $client = Client::create([
+        'name' => 'ForfaitConSpese',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_FORFAIT,
+        'billing_period_months' => 1,
+        'forfait_amount' => 1000,
+        'vat_rate' => 22,
+    ]);
+    Expense::create(['user_id' => $user->id, 'client_id' => $client->id, 'date' => '2026-06-10', 'amount' => 50, 'notes' => 'pedaggio']);
+
+    $invoice = app(InvoiceBuilder::class)->build($client, CarbonImmutable::parse('2026-06-01'));
+
+    $expenses = $invoice->items->firstWhere('line_kind', 'expenses');
+    expect($expenses)->not->toBeNull();
+    expect($expenses->vat_kind)->toBe('art15');
+    expect((float) $expenses->net_price)->toBe(50.0);
+});
+
 it('builds per-user hourly lines and ignores non-billable hours', function () {
     $giorgio = User::factory()->create(['name' => 'Giorgio']);
     $annunziata = User::factory()->create(['name' => 'Annunziata']);

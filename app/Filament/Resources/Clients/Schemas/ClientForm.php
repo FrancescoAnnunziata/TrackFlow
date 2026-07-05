@@ -85,6 +85,7 @@ class ClientForm
                             ->label('Modello')
                             ->options([
                                 Client::MODEL_HOURLY => 'A ore',
+                                Client::MODEL_DAILY => 'A giornata',
                                 Client::MODEL_FORFAIT => 'Forfait (importo fisso)',
                             ])
                             ->default(Client::MODEL_HOURLY)
@@ -153,6 +154,21 @@ class ClientForm
                             ->step(0.5)
                             ->visible(fn (Get $get): bool => $get('billing_model') === Client::MODEL_HOURLY)
                             ->helperText('Lascia vuoto se non c\'è minimo garantito.'),
+                        TextInput::make('daily_rate')
+                            ->label('Tariffa giornaliera (€/gg)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->step(0.01)
+                            ->visible(fn (Get $get): bool => $get('billing_model') === Client::MODEL_DAILY)
+                            ->requiredIf('billing_model', Client::MODEL_DAILY),
+                        TextInput::make('hours_per_day')
+                            ->label('Ore per giornata')
+                            ->numeric()
+                            ->minValue(1)
+                            ->step(0.5)
+                            ->default(8)
+                            ->visible(fn (Get $get): bool => $get('billing_model') === Client::MODEL_DAILY)
+                            ->helperText('Blocco orario di una giornata. Giornate fatturate = ore ÷ questo, arrotondate per eccesso.'),
                         TextInput::make('monthly_extra_amount')
                             ->label('Extra fisso (€/mese)')
                             ->numeric()

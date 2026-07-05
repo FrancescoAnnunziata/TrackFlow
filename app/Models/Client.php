@@ -14,6 +14,8 @@ class Client extends Model
 
     public const MODEL_HOURLY = 'hourly';
 
+    public const MODEL_DAILY = 'daily';
+
     public const TIMING_ARREARS = 'arrears';
 
     public const TIMING_ADVANCE = 'advance';
@@ -43,6 +45,8 @@ class Client extends Model
         'forfait_amount',
         'forfait_lines',
         'default_hourly_rate',
+        'hours_per_day',
+        'daily_rate',
         'minimum_hours_per_month',
         'monthly_extra_amount',
         'vat_rate',
@@ -56,6 +60,8 @@ class Client extends Model
         'forfait_amount' => 'decimal:2',
         'forfait_lines' => 'array',
         'default_hourly_rate' => 'decimal:2',
+        'hours_per_day' => 'decimal:1',
+        'daily_rate' => 'decimal:2',
         'minimum_hours_per_month' => 'decimal:2',
         'monthly_extra_amount' => 'decimal:2',
         'vat_rate' => 'decimal:2',

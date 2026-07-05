@@ -43,9 +43,13 @@ class InvoiceBuilder
             ]);
 
             $lines = collect();
+            $expenseFrom = $from;
+            $expenseTo = $to;
 
             if ($client->billing_model === Client::MODEL_FORFAIT) {
                 $lines = $lines->merge($this->forfaitLines($client, $months));
+            } elseif ($client->billing_model === Client::MODEL_DAILY) {
+                $lines = $lines->merge($this->dailyLines($client, $from, $to, $invoice));
             } elseif ($client->billing_timing === Client::TIMING_ADVANCE) {
                 $lines = $lines->merge($this->advanceLines($client, $months));
 
@@ -53,17 +57,16 @@ class InvoiceBuilder
                     [$pFrom, $pTo] = $this->window($start->subMonths($months), $months);
                     $lines = $lines->merge($this->reconciliationLines($client, $pFrom, $pTo, $invoice));
                     // Le spese seguono il periodo conguagliato.
-                    $lines = $lines->merge($this->expenseLine($client, $pFrom, $pTo, $invoice));
-                } else {
-                    $lines = $lines->merge($this->expenseLine($client, $from, $to, $invoice));
+                    $expenseFrom = $pFrom;
+                    $expenseTo = $pTo;
                 }
             } else { // hourly, posticipato
                 $lines = $lines->merge($this->hourlyLines($client, $from, $to, $months, $invoice));
-                $lines = $lines->merge($this->expenseLine($client, $from, $to, $invoice));
             }
 
-            // Extra fisso ricorrente (per tutti i modelli che lo prevedono).
+            // Extra fisso ricorrente e spese (art. 15) valgono per tutti i modelli.
             $lines = $lines->merge($this->extraLine($client, $months));
+            $lines = $lines->merge($this->expenseLine($client, $expenseFrom, $expenseTo, $invoice));
 
             $lines->values()->each(function (array $line, int $i) use ($invoice): void {
                 $invoice->items()->create($line + ['sort' => $i]);
@@ -113,6 +116,36 @@ class InvoiceBuilder
             'qty' => 1,
             'measure' => '',
             'net_price' => round((float) ($client->forfait_amount ?? 0) * $months, 2),
+            'vat_kind' => InvoiceItem::VAT_STANDARD,
+            'line_kind' => 'consulting',
+        ]];
+    }
+
+    /**
+     * Riga a giornata: giornate = ceil(ore lavorate / ore per giornata), alla
+     * tariffa giornaliera. Aggancia le ore coperte.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function dailyLines(Client $client, CarbonImmutable $from, CarbonImmutable $to, Invoice $invoice): array
+    {
+        $hours = $this->billableHours($client, $from, $to);
+        $invoice->hours()->syncWithoutDetaching($hours->pluck('id')->all());
+
+        $totalHours = (float) $hours->sum('hours');
+        $perDay = (float) ($client->hours_per_day ?: 8);
+
+        if ($totalHours <= 0 || $perDay <= 0) {
+            return [];
+        }
+
+        $days = (int) ceil($totalHours / $perDay);
+
+        return [[
+            'name' => $this->periodLabel($client),
+            'qty' => $days,
+            'measure' => 'gg',
+            'net_price' => (float) ($client->daily_rate ?? 0),
             'vat_kind' => InvoiceItem::VAT_STANDARD,
             'line_kind' => 'consulting',
         ]];

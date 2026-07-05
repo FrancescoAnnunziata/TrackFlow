@@ -53,7 +53,11 @@ class ClientInfolist
                             ->color(fn (?string $state): string => $state === 'fatture_in_cloud' ? 'success' : 'gray'),
                         TextEntry::make('billing_model')
                             ->label('Modello')
-                            ->formatStateUsing(fn (?string $state): string => $state === Client::MODEL_FORFAIT ? 'Forfait' : 'A ore'),
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                Client::MODEL_FORFAIT => 'Forfait',
+                                Client::MODEL_DAILY => 'A giornata',
+                                default => 'A ore',
+                            }),
                         TextEntry::make('billing_period_months')
                             ->label('Periodicità')
                             ->formatStateUsing(fn ($state): string => match ((int) $state) {
@@ -76,6 +80,15 @@ class ClientInfolist
                             ->money('EUR')
                             ->placeholder('—')
                             ->visible(fn (Client $record): bool => $record->billing_model === Client::MODEL_HOURLY),
+                        TextEntry::make('daily_rate')
+                            ->label('Tariffa giornaliera')
+                            ->money('EUR')
+                            ->placeholder('—')
+                            ->visible(fn (Client $record): bool => $record->billing_model === Client::MODEL_DAILY),
+                        TextEntry::make('hours_per_day')
+                            ->label('Ore per giornata')
+                            ->suffix(' h')
+                            ->visible(fn (Client $record): bool => $record->billing_model === Client::MODEL_DAILY),
                         TextEntry::make('minimum_hours_per_month')
                             ->label('Minimo ore/mese')
                             ->placeholder('—')
