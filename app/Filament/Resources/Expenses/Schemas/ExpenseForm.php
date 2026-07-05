@@ -5,8 +5,8 @@ namespace App\Filament\Resources\Expenses\Schemas;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -41,12 +41,11 @@ class ExpenseForm
                     ->step(0.01),
                 FileUpload::make('attachaments')
                     ->label('Allegati')
+                    ->helperText('Foto (JPEG/PNG/HEIC) oppure PDF. Le immagini vengono ridotte a max 1920px.')
                     ->multiple()
-                    ->image()
-                    ->imageResizeMode('contain')
-                    ->imageResizeTargetWidth('1920')
-                    ->imageResizeTargetHeight('1920')
-                    ->imageResizeUpscale(false)
+                    ->acceptedFileTypes([
+                        'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf',
+                    ])
                     ->maxSize(20480)
                     ->disk(self::ATTACHMENT_DISK)
                     ->directory(self::ATTACHMENT_DIRECTORY)
@@ -61,22 +60,21 @@ class ExpenseForm
     }
 
     /**
-     * Salva un allegato. I JPEG/PNG (gia' ridimensionati lato client) vengono
-     * salvati cosi' come sono; gli HEIC/HEIF, che i browser non sanno mostrare,
-     * vengono convertiti in JPEG (max 1920px) lato server cosi' restano
-     * visualizzabili ovunque.
+     * Salva un allegato. I PDF vengono salvati cosi' come sono. Le immagini
+     * vengono normalizzate (orientamento EXIF), gli HEIC/HEIF convertiti in JPEG
+     * e tutte ridotte a max 1920px lato server, cosi' restano leggere e
+     * visualizzabili ovunque a prescindere dal browser.
      */
     private static function storeAttachment(TemporaryUploadedFile $file): string
     {
         $extension = strtolower($file->getClientOriginalExtension());
+        $mime = (string) $file->getMimeType();
 
-        $isHeic = in_array($extension, ['heic', 'heif'], true)
-            || in_array((string) $file->getMimeType(), ['image/heic', 'image/heif'], true);
-
-        if (! $isHeic) {
+        // PDF: salvato tal quale.
+        if ($extension === 'pdf' || $mime === 'application/pdf') {
             return $file->storeAs(
                 self::ATTACHMENT_DIRECTORY,
-                (string) Str::ulid().'.'.$extension,
+                (string) Str::ulid().'.pdf',
                 self::ATTACHMENT_DISK,
             );
         }
@@ -85,11 +83,20 @@ class ExpenseForm
         $image->setIteratorIndex(0);
         self::normalizeOrientation($image);
 
-        $image->setImageFormat('jpeg');
-        $image->setImageCompressionQuality(85);
-        $image->thumbnailImage(1920, 1920, true);
+        $isHeic = in_array($extension, ['heic', 'heif'], true)
+            || in_array($mime, ['image/heic', 'image/heif'], true);
 
-        $path = self::ATTACHMENT_DIRECTORY.'/'.Str::ulid().'.jpg';
+        if ($isHeic) {
+            $image->setImageFormat('jpeg');
+            $extension = 'jpg';
+        }
+
+        if ($image->getImageWidth() > 1920 || $image->getImageHeight() > 1920) {
+            $image->thumbnailImage(1920, 1920, true);
+        }
+        $image->setImageCompressionQuality(85);
+
+        $path = self::ATTACHMENT_DIRECTORY.'/'.(string) Str::ulid().'.'.($extension ?: 'jpg');
         Storage::disk(self::ATTACHMENT_DISK)->put($path, $image->getImageBlob());
         $image->clear();
 

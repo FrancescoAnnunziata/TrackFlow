@@ -353,8 +353,9 @@ class Invoice extends Model
             $atts = $expense->attachaments ?? [];
             $links = collect($atts)
                 ->map(fn (string $path, int $i): string => sprintf(
-                    '<a href="%s">foto%s</a>',
+                    '<a href="%s">%s%s</a>',
                     e(Storage::disk('public')->url($path)),
+                    str_ends_with(strtolower($path), '.pdf') ? 'PDF' : 'foto',
                     count($atts) > 1 ? ' '.($i + 1) : '',
                 ))
                 ->implode(' ');

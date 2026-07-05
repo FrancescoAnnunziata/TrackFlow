@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Expenses\Schemas;
 
+use App\Models\Expense;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class ExpenseInfolist
 {
@@ -25,11 +27,20 @@ class ExpenseInfolist
                     ->label('Importo')
                     ->money('EUR'),
                 ImageEntry::make('attachaments')
-                    ->label('Allegati')
+                    ->label('Allegati (immagini)')
                     ->disk('public')
                     ->height(140)
                     ->stacked()
-                    ->placeholder('-')
+                    ->state(fn (Expense $record): array => self::imageAttachments($record))
+                    ->visible(fn (Expense $record): bool => self::imageAttachments($record) !== [])
+                    ->columnSpanFull(),
+                TextEntry::make('pdf_attachments')
+                    ->label('Allegati (PDF)')
+                    ->state(fn (Expense $record): string => collect(self::pdfAttachments($record))
+                        ->map(fn (string $path): string => '<a href="'.e(Storage::disk('public')->url($path)).'" target="_blank" style="text-decoration:underline;">Apri PDF</a>')
+                        ->implode('<br>'))
+                    ->html()
+                    ->visible(fn (Expense $record): bool => self::pdfAttachments($record) !== [])
                     ->columnSpanFull(),
                 TextEntry::make('notes')
                     ->label('Note')
@@ -42,5 +53,27 @@ class ExpenseInfolist
                     ->dateTime()
                     ->placeholder('-'),
             ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function imageAttachments(Expense $record): array
+    {
+        return collect($record->attachaments ?? [])
+            ->reject(fn (string $path): bool => str_ends_with(strtolower($path), '.pdf'))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function pdfAttachments(Expense $record): array
+    {
+        return collect($record->attachaments ?? [])
+            ->filter(fn (string $path): bool => str_ends_with(strtolower($path), '.pdf'))
+            ->values()
+            ->all();
     }
 }
