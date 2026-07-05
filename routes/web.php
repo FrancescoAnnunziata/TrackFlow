@@ -1,14 +1,19 @@
 <?php
 
+use App\Filament\Pages\FattureInCloud;
 use App\Filament\Resources\Quotes\QuoteResource;
 use App\Http\Controllers\AssetLabelController;
 use App\Http\Controllers\AssetLookupController;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Fic\FicClient;
+use App\Services\Fic\FicException;
 use App\Support\Impersonation;
+use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 // Routes gestite da Filament: login, register, logout
 // Le route di autenticazione sono gestite direttamente da Filament Panel
@@ -53,5 +58,52 @@ Route::middleware('auth')->group(function () {
     Route::get('/assets/{device}/label', [AssetLabelController::class, 'show'])->name('assets.label');
 });
 
+// Fatture in Cloud — OAuth2 Authorization Code flow.
+// /fic/connect: avvia il consenso; /fic/callback: scambia il code coi token.
+// Solo admin: rispecchia il gate isAdmin() usato dal pannello.
+Route::middleware('auth')->group(function () {
+    Route::get('/fic/connect', function (Request $request) {
+        abort_unless($request->user()->isAdmin(), 403);
 
+        $state = Str::random(40);
+        session()->put('fic_oauth_state', $state);
 
+        return redirect()->away(FicClient::fromConfig()->authorizeUrl($state));
+    })->name('fic.connect');
+
+    Route::get('/fic/callback', function (Request $request) {
+        abort_unless($request->user()->isAdmin(), 403);
+
+        $expectedState = session()->pull('fic_oauth_state');
+
+        $fail = function (string $message) {
+            FilamentNotification::make()->danger()->title('Connessione fallita')->body($message)->send();
+
+            return redirect(FattureInCloud::getUrl());
+        };
+
+        if ($request->filled('error')) {
+            return $fail('Autorizzazione negata su Fatture in Cloud.');
+        }
+
+        if (! $request->filled('code') || ! $request->filled('state') || $request->query('state') !== $expectedState) {
+            return $fail('Richiesta OAuth non valida o scaduta. Riprova la connessione.');
+        }
+
+        try {
+            $credential = FicClient::fromConfig()->exchangeCode($request->query('code'));
+        } catch (FicException $e) {
+            return $fail($e->getMessage());
+        }
+
+        FilamentNotification::make()
+            ->success()
+            ->title('Fatture in Cloud collegato')
+            ->body($credential->company_name
+                ? 'Azienda collegata: '.$credential->company_name.'.'
+                : 'Connessione completata.')
+            ->send();
+
+        return redirect(FattureInCloud::getUrl());
+    })->name('fic.callback');
+});

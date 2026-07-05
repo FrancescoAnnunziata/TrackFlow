@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    // Fatture in Cloud (API v2, OAuth2 Authorization Code flow).
+    'fic' => [
+        'client_id' => env('FIC_CLIENT_ID'),
+        'client_secret' => env('FIC_CLIENT_SECRET'),
+        // Deve combaciare ESATTAMENTE con il redirect registrato nell'app FIC.
+        'redirect' => env('FIC_REDIRECT_URI'),
+        'base_url' => env('FIC_BASE_URL', 'https://api-v2.fattureincloud.it'),
+        // Scope minimi: creare/gestire fatture emesse.
+        'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a'),
+    ],
+
 ];

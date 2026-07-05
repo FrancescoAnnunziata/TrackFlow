@@ -19,6 +19,9 @@ class Invoice extends Model
         'vat_rate',
         'status',
         'notes',
+        'fic_document_id',
+        'fic_document_token',
+        'fic_sent_at',
     ];
 
     protected $casts = [
@@ -27,7 +30,16 @@ class Invoice extends Model
         'period_to' => 'date',
         'hourly_rate' => 'decimal:2',
         'vat_rate' => 'decimal:2',
+        'fic_sent_at' => 'datetime',
     ];
+
+    /**
+     * True se la fattura è già stata creata su Fatture in Cloud.
+     */
+    public function isSentToFic(): bool
+    {
+        return $this->fic_sent_at !== null;
+    }
 
     public function user(): BelongsTo
     {
@@ -69,9 +81,9 @@ class Invoice extends Model
 
     public function hoursSubtotal(): float
     {
-        $totalMinutes = (int) $this->hours()->sum('minutes');
+        $totalHours = (float) $this->hours()->sum('hours');
 
-        return round(($totalMinutes / 60) * (float) $this->hourly_rate, 2);
+        return round($totalHours * (float) $this->hourly_rate, 2);
     }
 
     public function expensesSubtotal(): float
@@ -111,14 +123,14 @@ class Invoice extends Model
         $items = [];
 
         foreach ($this->hours as $hour) {
-            $qty = round(((int) $hour->minutes) / 60, 2);
+            $qty = round((float) $hour->hours, 2);
             $items[] = [
                 'name' => 'Ore di consulenza',
                 'description' => trim(sprintf(
                     '%s — %s%s',
                     optional($hour->date)->format('d/m/Y') ?? '',
                     $hour->user?->name ?? '',
-                    $hour->notes ? ' — ' . $hour->notes : '',
+                    $hour->notes ? ' — '.$hour->notes : '',
                 ), ' —'),
                 'qty' => $qty,
                 'measure' => 'h',
@@ -135,7 +147,7 @@ class Invoice extends Model
             $items[] = [
                 'name' => $expense->notes
                     ? str($expense->notes)->limit(80)->value()
-                    : 'Spesa ' . (optional($expense->date)->format('d/m/Y') ?? ''),
+                    : 'Spesa '.(optional($expense->date)->format('d/m/Y') ?? ''),
                 'description' => '',
                 'qty' => 1,
                 'measure' => '',

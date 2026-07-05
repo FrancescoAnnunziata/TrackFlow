@@ -62,6 +62,21 @@ class InvoiceInfolist
                             ->weight('bold'),
                     ]),
 
+                Section::make('Fatture in Cloud')
+                    ->columns(2)
+                    ->components([
+                        TextEntry::make('fic_sent_at')
+                            ->label('Stato')
+                            ->state(fn ($record): string => $record->isSentToFic() ? 'Inviata' : 'Non inviata')
+                            ->badge()
+                            ->color(fn ($record): string => $record->isSentToFic() ? 'success' : 'gray'),
+                        TextEntry::make('fic_sent_at_when')
+                            ->label('Inviata il')
+                            ->state(fn ($record) => $record->fic_sent_at)
+                            ->dateTime()
+                            ->placeholder('—'),
+                    ]),
+
                 Section::make('Note')
                     ->components([
                         TextEntry::make('notes')->label('')->placeholder('—'),

@@ -6,8 +6,8 @@ use App\Models\Invoice;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -89,12 +89,11 @@ class InvoiceForm
                                 modifyQueryUsing: fn (Builder $query, Get $get, ?Invoice $record) => self::scopeBillable($query, $get, $record),
                             )
                             ->getOptionLabelFromRecordUsing(fn ($record): string => sprintf(
-                                '%s — %s — %d:%02d%s',
+                                '%s — %s — %s h%s',
                                 $record->date?->format('d/m/Y') ?? '—',
                                 $record->user?->name ?? '—',
-                                intdiv((int) $record->minutes, 60),
-                                ((int) $record->minutes) % 60,
-                                $record->notes ? ' — ' . str($record->notes)->limit(60) : '',
+                                number_format((float) $record->hours, 1, ',', '.'),
+                                $record->notes ? ' — '.str($record->notes)->limit(60) : '',
                             ))
                             ->bulkToggleable()
                             ->columns(1),
@@ -116,7 +115,7 @@ class InvoiceForm
                                 $record->date?->format('d/m/Y') ?? '—',
                                 $record->user?->name ?? '—',
                                 number_format((float) $record->amount, 2, ',', '.'),
-                                $record->notes ? ' — ' . str($record->notes)->limit(60) : '',
+                                $record->notes ? ' — '.str($record->notes)->limit(60) : '',
                             ))
                             ->bulkToggleable()
                             ->columns(1),

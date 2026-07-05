@@ -10,6 +10,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
@@ -64,6 +65,14 @@ class InvoicesTable
                         default => 'gray',
                     })
                     ->sortable(),
+                IconColumn::make('fic_sent_at')
+                    ->label('FIC')
+                    ->tooltip(fn (Invoice $record): ?string => $record->isSentToFic() ? 'Inviata a Fatture in Cloud' : null)
+                    ->boolean()
+                    ->trueIcon('heroicon-o-cloud')
+                    ->falseIcon('heroicon-o-minus-small')
+                    ->getStateUsing(fn (Invoice $record): bool => $record->isSentToFic())
+                    ->color(fn (Invoice $record): string => $record->isSentToFic() ? 'success' : 'gray'),
                 TextColumn::make('user.name')
                     ->label('Creata da')
                     ->toggleable(),
@@ -100,11 +109,11 @@ class InvoicesTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['from'] ?? null) {
-                            $indicators[] = Indicator::make('Dal ' . Carbon::parse($data['from'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Dal '.Carbon::parse($data['from'])->toFormattedDateString())
                                 ->removeField('from');
                         }
                         if ($data['until'] ?? null) {
-                            $indicators[] = Indicator::make('Al ' . Carbon::parse($data['until'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Al '.Carbon::parse($data['until'])->toFormattedDateString())
                                 ->removeField('until');
                         }
 
