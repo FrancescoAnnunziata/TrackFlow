@@ -117,6 +117,9 @@ class InvoiceForm
                             ->label('')
                             ->rows(3),
                     ]),
-            ]);
+            ])
+            // Sezioni impilate a piena larghezza: le righe fattura hanno tutto
+            // lo spazio (altrimenti Prezzo/Q.tà si stringono in mezza colonna).
+            ->columns(1);
     }
 }
