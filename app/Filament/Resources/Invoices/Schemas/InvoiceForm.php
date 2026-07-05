@@ -79,13 +79,13 @@ class InvoiceForm
                                 TextInput::make('name')
                                     ->label('Descrizione')
                                     ->required()
-                                    ->columnSpan(5),
+                                    ->columnSpan(6),
                                 TextInput::make('qty')
                                     ->label('Q.tà')
                                     ->numeric()
                                     ->default(1)
                                     ->required()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
                                 TextInput::make('measure')
                                     ->label('U.m.')
                                     ->maxLength(8)
@@ -104,7 +104,7 @@ class InvoiceForm
                                     ])
                                     ->default(InvoiceItem::VAT_STANDARD)
                                     ->required()
-                                    ->columnSpan(3),
+                                    ->columnSpan(1),
                             ])
                             ->orderColumn('sort')
                             ->addActionLabel('Aggiungi riga')
