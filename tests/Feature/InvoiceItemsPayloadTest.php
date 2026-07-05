@@ -54,8 +54,8 @@ it('builds a FIC payload with art.15 vat id on expense lines', function () {
     $payload = $invoice->toFicPayload()['data'];
 
     expect($payload['items_list'])->toHaveCount(3);
-    // Consulenza: aliquota standard per valore.
-    expect($payload['items_list'][0]['vat'])->toBe(['value' => 22.0]);
+    // Consulenza: aliquota standard con id + valore (FIC richiede vat.id).
+    expect($payload['items_list'][0]['vat'])->toBe(['id' => 0, 'value' => 22.0]);
     // Rimborsi: id IVA art.15.
     expect($payload['items_list'][2]['vat'])->toBe(['id' => 32]);
     expect($payload['e_invoice'])->toBeFalse();

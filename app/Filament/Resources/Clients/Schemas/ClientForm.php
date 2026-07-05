@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Clients\Schemas;
 
 use App\Models\Client;
+use App\Models\User;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -168,7 +169,8 @@ class ClientForm
                                 Select::make('user_id')
                                     ->label('Utente')
                                     ->relationship('user', 'name')
-                                    ->searchable()
+                                    ->getOptionLabelFromRecordUsing(fn (User $record): string => "{$record->name} — {$record->email}")
+                                    ->searchable(['name', 'email'])
                                     ->preload()
                                     ->required(),
                                 TextInput::make('hourly_rate')
@@ -210,8 +212,15 @@ class ClientForm
                     ->components([
                         TextInput::make('email')
                             ->label('Email')
-                            ->email()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText('Una o più email separate da virgola (come su Fatture in Cloud).')
+                            ->rule(static fn (): \Closure => static function (string $attribute, mixed $value, \Closure $fail): void {
+                                foreach (array_filter(array_map('trim', explode(',', (string) $value))) as $email) {
+                                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                                        $fail("«{$email}» non è un indirizzo email valido.");
+                                    }
+                                }
+                            }),
                     ]),
 
                 Section::make('Note')

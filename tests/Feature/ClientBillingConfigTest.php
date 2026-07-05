@@ -1,11 +1,48 @@
 <?php
 
+use App\Filament\Resources\Clients\Pages\EditClient;
 use App\Models\Client;
 use App\Models\ClientUserRate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+function billableClient(): Client
+{
+    return Client::create([
+        'name' => 'Fioravanti',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_HOURLY,
+        'billing_period_months' => 1,
+        'billing_timing' => Client::TIMING_ARREARS,
+        'entity_type' => 'company',
+        'vat_rate' => 22,
+    ]);
+}
+
+it('saves a client with several comma-separated emails', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $client = billableClient();
+
+    Livewire::test(EditClient::class, ['record' => $client->getRouteKey()])
+        ->fillForm(['email' => 'simona@fioravanti.com,roberta@fioravanti.com'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($client->fresh()->email)->toBe('simona@fioravanti.com,roberta@fioravanti.com');
+});
+
+it('rejects a malformed email in the list', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $client = billableClient();
+
+    Livewire::test(EditClient::class, ['record' => $client->getRouteKey()])
+        ->fillForm(['email' => 'ok@x.com, non-una-email'])
+        ->call('save')
+        ->assertHasFormErrors(['email']);
+});
 
 it('renders the client create form with the billing section', function () {
     $admin = User::factory()->admin()->create();
@@ -14,6 +51,26 @@ it('renders the client create form with the billing section', function () {
         ->get('/clients/create')
         ->assertOk()
         ->assertSee('Fatturazione');
+});
+
+it('renders the client view page with fiscal and billing sections', function () {
+    $admin = User::factory()->admin()->create();
+    $client = Client::create([
+        'name' => 'Acme',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_HOURLY,
+        'default_hourly_rate' => 50,
+        'vat_number' => '01234567890',
+        'address_city' => 'Milano',
+    ]);
+
+    $this->actingAs($admin)
+        ->get('/clients/'.$client->id)
+        ->assertOk()
+        ->assertSee('Dati fiscali')
+        ->assertSee('Fatturazione')
+        ->assertSee('01234567890')
+        ->assertSee('Milano');
 });
 
 it('persists the billing configuration', function () {

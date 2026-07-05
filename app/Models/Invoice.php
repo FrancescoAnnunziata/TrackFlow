@@ -88,11 +88,19 @@ class Invoice extends Model
     public static function suggestNextNumber(): string
     {
         $year = now()->year;
-        $count = self::whereYear('issue_date', $year)->count();
+
+        // Prossimo progressivo per l'anno, in convenzione italiana "N/anno".
+        // Considera solo i numeri già in questo formato per l'anno corrente.
+        $max = 0;
+        foreach (self::whereYear('issue_date', $year)->pluck('number') as $n) {
+            if (preg_match('#^(\d+)/'.$year.'$#', (string) $n, $m) === 1) {
+                $max = max($max, (int) $m[1]);
+            }
+        }
 
         do {
-            $count++;
-            $number = sprintf('%d-%03d', $year, $count);
+            $max++;
+            $number = $max.'/'.$year;
         } while (self::where('number', $number)->exists());
 
         return $number;
@@ -233,6 +241,7 @@ class Invoice extends Model
     private function buildItemsFromLines(): array
     {
         $art15VatId = (int) config('services.fic.art15_vat_id');
+        $standardVatId = (int) config('services.fic.standard_vat_id');
 
         return $this->items->map(fn (InvoiceItem $item): array => [
             'name' => $item->name,
@@ -242,9 +251,10 @@ class Invoice extends Model
             'net_price' => (float) $item->net_price,
             'category' => '',
             'discount' => 0,
+            // FIC richiede vat.id su ogni riga.
             'vat' => $item->isArt15()
                 ? ['id' => $art15VatId]
-                : ['value' => (float) $this->vat_rate],
+                : ['id' => $standardVatId, 'value' => (float) $this->vat_rate],
         ])->values()->all();
     }
 
@@ -256,6 +266,7 @@ class Invoice extends Model
      */
     private function buildLegacyItems(): array
     {
+        $standardVatId = (int) config('services.fic.standard_vat_id');
         $items = [];
 
         foreach ($this->hours as $hour) {
@@ -272,7 +283,7 @@ class Invoice extends Model
                 'net_price' => (float) $this->hourly_rate,
                 'category' => '',
                 'discount' => 0,
-                'vat' => ['value' => (float) $this->vat_rate],
+                'vat' => ['id' => $standardVatId, 'value' => (float) $this->vat_rate],
             ];
         }
 
@@ -287,7 +298,7 @@ class Invoice extends Model
                 'net_price' => (float) $expense->amount,
                 'category' => '',
                 'discount' => 0,
-                'vat' => ['value' => (float) $this->vat_rate],
+                'vat' => ['id' => $standardVatId, 'value' => (float) $this->vat_rate],
             ];
         }
 
@@ -392,7 +403,15 @@ class Invoice extends Model
      */
     private function splitNumber(string $raw): array
     {
-        if (preg_match('/^(.*?)(\d+)$/', trim($raw), $m) === 1) {
+        $raw = trim($raw);
+
+        // Formato "N/anno": il numero FIC è N, senza numerazione (l'anno lo
+        // gestisce FIC in base alla data del documento).
+        if (preg_match('#^(\d+)/\d{4}$#', $raw, $m) === 1) {
+            return ['', (int) $m[1]];
+        }
+
+        if (preg_match('/^(.*?)(\d+)$/', $raw, $m) === 1) {
             $prefix = rtrim($m[1], '-/ ');
 
             return [$prefix, (int) $m[2]];

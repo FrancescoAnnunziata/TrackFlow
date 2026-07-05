@@ -4,10 +4,13 @@ namespace App\Filament\Resources\Invoices\Pages;
 
 use App\Filament\Resources\Invoices\InvoiceResource;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Enums\Width;
 
 class CreateInvoice extends CreateRecord
 {
     protected static string $resource = InvoiceResource::class;
+
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

@@ -273,6 +273,20 @@ class FicClient
                 ?? $body['error_description']
                 ?? $body['message']
                 ?? (is_string($body['error'] ?? null) ? $body['error'] : null);
+
+            // Dettagli di validazione FIC (data.items_list.0.vat.id: [...]).
+            $validation = $body['error']['validation_result'] ?? null;
+            if (is_array($validation)) {
+                $details = [];
+                array_walk_recursive($validation, function ($value) use (&$details): void {
+                    if (is_string($value)) {
+                        $details[] = $value;
+                    }
+                });
+                if ($details !== []) {
+                    $message = trim(($message ? $message.' — ' : '').implode(' ', array_slice($details, 0, 4)));
+                }
+            }
         }
 
         return $message

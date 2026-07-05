@@ -48,6 +48,9 @@ return [
         // spese). Per-azienda: leggibile solo con scope aggiuntivo, quindi
         // configurabile con default noto.
         'art15_vat_id' => (int) env('FIC_ART15_VAT_ID', 32),
+        // ID del tipo IVA standard (22%) nell'azienda FIC. FIC richiede vat.id
+        // su ogni riga: 0 è il 22% predefinito.
+        'standard_vat_id' => (int) env('FIC_STANDARD_VAT_ID', 0),
     ],
 
 ];

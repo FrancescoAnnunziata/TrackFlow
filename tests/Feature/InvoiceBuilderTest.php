@@ -1,13 +1,16 @@
 <?php
 
+use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Models\Client;
 use App\Models\ClientUserRate;
 use App\Models\Expense;
 use App\Models\Hour;
+use App\Models\Invoice;
 use App\Models\User;
 use App\Services\Billing\InvoiceBuilder;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -22,6 +25,31 @@ function loggedHour(Client $client, User $user, string $date, float $hours, bool
 
     return $h;
 }
+
+it('renders the invoices list and create pages', function () {
+    $this->get('/invoices')->assertOk();
+    $this->get('/invoices/create')->assertOk();
+});
+
+it('generates an invoice from the list "Genera fattura" action', function () {
+    $user = User::factory()->create(['name' => 'Giorgio']);
+    $client = Client::create([
+        'name' => 'Acme',
+        'invoicing_provider' => Client::PROVIDER_FIC,
+        'billing_model' => Client::MODEL_HOURLY,
+        'billing_period_months' => 1,
+        'default_hourly_rate' => 50,
+        'vat_rate' => 22,
+    ]);
+    loggedHour($client, $user, '2026-06-05', 4);
+
+    Livewire::test(ListInvoices::class)
+        ->callAction('generate', ['client_id' => $client->id, 'period_start' => '2026-06-01']);
+
+    $invoice = Invoice::where('client_id', $client->id)->first();
+    expect($invoice)->not->toBeNull();
+    expect($invoice->items)->not->toBeEmpty();
+});
 
 it('builds a forfait invoice with a single consulting line', function () {
     $client = Client::create([
