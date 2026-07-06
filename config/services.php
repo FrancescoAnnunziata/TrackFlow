@@ -42,8 +42,11 @@ return [
         // Deve combaciare ESATTAMENTE con il redirect registrato nell'app FIC.
         'redirect' => env('FIC_REDIRECT_URI'),
         'base_url' => env('FIC_BASE_URL', 'https://api-v2.fattureincloud.it'),
-        // Scope minimi: creare/gestire fatture emesse.
-        'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a'),
+        // Scope: gestire le fatture emesse (a) + leggere i documenti ricevuti
+        // e l'anagrafica fornitori (r) per il controllo finanziario. Cambiare
+        // questo valore richiede un "Riconnetti" su Impostazioni → Fatture in
+        // Cloud (nuovo consenso dell'utente).
+        'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a received_documents:r entity.suppliers:r'),
         // ID del tipo IVA "Escluso Art.15" nell'azienda FIC (per i rimborsi
         // spese). Per-azienda: leggibile solo con scope aggiuntivo, quindi
         // configurabile con default noto.

@@ -262,6 +262,63 @@ class FicClient
     }
 
     /**
+     * Elenca i documenti ricevuti (fatture passive/spese) di un tipo, una
+     * pagina. FIC richiede sempre il parametro `type`. Ritorna il nodo `data`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listReceivedDocuments(string $type = 'expense', int $page = 1, int $perPage = 50): array
+    {
+        $credential = FicCredential::current();
+
+        if ($credential === null || blank($credential->company_id)) {
+            throw new FicException('Connessione a Fatture in Cloud non configurata correttamente.');
+        }
+
+        $response = $this->client()
+            ->withToken($this->accessToken())
+            ->get(sprintf('%s/c/%s/received_documents', $this->baseUrl, $credential->company_id), [
+                'type' => $type,
+                'per_page' => $perPage,
+                'page' => $page,
+                'sort' => '-date',
+            ]);
+
+        if ($response->failed()) {
+            throw new FicException($this->errorMessage($response->json(), $response->status()));
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
+     * Dettaglio completo di un documento ricevuto (con items_list). FIC
+     * richiede il `type` anche sul dettaglio.
+     *
+     * @return array<string, mixed>
+     */
+    public function getReceivedDocument(int $documentId, string $type = 'expense'): array
+    {
+        $credential = FicCredential::current();
+
+        if ($credential === null || blank($credential->company_id)) {
+            throw new FicException('Connessione a Fatture in Cloud non configurata correttamente.');
+        }
+
+        $response = $this->client()
+            ->withToken($this->accessToken())
+            ->get(sprintf('%s/c/%s/received_documents/%d', $this->baseUrl, $credential->company_id, $documentId), [
+                'type' => $type,
+            ]);
+
+        if ($response->failed()) {
+            throw new FicException($this->errorMessage($response->json(), $response->status()));
+        }
+
+        return (array) $response->json('data', []);
+    }
+
+    /**
      * Prima azienda associata all'utente autenticato.
      *
      * @return array<string, mixed>|null
