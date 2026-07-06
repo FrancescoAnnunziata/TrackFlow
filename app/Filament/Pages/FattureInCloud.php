@@ -28,7 +28,7 @@ class FattureInCloud extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->canManageFinance() ?? false;
     }
 
     public function getCredential(): ?FicCredential

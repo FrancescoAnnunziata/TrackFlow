@@ -46,7 +46,7 @@ class ClientsTable
                     ->label('Genera fattura')
                     ->icon(Heroicon::OutlinedDocumentPlus)
                     ->color('primary')
-                    ->visible(fn (Client $record): bool => auth()->user()->isAdmin() && $record->isBillableHere())
+                    ->visible(fn (Client $record): bool => auth()->user()->canManageFinance() && $record->isBillableHere())
                     ->modalHeading('Genera fattura del periodo')
                     ->modalSubmitActionLabel('Genera')
                     ->schema([

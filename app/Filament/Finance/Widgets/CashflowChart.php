@@ -23,7 +23,7 @@ class CashflowChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()->isAdmin();
+        return auth()->user()->canManageFinance();
     }
 
     protected function getType(): string

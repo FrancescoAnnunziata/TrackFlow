@@ -33,6 +33,7 @@ class UserForm
                     ->label('Ruolo')
                     ->options([
                         'admin' => 'Admin',
+                        'controller' => 'Controller',
                         'member' => 'Membro',
                         'client' => 'Cliente',
                     ])
