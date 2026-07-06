@@ -20,7 +20,7 @@ class ImportFicPassiveInvoices extends Command
 {
     protected $signature = 'fic:import-passive-invoices
         {--pages=20 : Numero massimo di pagine da scaricare per ciascun tipo}
-        {--types=expense,passive_invoice : Tipi di documento ricevuto da importare (CSV)}
+        {--types=expense,passive_credit_note : Tipi di documento ricevuto FIC da importare (CSV). Validi: expense (fatture d\'acquisto/spese), passive_credit_note (note di credito ricevute)}
         {--create-suppliers : Crea i fornitori mancanti dai dati anagrafici di FIC invece di saltare i documenti}';
 
     protected $description = 'Importa le fatture passive/spese da Fatture in Cloud (archivio costi, sola lettura).';
@@ -33,9 +33,13 @@ class ImportFicPassiveInvoices extends Command
         $types = array_filter(array_map('trim', explode(',', (string) $this->option('types'))));
         $imported = 0;
         $skipped = 0;
+        $typeErrors = [];
 
-        try {
-            foreach ($types as $type) {
+        // Ogni tipo è indipendente: se FIC rifiuta un tipo (es. non valido o non
+        // disponibile per l'azienda) lo segnaliamo e proseguiamo con gli altri,
+        // invece di abortire tutto l'import.
+        foreach ($types as $type) {
+            try {
                 for ($page = 1; $page <= $maxPages; $page++) {
                     $list = $fic->listReceivedDocuments($type, $page);
 
@@ -50,17 +54,21 @@ class ImportFicPassiveInvoices extends Command
                             : $skipped++;
                     }
                 }
+            } catch (FicException $e) {
+                $typeErrors[$type] = $e->getMessage();
+                $this->warn("Tipo '{$type}' saltato: {$e->getMessage()}");
             }
-        } catch (FicException $e) {
-            $this->error($e->getMessage());
-
-            return self::FAILURE;
         }
 
         $this->info("Importate/aggiornate: {$imported}. Saltate (fornitore non trovato): {$skipped}.");
 
         if ($skipped > 0 && ! $createSuppliers) {
             $this->line('Suggerimento: usa --create-suppliers per creare i fornitori mancanti dai dati FIC.');
+        }
+
+        // Falliamo solo se NESSUN tipo è stato scaricabile (tutti in errore).
+        if ($typeErrors !== [] && count($typeErrors) === count($types)) {
+            return self::FAILURE;
         }
 
         return self::SUCCESS;

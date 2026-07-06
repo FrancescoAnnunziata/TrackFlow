@@ -47,8 +47,8 @@ class ListPassiveInvoices extends ListRecords
                     ->required(),
                 TextInput::make('types')
                     ->label('Tipi di documento')
-                    ->default('expense,passive_invoice')
-                    ->helperText('Separati da virgola (es. expense, passive_invoice).')
+                    ->default('expense,passive_credit_note')
+                    ->helperText('Tipi FIC validi, separati da virgola: expense (fatture d\'acquisto), passive_credit_note (note di credito).')
                     ->required(),
                 Toggle::make('create_suppliers')
                     ->label('Crea i fornitori mancanti')
