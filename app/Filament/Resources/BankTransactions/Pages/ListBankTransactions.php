@@ -40,7 +40,7 @@ class ListBankTransactions extends ListRecords
             ->label('Importa CSV')
             ->icon(Heroicon::OutlinedArrowUpTray)
             ->color('gray')
-            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->visible(fn (): bool => auth()->user()->canManageFinance())
             ->modalHeading('Importa movimenti da CSV')
             ->modalSubmitActionLabel('Importa')
             ->schema([

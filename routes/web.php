@@ -60,10 +60,10 @@ Route::middleware('auth')->group(function () {
 
 // Fatture in Cloud — OAuth2 Authorization Code flow.
 // /fic/connect: avvia il consenso; /fic/callback: scambia il code coi token.
-// Solo admin: rispecchia il gate isAdmin() usato dal pannello.
+// Admin e controller: rispecchia il gate canManageFinance() usato dal pannello.
 Route::middleware('auth')->group(function () {
     Route::get('/fic/connect', function (Request $request) {
-        abort_unless($request->user()->isAdmin(), 403);
+        abort_unless($request->user()->canManageFinance(), 403);
 
         $state = Str::random(40);
         session()->put('fic_oauth_state', $state);
@@ -72,7 +72,7 @@ Route::middleware('auth')->group(function () {
     })->name('fic.connect');
 
     Route::get('/fic/callback', function (Request $request) {
-        abort_unless($request->user()->isAdmin(), 403);
+        abort_unless($request->user()->canManageFinance(), 403);
 
         $expectedState = session()->pull('fic_oauth_state');
 

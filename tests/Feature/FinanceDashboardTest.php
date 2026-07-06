@@ -55,12 +55,26 @@ it('renders each finance widget without error', function () {
     }
 });
 
-it('denies access to non-admins', function () {
-    $member = User::factory()->create(); // role member
-    $this->actingAs($member);
+it('grants finance access to admin and controller, denies member and client', function () {
+    $this->actingAs(User::factory()->create(['role' => 'member']));
     expect(ControlloFinanziario::canAccess())->toBeFalse();
 
-    $admin = User::factory()->admin()->create();
-    $this->actingAs($admin);
+    $this->actingAs(User::factory()->create(['role' => 'client']));
+    expect(ControlloFinanziario::canAccess())->toBeFalse();
+
+    $this->actingAs(User::factory()->create(['role' => 'controller']));
     expect(ControlloFinanziario::canAccess())->toBeTrue();
+
+    $this->actingAs(User::factory()->admin()->create());
+    expect(ControlloFinanziario::canAccess())->toBeTrue();
+});
+
+it('lets a controller view the finance resources', function () {
+    $this->actingAs(User::factory()->create(['role' => 'controller']));
+
+    expect(\App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource::canViewAny())->toBeTrue();
+    expect(\App\Filament\Resources\BankTransactions\BankTransactionResource::canViewAny())->toBeTrue();
+    expect(\App\Filament\Resources\Costi\CostoResource::canViewAny())->toBeTrue();
+    expect(\App\Filament\Resources\Invoices\InvoiceResource::canViewAny())->toBeTrue();
+    expect(\App\Filament\Resources\Clients\ClientResource::canViewAny())->toBeTrue();
 });

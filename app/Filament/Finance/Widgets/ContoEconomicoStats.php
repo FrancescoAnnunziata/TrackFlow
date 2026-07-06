@@ -25,7 +25,7 @@ class ContoEconomicoStats extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()->isAdmin();
+        return auth()->user()->canManageFinance();
     }
 
     protected function getStats(): array
