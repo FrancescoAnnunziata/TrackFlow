@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -69,6 +70,19 @@ class Invoice extends Model
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class)->orderBy('sort');
+    }
+
+    public function reconciliations(): MorphMany
+    {
+        return $this->morphMany(Reconciliation::class, 'reconcilable');
+    }
+
+    /**
+     * Quota già riconciliata con movimenti bancari.
+     */
+    public function reconciledAmount(): float
+    {
+        return round((float) $this->reconciliations()->sum('amount'), 2);
     }
 
     /**

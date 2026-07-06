@@ -44,6 +44,13 @@
                         </div>
                     </div>
                 </div>
+
+                <p class="text-gray-500 dark:text-gray-400">
+                    Per importare le fatture passive serve il permesso di lettura dei
+                    documenti ricevuti. Se hai appena aggiornato <code>FIC_SCOPES</code>,
+                    usa <strong>Riconnetti</strong> in alto per ri-autorizzare l'accesso
+                    con i nuovi permessi.
+                </p>
             </div>
         @else
             <div class="flex flex-col gap-3 text-sm">
