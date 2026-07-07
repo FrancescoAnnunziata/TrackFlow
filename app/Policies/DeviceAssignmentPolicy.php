@@ -19,7 +19,7 @@ class DeviceAssignmentPolicy
             return Response::allow();
         }
 
-        return (int) $assignment->client_id === (int) $user->client_id
+        return $user->belongsToClientId($assignment->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

@@ -36,10 +36,10 @@ class UsersTable
                         default => $state,
                     })
                     ->sortable(),
-                TextColumn::make('client.name')
-                    ->label('Cliente associato')
-                    ->placeholder('—')
-                    ->sortable(),
+                TextColumn::make('clients.name')
+                    ->label('Clienti associati')
+                    ->badge()
+                    ->placeholder('—'),
                 TextColumn::make('created_at')
                     ->label('Creato il')
                     ->dateTime()

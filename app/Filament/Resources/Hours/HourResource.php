@@ -55,7 +55,7 @@ class HourResource extends Resource
         }
 
         if ($user->isClient()) {
-            return $query->whereHas('clients', fn (Builder $q) => $q->whereKey($user->client_id));
+            return $query->whereHas('clients', fn (Builder $q) => $q->whereKey($user->allClientIds()));
         }
 
         return $query->where('user_id', $user->id);

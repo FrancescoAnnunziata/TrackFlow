@@ -114,6 +114,16 @@ class Client extends Model
     }
 
     /**
+     * Utenti associati a questo cliente tramite pivot (associazione
+     * molti-a-molti). Include, dopo il backfill, anche chi ha questo cliente
+     * come principale.
+     */
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'client_user')->withTimestamps();
+    }
+
+    /**
      * Utenti referente del cliente (ruolo client): destinatari delle
      * comunicazioni indirizzate al cliente (preventivi, solleciti, ...).
      */

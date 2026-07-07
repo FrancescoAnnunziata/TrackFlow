@@ -18,4 +18,12 @@ class EditUser extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function afterSave(): void
+    {
+        // Il cliente principale fa sempre parte delle associazioni pivot.
+        if ($this->record->client_id) {
+            $this->record->clients()->syncWithoutDetaching([$this->record->client_id]);
+        }
+    }
 }

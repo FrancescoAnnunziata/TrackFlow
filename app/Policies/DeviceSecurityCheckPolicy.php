@@ -19,7 +19,7 @@ class DeviceSecurityCheckPolicy
             return Response::allow();
         }
 
-        return (int) $check->client_id === (int) $user->client_id
+        return $user->belongsToClientId($check->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

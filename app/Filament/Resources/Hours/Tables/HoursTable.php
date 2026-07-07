@@ -71,7 +71,7 @@ class HoursTable
                         'name',
                         fn (Builder $query): Builder => $query->whereHas(
                             'hours.clients',
-                            fn (Builder $q): Builder => $q->whereKey(auth()->user()->client_id)
+                            fn (Builder $q): Builder => $q->whereKey(auth()->user()->allClientIds())
                         )
                     )
                     ->searchable()
@@ -89,7 +89,7 @@ class HoursTable
                         'invoices',
                         'number',
                         fn (Builder $query): Builder => auth()->user()->isClient()
-                            ? $query->where('client_id', auth()->user()->client_id)
+                            ? $query->whereIn('client_id', auth()->user()->allClientIds())
                             : $query
                     )
                     ->searchable()

@@ -24,7 +24,7 @@ class TicketCommentPolicy
             return Response::denyAsNotFound();
         }
 
-        return (int) $comment->client_id === (int) $user->client_id
+        return $user->belongsToClientId($comment->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

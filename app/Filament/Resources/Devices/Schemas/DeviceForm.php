@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class DeviceForm
@@ -53,7 +54,11 @@ class DeviceForm
                         Select::make('type')
                             ->label('Tipo')
                             ->placeholder('Seleziona un tipo')
-                            ->options(fn (): array => self::typeOptions())
+                            // Includo sempre il valore corrente tra le opzioni:
+                            // un tipo appena aggiunto non e' ancora nel DB, quindi
+                            // senza questo la validazione lo scarterebbe ("non
+                            // esiste") al salvataggio.
+                            ->options(fn (Get $get): array => self::typeOptions($get('type')))
                             ->searchable()
                             ->native(false)
                             // Consente di aggiungere un nuovo tipo al volo senza
@@ -141,11 +146,13 @@ class DeviceForm
     /**
      * Opzioni per il campo Tipo: set predefinito piu' i tipi gia' salvati sui
      * dispositivi, cosi' i valori esistenti restano selezionabili e nessuno
-     * viene perso quando si modifica un record.
+     * viene perso quando si modifica un record. Il parametro $current forza
+     * l'inclusione del valore correntemente selezionato (es. un tipo appena
+     * creato ma non ancora salvato nel DB).
      *
      * @return array<string, string>
      */
-    private static function typeOptions(): array
+    private static function typeOptions(?string $current = null): array
     {
         $base = ['Monitor', 'Notebook', 'Smartphone', 'Tablet'];
 
@@ -158,6 +165,7 @@ class DeviceForm
 
         return collect($base)
             ->merge($existing)
+            ->when(filled($current), fn ($types) => $types->push($current))
             ->unique()
             ->mapWithKeys(fn (string $type): array => [$type => $type])
             ->all();

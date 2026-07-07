@@ -42,16 +42,41 @@ class UserForm
                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                         if ($state !== 'client') {
                             $set('client_id', null);
+                            $set('clients', []);
                         }
                     }),
                 Select::make('client_id')
-                    ->label('Cliente associato')
+                    ->label('Cliente principale')
+                    ->helperText('Cliente predefinito usato alla creazione di nuovi record. Viene incluso automaticamente tra i clienti associati.')
                     ->relationship('client', 'name')
                     ->searchable()
                     ->preload()
+                    ->live()
                     ->visible(fn (Get $get): bool => $get('role') === 'client')
                     ->required(fn (Get $get): bool => $get('role') === 'client')
+                    // Il cliente principale fa sempre parte delle associazioni.
+                    ->afterStateUpdated(function (Set $set, Get $get, $state): void {
+                        if (! $state) {
+                            return;
+                        }
+
+                        $clients = collect($get('clients') ?? [])
+                            ->push($state)
+                            ->unique()
+                            ->values()
+                            ->all();
+
+                        $set('clients', $clients);
+                    })
                     ->createOptionForm(fn (Schema $schema): Schema => ClientForm::configure($schema)),
+                Select::make('clients')
+                    ->label('Clienti associati')
+                    ->helperText('L\'utente vedrà i dati di tutti i clienti selezionati.')
+                    ->relationship('clients', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (Get $get): bool => $get('role') === 'client'),
                 TextInput::make('password')
                     ->label('Password')
                     ->password()

@@ -20,18 +20,18 @@ class AssetStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $clientId = auth()->user()?->isClient() ? auth()->user()->client_id : null;
+        $clientIds = auth()->user()?->isClient() ? auth()->user()->allClientIds() : null;
 
-        $devices = fn (): Builder => $clientId
-            ? Device::query()->where('client_id', $clientId)
+        $devices = fn (): Builder => $clientIds !== null
+            ? Device::query()->whereIn('client_id', $clientIds)
             : Device::query();
 
-        $tickets = fn (): Builder => $clientId
-            ? SupportTicket::query()->where('client_id', $clientId)
+        $tickets = fn (): Builder => $clientIds !== null
+            ? SupportTicket::query()->whereIn('client_id', $clientIds)
             : SupportTicket::query();
 
-        $findings = fn (): Builder => $clientId
-            ? SecurityFinding::query()->where('client_id', $clientId)
+        $findings = fn (): Builder => $clientIds !== null
+            ? SecurityFinding::query()->whereIn('client_id', $clientIds)
             : SecurityFinding::query();
 
         $withoutRecentCheck = $devices()

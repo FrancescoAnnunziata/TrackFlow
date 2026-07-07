@@ -59,7 +59,7 @@ class DeviceResource extends Resource
         $user = auth()->user();
 
         if ($user && $user->isClient()) {
-            return $query->where('client_id', $user->client_id);
+            return $query->whereIn('client_id', $user->allClientIds());
         }
 
         return $query;

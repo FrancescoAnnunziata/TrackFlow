@@ -29,7 +29,7 @@ class DeviceExportController extends Controller
             ->orderBy('asset_code');
 
         if ($user->isClient()) {
-            $query->where('client_id', $user->client_id);
+            $query->whereIn('client_id', $user->allClientIds());
         }
 
         $tmpPath = tempnam(sys_get_temp_dir(), 'devices_').'.xlsx';

@@ -72,7 +72,7 @@ class AssetScan extends Page
         $user = auth()->user();
 
         if ($user && $user->isClient()) {
-            $query->where('client_id', $user->client_id);
+            $query->whereIn('client_id', $user->allClientIds());
         }
 
         return $query;

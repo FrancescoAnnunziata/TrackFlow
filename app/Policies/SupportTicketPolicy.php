@@ -19,7 +19,7 @@ class SupportTicketPolicy
             return Response::allow();
         }
 
-        return (int) $ticket->client_id === (int) $user->client_id
+        return $user->belongsToClientId($ticket->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

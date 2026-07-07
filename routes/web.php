@@ -34,7 +34,7 @@ Route::get('/q/{quote}/access', function (Request $request, Quote $quote) {
     $user = User::find($request->integer('user'));
 
     abort_unless(
-        $user && $user->isClient() && (int) $user->client_id === (int) $quote->client_id,
+        $user && $user->isClient() && $user->belongsToClientId($quote->client_id),
         403,
     );
 

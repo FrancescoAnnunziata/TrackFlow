@@ -19,7 +19,7 @@ class DevicePolicy
             return Response::allow();
         }
 
-        return (int) $device->client_id === (int) $user->client_id
+        return $user->belongsToClientId($device->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

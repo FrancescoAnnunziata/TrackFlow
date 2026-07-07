@@ -29,4 +29,21 @@ class CreateUser extends CreateRecord
 
         return $data;
     }
+
+    protected function afterCreate(): void
+    {
+        $this->syncPrimaryClientMembership();
+    }
+
+    /**
+     * Il cliente principale deve sempre far parte delle associazioni pivot,
+     * cosi' la visibilita' e le liste lato Cliente restano coerenti anche se
+     * non e' stato aggiunto esplicitamente tra i "Clienti associati".
+     */
+    private function syncPrimaryClientMembership(): void
+    {
+        if ($this->record->client_id) {
+            $this->record->clients()->syncWithoutDetaching([$this->record->client_id]);
+        }
+    }
 }

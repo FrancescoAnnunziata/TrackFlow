@@ -19,7 +19,7 @@ class DeviceMaintenancePolicy
             return Response::allow();
         }
 
-        return (int) $maintenance->client_id === (int) $user->client_id
+        return $user->belongsToClientId($maintenance->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }

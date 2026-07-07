@@ -19,7 +19,7 @@ class SecurityFindingPolicy
             return Response::allow();
         }
 
-        return (int) $finding->client_id === (int) $user->client_id
+        return $user->belongsToClientId($finding->client_id)
             ? Response::allow()
             : Response::denyAsNotFound();
     }
