@@ -88,4 +88,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return true;
     }
+
+    public function getFullNameAttribute(): string
+    {
+        return trim($this->name . ' ' . $this->surname);
+    }
 }

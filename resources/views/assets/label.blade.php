@@ -27,7 +27,11 @@
         .label {
             width: 89mm;
             height: 36mm;
-            padding: 2mm 3mm;
+            /* Gutter destro piu' ampio: le stampanti per etichette hanno un
+               bordo fisico non stampabile (~1.5-3mm). Con il QR a filo del bordo
+               destro quella striscia veniva tagliata. Il padding destro maggiore
+               tiene il QR dentro l'area stampabile. */
+            padding: 2mm 6mm 2mm 4mm;
             display: flex;
             align-items: center;
             gap: 3mm;
@@ -85,8 +89,8 @@
         }
 
         .label__qr img {
-            width: 18mm;
-            height: 18mm;
+            width: 16mm;
+            height: 16mm;
             display: block;
         }
 

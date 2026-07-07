@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Devices\Schemas;
 
 use App\Enums\DeviceCategory;
 use App\Enums\DeviceStatus;
+use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -95,7 +96,8 @@ class DeviceForm
                         Select::make('assigned_user_id')
                             ->label('Assegnato a')
                             ->relationship('assignedUser', 'name')
-                            ->searchable()
+                            ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->full_name)
+                            ->searchable(['name', 'surname'])
                             ->preload(),
                         DatePicker::make('next_maintenance_at')
                             ->label('Prossima manutenzione'),
