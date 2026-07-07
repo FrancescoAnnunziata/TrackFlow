@@ -23,7 +23,7 @@ class HoursTable
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')
+                TextColumn::make('user.email')
                     ->label('Operatore')
                     ->searchable()
                     ->sortable()
@@ -60,7 +60,13 @@ class HoursTable
             ->filters([
                 SelectFilter::make('user')
                     ->label('Utente')
-                    ->relationship('user', 'name')
+                    // Le ore possono essere registrate solo da admin o member:
+                    // il filtro elenca quindi solo questi ruoli, per email.
+                    ->relationship(
+                        'user',
+                        'email',
+                        fn (Builder $query): Builder => $query->whereIn('role', ['admin', 'member'])
+                    )
                     ->searchable()
                     ->preload()
                     ->visible(fn (): bool => auth()->user()->isAdmin()),
@@ -68,11 +74,13 @@ class HoursTable
                     ->label('Operatore')
                     ->relationship(
                         'user',
-                        'name',
-                        fn (Builder $query): Builder => $query->whereHas(
-                            'hours.clients',
-                            fn (Builder $q): Builder => $q->whereKey(auth()->user()->allClientIds())
-                        )
+                        'email',
+                        fn (Builder $query): Builder => $query
+                            ->whereIn('role', ['admin', 'member'])
+                            ->whereHas(
+                                'hours.clients',
+                                fn (Builder $q): Builder => $q->whereKey(auth()->user()->allClientIds())
+                            )
                     )
                     ->searchable()
                     ->preload()
