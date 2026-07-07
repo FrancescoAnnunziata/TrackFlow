@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Devices\Schemas;
 
 use App\Enums\DeviceCategory;
 use App\Enums\DeviceStatus;
+use App\Models\Device;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -49,9 +50,20 @@ class DeviceForm
                             ->options(DeviceCategory::class)
                             ->default(DeviceCategory::IT)
                             ->required(),
-                        TextInput::make('type')
+                        Select::make('type')
                             ->label('Tipo')
-                            ->placeholder('notebook, smartphone, monitor, printer, router...'),
+                            ->placeholder('Seleziona un tipo')
+                            ->options(fn (): array => self::typeOptions())
+                            ->searchable()
+                            ->native(false)
+                            // Consente di aggiungere un nuovo tipo al volo senza
+                            // toccare i valori gia' presenti sui dispositivi.
+                            ->createOptionForm([
+                                TextInput::make('type')
+                                    ->label('Nuovo tipo')
+                                    ->required(),
+                            ])
+                            ->createOptionUsing(fn (array $data): string => $data['type']),
                     ]),
 
                 Section::make('Hardware')
@@ -124,5 +136,30 @@ class DeviceForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * Opzioni per il campo Tipo: set predefinito piu' i tipi gia' salvati sui
+     * dispositivi, cosi' i valori esistenti restano selezionabili e nessuno
+     * viene perso quando si modifica un record.
+     *
+     * @return array<string, string>
+     */
+    private static function typeOptions(): array
+    {
+        $base = ['Monitor', 'Notebook', 'Smartphone', 'Tablet'];
+
+        $existing = Device::query()
+            ->whereNotNull('type')
+            ->distinct()
+            ->orderBy('type')
+            ->pluck('type')
+            ->all();
+
+        return collect($base)
+            ->merge($existing)
+            ->unique()
+            ->mapWithKeys(fn (string $type): array => [$type => $type])
+            ->all();
     }
 }
