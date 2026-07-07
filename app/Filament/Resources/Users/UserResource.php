@@ -45,7 +45,9 @@ class UserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->isAdmin();
+        // Admin e member possono vedere gli utenti (sola lettura per i member;
+        // creazione/modifica/eliminazione restano ai soli admin via policy).
+        return ! auth()->user()->isClient();
     }
 
     public static function getRelations(): array

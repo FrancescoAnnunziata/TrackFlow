@@ -30,7 +30,7 @@ class QuoteDecidedNotification extends Notification
         $issuer = $this->quote->user;
         $isIssuer = $notifiable->getKey() === $issuer->getKey();
 
-        $mail = (new MailMessage)->from(config('mail.from.address'), 'g8labs')
+        $mail = (new MailMessage)
             ->subject("Preventivo {$this->quote->number} {$word}")
             ->greeting("Ciao {$notifiable->name},");
 

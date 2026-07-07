@@ -21,7 +21,6 @@ class LogHoursReminderNotification extends Notification
     {
         /** @var User $notifiable */
         return (new MailMessage)
-            ->from(config('mail.from.address'), 'g8labs')
             ->subject('Promemoria: segna le ore di oggi')
             ->greeting("Ciao {$notifiable->name},")
             ->line('Questo è il promemoria giornaliero per registrare le ore lavorate oggi.')

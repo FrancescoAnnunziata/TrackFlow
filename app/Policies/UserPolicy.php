@@ -9,12 +9,13 @@ class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        // Admin e member possono vedere gli utenti; i clienti no.
+        return ! $user->isClient();
     }
 
     public function view(User $user, User $model): bool
     {
-        return $user->isAdmin();
+        return ! $user->isClient();
     }
 
     public function create(User $user): bool
