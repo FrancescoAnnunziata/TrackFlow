@@ -31,7 +31,7 @@ class DeviceInfolist
                 Section::make('Assegnazione')
                     ->columns(3)
                     ->components([
-                        TextEntry::make('assignedUser.name')->label('Assegnatario corrente')->placeholder('Non assegnato'),
+                        TextEntry::make('assignedUser.full_name')->label('Assegnatario corrente')->placeholder('Non assegnato'),
                     ]),
 
                 Section::make('Acquisto e garanzia')
