@@ -35,6 +35,8 @@ class AppPanelProvider extends PanelProvider
             ->path('/')
             ->brandName('TrackFlow')
             ->brandLogo(new HtmlString('<div style="display:flex;align-items:center;gap:0.5rem;"><img src="' . asset('images/LogoBlack.png') . '" alt="TrackFlow" style="height:2rem;"><span style="font-weight:700;font-size:1.25rem;">TrackFlow</span></div>'))
+            // Icona della tab del browser: logo dell'app.
+            ->favicon(asset('images/LogoBlack.png'))
             ->login(Login::class)
             ->colors([
                 'primary' => Color::Amber,
