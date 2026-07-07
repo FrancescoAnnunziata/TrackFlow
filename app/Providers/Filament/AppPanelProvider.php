@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\ChangePassword;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\Auth\NotificationPreferences;
 use App\Http\Middleware\MustChangePassword;
 use App\Support\Impersonation;
 use Filament\Actions\Action;
@@ -48,6 +49,11 @@ class AppPanelProvider extends PanelProvider
                     ->label('Cambia password')
                     ->icon('heroicon-o-key')
                     ->url(fn (): string => ChangePassword::getUrl()),
+                Action::make('notificationPreferences')
+                    ->label('Preferenze notifiche')
+                    ->icon('heroicon-o-bell')
+                    ->visible(fn (): bool => ! auth()->user()?->isClient())
+                    ->url(fn (): string => NotificationPreferences::getUrl()),
             ])
             ->colors([
                 'primary' => Color::Amber,

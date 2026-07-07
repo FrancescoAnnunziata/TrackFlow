@@ -37,6 +37,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'must_change_password',
+        'hours_reminder_opt_in',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'hours_reminder_opt_in' => 'boolean',
         ];
     }
 

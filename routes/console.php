@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Solleciti preventivi inviati e non ancora accettati/rifiutati (a 5 e 10 giorni).
 Schedule::command('quotes:send-reminders')->dailyAt('09:00')->timezone('Europe/Rome');
+
+// Promemoria giornaliero "segna le ore" agli admin/member che lo hanno attivato.
+Schedule::command('hours:send-reminders')->weekdays()->at('18:00')->timezone('Europe/Rome');
