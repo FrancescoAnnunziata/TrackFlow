@@ -24,10 +24,8 @@ class ChangePassword extends Page
 
     public function mount(): void
     {
-        if (! auth()->user()?->must_change_password) {
-            redirect()->to(filament()->getUrl());
-        }
-
+        // Accessibile sia nel cambio forzato (must_change_password) sia in modo
+        // volontario dal menu utente.
         $this->form->fill();
     }
 
@@ -35,6 +33,17 @@ class ChangePassword extends Page
     {
         return $schema
             ->components([
+                // Nel cambio volontario chiediamo la password attuale per
+                // verificare l'identita'. Nel cambio forzato (l'utente ha appena
+                // fatto login con una password temporanea) il campo e' superfluo.
+                TextInput::make('currentPassword')
+                    ->label('Password attuale')
+                    ->password()
+                    ->revealable()
+                    ->currentPassword()
+                    ->visible(fn (): bool => ! auth()->user()?->must_change_password)
+                    ->required(fn (): bool => ! auth()->user()?->must_change_password)
+                    ->dehydrated(false),
                 TextInput::make('password')
                     ->label('Nuova Password')
                     ->password()

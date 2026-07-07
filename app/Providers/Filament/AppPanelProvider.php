@@ -2,9 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\ChangePassword;
 use App\Filament\Pages\Auth\Login;
 use App\Http\Middleware\MustChangePassword;
 use App\Support\Impersonation;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,6 +40,15 @@ class AppPanelProvider extends PanelProvider
             // Icona della tab del browser: logo dell'app.
             ->favicon(asset('images/LogoBlack.png'))
             ->login(Login::class)
+            // Reset password dalla schermata di login ("Password dimenticata?").
+            ->passwordReset()
+            // Voce nel menu utente per cambiare password dall'app.
+            ->userMenuItems([
+                Action::make('changePassword')
+                    ->label('Cambia password')
+                    ->icon('heroicon-o-key')
+                    ->url(fn (): string => ChangePassword::getUrl()),
+            ])
             ->colors([
                 'primary' => Color::Amber,
             ])
