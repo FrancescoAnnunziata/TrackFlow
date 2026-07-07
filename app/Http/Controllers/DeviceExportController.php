@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -32,9 +34,26 @@ class DeviceExportController extends Controller
 
         $tmpPath = tempnam(sys_get_temp_dir(), 'devices_').'.xlsx';
 
-        $writer = new Writer();
+        // Larghezza colonne (in caratteri) dimensionata sul contenuto tipico,
+        // così le celle non stringono/troncano i valori piu' lunghi.
+        $options = new Options();
+        $options->setColumnWidth(18, 1); // Codice
+        $options->setColumnWidth(16, 2); // Tipo
+        $options->setColumnWidth(34, 3); // Modello
+        $options->setColumnWidth(22, 4); // Numero seriale
+        $options->setColumnWidth(26, 5); // Assegnato a
+
+        $writer = new Writer($options);
         $writer->openToFile($tmpPath);
-        $writer->addRow(Row::fromValues(['Codice', 'Tipo', 'Modello', 'Numero seriale', 'Assegnato a']));
+
+        $headerStyle = (new Style())
+            ->setFontBold()
+            ->setBackgroundColor('EFEFEF');
+
+        $writer->addRow(Row::fromValues(
+            ['Codice', 'Tipo', 'Modello', 'Numero seriale', 'Assegnato a'],
+            $headerStyle,
+        ));
 
         $query->chunk(500, function ($devices) use ($writer): void {
             foreach ($devices as $device) {
