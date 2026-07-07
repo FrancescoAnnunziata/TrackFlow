@@ -7,6 +7,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -39,6 +40,10 @@ class ExpenseForm
                     ->required()
                     ->prefix('EUR')
                     ->step(0.01),
+                Toggle::make('paid_with_personal_card')
+                    ->label('Pagato con carta personale')
+                    ->helperText('Di default le spese si intendono pagate con carta aziendale. Attivando questa opzione la spesa genera automaticamente un rimborso.')
+                    ->default(false),
                 FileUpload::make('attachaments')
                     ->label('Allegati')
                     ->helperText('Foto (JPEG/PNG/HEIC) oppure PDF. Le immagini vengono ridotte a max 1920px.')
