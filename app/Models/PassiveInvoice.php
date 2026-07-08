@@ -28,6 +28,7 @@ class PassiveInvoice extends Model
         'amount_net',
         'amount_vat',
         'amount_gross',
+        'currency',
         'category',
         'payment_status',
         'imported',

@@ -96,9 +96,12 @@ class FattureEstere extends Page implements HasForms
                                 Select::make('category')->label('Conto')
                                     ->options(fn (): array => collect(ForeignInvoiceExtractor::conti())->mapWithKeys(fn ($c) => [$c => $c])->all())
                                     ->searchable(),
-                                TextInput::make('amount_net')->label('Imponibile')->numeric()->prefix('EUR')->required(),
-                                TextInput::make('amount_vat')->label('IVA')->numeric()->prefix('EUR')->default(0)->required(),
-                                TextInput::make('amount_gross')->label('Totale')->numeric()->prefix('EUR')->required(),
+                                Select::make('currency')->label('Valuta')
+                                    ->options(['EUR' => 'EUR', 'USD' => 'USD', 'GBP' => 'GBP', 'CHF' => 'CHF'])
+                                    ->default('EUR')->required(),
+                                TextInput::make('amount_net')->label('Imponibile')->numeric()->required(),
+                                TextInput::make('amount_vat')->label('IVA')->numeric()->default(0)->required(),
+                                TextInput::make('amount_gross')->label('Totale')->numeric()->required(),
                             ]),
                     ]),
             ])
@@ -154,6 +157,7 @@ class FattureEstere extends Page implements HasForms
                     'number' => $d['number'],
                     'document_date' => $d['document_date'],
                     'category' => $d['category'],
+                    'currency' => $d['currency'],
                     'amount_net' => $d['amount_net'],
                     'amount_vat' => $d['amount_vat'],
                     'amount_gross' => $d['amount_gross'],
@@ -203,6 +207,7 @@ class FattureEstere extends Page implements HasForms
                 'amount_net' => $net,
                 'amount_vat' => $vat,
                 'amount_gross' => $gross > 0 ? $gross : round($net + $vat, 2),
+                'currency' => $row['currency'] ?? 'EUR',
                 'category' => $row['category'],
                 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
                 'imported' => false,

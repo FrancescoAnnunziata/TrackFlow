@@ -46,6 +46,11 @@ class PassiveInvoiceForm
                 Section::make('Importi')
                     ->columns(3)
                     ->components([
+                        Select::make('currency')
+                            ->label('Valuta')
+                            ->options(['EUR' => 'EUR', 'USD' => 'USD', 'GBP' => 'GBP', 'CHF' => 'CHF'])
+                            ->default('EUR')
+                            ->required(),
                         TextInput::make('amount_net')
                             ->label('Imponibile')
                             ->numeric()
