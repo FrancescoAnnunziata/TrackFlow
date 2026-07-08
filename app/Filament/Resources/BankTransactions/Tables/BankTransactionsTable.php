@@ -103,6 +103,7 @@ class BankTransactionsTable
             ->defaultSort('booked_at', 'desc')
             ->recordActions([
                 self::reconcileAction(),
+                self::markAsCostoAction(),
                 self::unreconcileAction(),
                 EditAction::make(),
             ])
@@ -193,6 +194,73 @@ class BankTransactionsTable
     }
 
     /**
+     * Scorciatoia per le uscite senza documento: crea un Costo dai dati del
+     * movimento e lo riconcilia in un colpo solo. Serve nella revisione uno-per-
+     * uno dei movimenti (commissioni, imposte, bolli...).
+     */
+    private static function markAsCostoAction(): Action
+    {
+        return Action::make('segnaCosto')
+            ->label('Segna come costo')
+            ->icon(Heroicon::OutlinedReceiptPercent)
+            ->color('warning')
+            ->visible(fn (BankTransaction $record): bool => $record->direction === BankTransaction::DIRECTION_OUT
+                && $record->unreconciledAmount() > 0.01)
+            ->fillForm(fn (BankTransaction $record): array => [
+                'description' => str($record->description ?: 'Costo')->limit(80)->value(),
+                'amount' => $record->unreconciledAmount(),
+            ])
+            ->schema([
+                TextInput::make('description')
+                    ->label('Descrizione')
+                    ->required(),
+                Select::make('category')
+                    ->label('Conto')
+                    ->options(fn (): array => self::contoOptions())
+                    ->searchable(),
+                Select::make('supplier_id')
+                    ->label('Fornitore')
+                    ->relationship('supplier', 'name')
+                    ->searchable()
+                    ->preload(),
+                TextInput::make('amount')
+                    ->label('Importo')
+                    ->numeric()
+                    ->prefix('EUR')
+                    ->step(0.01)
+                    ->required(),
+            ])
+            ->action(function (array $data, BankTransaction $record): void {
+                $costo = Costo::create([
+                    'date' => $record->booked_at,
+                    'description' => $data['description'],
+                    'category' => $data['category'] ?? null,
+                    'supplier_id' => $data['supplier_id'] ?? null,
+                    'amount' => (float) $data['amount'],
+                    'vat_amount' => 0,
+                    'bank_transaction_id' => $record->id,
+                ]);
+
+                app(ReconciliationService::class)->attach($record, $costo, (float) $data['amount']);
+
+                Notification::make()->success()->title('Costo creato e riconciliato')->send();
+            });
+    }
+
+    /**
+     * Conti già usati (categorie di Fatture in Cloud) su costi e fatture passive,
+     * per suggerirli quando si crea un costo dal movimento.
+     *
+     * @return array<string, string>
+     */
+    private static function contoOptions(): array
+    {
+        return Costo::query()->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')
+            ->merge(PassiveInvoice::query()->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category'))
+            ->unique()->sort()->mapWithKeys(fn (string $c): array => [$c => $c])->all();
+    }
+
+    /**
      * Rimuove tutte le riconciliazioni del movimento.
      */
     private static function unreconcileAction(): Action
@@ -228,7 +296,7 @@ class BankTransactionsTable
             'costo' => Costo::latest('date')->limit(100)->get()
                 ->mapWithKeys(fn (Costo $c): array => [$c->id => sprintf('%s (€%s)', $c->description, number_format($c->total(), 2, ',', '.'))])
                 ->all(),
-            'expense' => Expense::with(['supplier', 'client'])->latest('date')->limit(100)->get()
+            'expense' => Expense::with(['supplier', 'client'])->whereNull('passive_invoice_id')->latest('date')->limit(100)->get()
                 ->mapWithKeys(fn (Expense $e): array => [$e->id => sprintf(
                     '%s — %s (€%s)',
                     optional($e->date)->format('d/m/Y') ?? '',

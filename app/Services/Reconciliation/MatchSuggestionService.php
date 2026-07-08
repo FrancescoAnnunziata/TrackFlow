@@ -100,9 +100,14 @@ class MatchSuggestionService
             ]);
 
         // Le spese (scontrini) sono documenti di costo riconciliabili: entrano
-        // fra i candidati solo se non ancora coperte da riconciliazioni.
+        // fra i candidati solo se non ancora coperte da riconciliazioni. Le spese
+        // già collegate a una fattura passiva sono escluse: rappresentano lo
+        // stesso costo, che si riconcilia sulla fattura passiva (evita il doppio
+        // conteggio); la catena verso il riaddebito resta comunque tracciata dal
+        // link spesa→passiva.
         $expenses = Expense::with(['supplier', 'client'])
             ->withSum('reconciliations', 'amount')
+            ->whereNull('passive_invoice_id')
             ->whereBetween('date', [$from, $to])
             ->limit(200)
             ->get()
