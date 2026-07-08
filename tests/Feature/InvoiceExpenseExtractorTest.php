@@ -7,6 +7,7 @@ use App\Models\InvoiceItem;
 use App\Models\User;
 use App\Services\Billing\InvoiceExpenseExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -105,6 +106,29 @@ it('uses invoice notes for the detail when the line points to them', function ()
 
     expect($proposal['expenses'])->toHaveCount(2);
     expect(round(collect($proposal['expenses'])->sum('amount'), 2))->toBe(284.60);
+});
+
+it('rolls back only the expenses it created, leaving others intact', function () {
+    $user = User::factory()->admin()->create();
+    $client = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id, 'number' => 'X1',
+        'issue_date' => '2026-05-01', 'period_from' => '2026-05-01', 'period_to' => '2026-05-01',
+        'vat_rate' => 22, 'status' => 'sent',
+    ]);
+
+    // Spesa creata dal comando (nota col prefisso) + link alla fattura.
+    $historic = Expense::create(['user_id' => $user->id, 'client_id' => $client->id, 'date' => '2026-05-01', 'amount' => 50, 'notes' => 'Riaddebito da fattura X1 — Trenitalia']);
+    $historic->invoices()->attach($invoice->id);
+
+    // Spesa "vera" da preservare.
+    $kept = Expense::create(['user_id' => $user->id, 'client_id' => $client->id, 'date' => '2026-05-02', 'amount' => 20, 'notes' => null]);
+
+    $this->artisan('expenses:from-invoices', ['--rollback' => true])->assertSuccessful();
+
+    expect(Expense::find($historic->id))->toBeNull();
+    expect(Expense::find($kept->id))->not->toBeNull();
+    expect(DB::table('expense_invoice')->where('expense_id', $historic->id)->exists())->toBeFalse();
 });
 
 it('skips invoices that already have linked expenses and non-FiC clients', function () {

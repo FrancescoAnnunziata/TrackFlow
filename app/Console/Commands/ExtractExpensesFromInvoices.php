@@ -20,12 +20,20 @@ use Illuminate\Support\Facades\DB;
 class ExtractExpensesFromInvoices extends Command
 {
     protected $signature = 'expenses:from-invoices
-        {--apply : Crea davvero le spese (senza questo flag è solo un\'anteprima)}';
+        {--apply : Crea davvero le spese (senza questo flag è solo un\'anteprima)}
+        {--rollback : Elimina le spese create da questo comando (identificate dalla nota "Riaddebito da fattura…")}';
 
     protected $description = 'Recupera le spese riaddebitate dalle fatture attive storiche e le crea come Expense.';
 
+    /** Prefisso della nota con cui il comando marca le spese che crea. */
+    private const NOTE_PREFIX = 'Riaddebito da fattura';
+
     public function handle(InvoiceExpenseExtractor $extractor): int
     {
+        if ($this->option('rollback')) {
+            return $this->rollback();
+        }
+
         $userId = User::where('role', 'admin')->value('id') ?? User::query()->value('id');
 
         if ($userId === null) {
@@ -92,6 +100,36 @@ class ExtractExpensesFromInvoices extends Command
         if (! $apply) {
             $this->line('Legenda: "·" voce scomposta, "=" importo unico di riga. Rilancia con --apply per creare.');
         }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Elimina le spese create da questo comando (marcate dalla nota
+     * "Riaddebito da fattura…"), scollegandole prima dalle fatture. Utile quando
+     * i costi sono poi coperti dalle fatture passive importate.
+     */
+    private function rollback(): int
+    {
+        $expenses = Expense::where('notes', 'like', self::NOTE_PREFIX.'%')->get();
+
+        if ($expenses->isEmpty()) {
+            $this->info('Nessuna spesa da rimuovere.');
+
+            return self::SUCCESS;
+        }
+
+        $count = $expenses->count();
+        $total = round($expenses->sum('amount'), 2);
+
+        DB::transaction(function () use ($expenses): void {
+            foreach ($expenses as $expense) {
+                $expense->invoices()->detach();
+                $expense->delete();
+            }
+        });
+
+        $this->info(sprintf('Rimosse %d spese storiche (totale € %s).', $count, number_format($total, 2, ',', '.')));
 
         return self::SUCCESS;
     }
