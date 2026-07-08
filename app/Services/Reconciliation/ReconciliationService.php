@@ -79,7 +79,11 @@ class ReconciliationService
             return;
         }
 
-        $covered = $document->reconciledAmount() + self::EPSILON >= $document->total();
+        // Tolleranza di copertura: oltre agli arrotondamenti, ammette un piccolo
+        // scarto (max €1 o 2% del totale) per gli addebiti in valuta estera, dove
+        // il cambio fa pagare qualche centesimo in meno del documento.
+        $tolerance = max(self::EPSILON, min(1.0, $document->total() * 0.02));
+        $covered = $document->reconciledAmount() + $tolerance >= $document->total();
 
         if ($document instanceof Invoice) {
             if ($covered) {

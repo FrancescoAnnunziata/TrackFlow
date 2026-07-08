@@ -97,15 +97,17 @@ class BankCsvImporter
             $reference = trim((string) $this->cell($row, $idx['reference'] ?? null));
             $valueDate = $this->parseDate($this->cell($row, $idx['value_date'] ?? null), (string) ($options['date_format'] ?? 'd/m/Y'));
 
-            if ($reference !== '') {
-                // ID transazione univoco: dedup diretto.
-                $dedupHash = sha1($reference);
-            } else {
-                $base = $bookedAt->format('Y-m-d').'|'.number_format($amount, 2, '.', '').'|'
-                    .($valueDate?->format('Y-m-d') ?? '').'|'.mb_strtolower($description);
-                $occurrences[$base] = ($occurrences[$base] ?? 0) + 1;
-                $dedupHash = sha1($base.'#'.$occurrences[$base]);
-            }
+            // Dedup sempre content-based (data|importo|data valuta|descrizione) +
+            // contatore di occorrenza, così un re-import dello stesso estratto (o di
+            // uno più ampio che lo contiene) non duplica, a prescindere da come sono
+            // mappate le colonne. Il contatore preserva i movimenti realmente
+            // identici (stesso giorno, importo e descrizione). Il `reference`, se
+            // presente, resta salvato ma NON entra nell'hash (era la causa dei
+            // duplicati: mappato in un import e non nell'altro).
+            $base = $bookedAt->format('Y-m-d').'|'.number_format($amount, 2, '.', '').'|'
+                .($valueDate?->format('Y-m-d') ?? '').'|'.mb_strtolower($description);
+            $occurrences[$base] = ($occurrences[$base] ?? 0) + 1;
+            $dedupHash = sha1($base.'#'.$occurrences[$base]);
 
             $transaction = BankTransaction::firstOrCreate(
                 [

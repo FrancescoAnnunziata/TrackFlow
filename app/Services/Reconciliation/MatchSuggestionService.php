@@ -10,6 +10,7 @@ use App\Models\PassiveInvoice;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Propone i documenti candidati alla riconciliazione di un movimento bancario,
@@ -164,5 +165,68 @@ class MatchSuggestionService
         }
 
         return min(100, $score);
+    }
+
+    /** Finestra (giorni) per il match fuzzy: il pagamento è a pochi giorni dalla fattura. */
+    private const FUZZY_DAYS = 7;
+
+    /**
+     * Candidati "fuzzy" per un'uscita: fatture passive non pagate il cui nome
+     * fornitore compare nella descrizione del movimento, entro ±7 giorni, con
+     * importo entro ~1,5% (o €1). Serve per gli addebiti in valuta estera (es.
+     * AWS), dove il cambio sfasa i centesimi e il match esatto fallisce. Il nome
+     * nella descrizione è obbligatorio: evita falsi positivi da soli importi.
+     *
+     * @return Collection<int, array{model: PassiveInvoice, diff: float}>
+     */
+    public function fuzzyPassiveMatches(BankTransaction $transaction): Collection
+    {
+        if ($transaction->amount >= 0) {
+            return collect();
+        }
+
+        $amount = abs((float) $transaction->amount);
+        $tolerance = max(1.0, $amount * 0.015);
+        $haystack = Str::lower((string) ($transaction->counterparty ?? '').' '.($transaction->description ?? ''));
+
+        $from = $transaction->booked_at->copy()->subDays(self::FUZZY_DAYS);
+        $to = $transaction->booked_at->copy()->addDays(self::FUZZY_DAYS);
+
+        return PassiveInvoice::with('supplier')
+            ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+            ->whereBetween('document_date', [$from, $to])
+            ->get()
+            ->filter(function (PassiveInvoice $p) use ($amount, $tolerance, $haystack): bool {
+                if (abs((float) $p->amount_gross - $amount) > $tolerance) {
+                    return false;
+                }
+
+                return $this->nameInHaystack((string) ($p->supplier->name ?? ''), $haystack);
+            })
+            ->map(fn (PassiveInvoice $p): array => [
+                'model' => $p,
+                'diff' => round(abs((float) $p->amount_gross - $amount), 2),
+            ])
+            ->sortBy('diff')
+            ->values();
+    }
+
+    /**
+     * True se almeno un token "significativo" (≥4 caratteri) del nome fornitore
+     * compare nel testo del movimento.
+     */
+    private function nameInHaystack(string $name, string $haystack): bool
+    {
+        if ($haystack === '' || trim($name) === '') {
+            return false;
+        }
+
+        foreach (preg_split('/\s+/', Str::lower($name)) as $token) {
+            if (mb_strlen($token) >= 4 && str_contains($haystack, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -2,12 +2,19 @@
 
 namespace App\Filament\Resources\PassiveInvoices\Tables;
 
+use App\Models\BankTransaction;
+use App\Models\PassiveInvoice;
+use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -86,6 +93,7 @@ class PassiveInvoicesTable
             ])
             ->defaultSort('document_date', 'desc')
             ->recordActions([
+                self::reconcileAction(),
                 ViewAction::make(),
                 EditAction::make(),
             ])
@@ -94,5 +102,97 @@ class PassiveInvoicesTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Segna la fattura come pagata scegliendo il/i movimento/i bancario/i che la
+     * coprono, da un elenco pre-filtrato (±45 giorni, importo ±50%). Multiselect
+     * per i pagamenti spezzati (una fattura coperta da più movimenti).
+     */
+    private static function reconcileAction(): Action
+    {
+        return Action::make('riconcilia')
+            ->label('Segna pagata')
+            ->icon(Heroicon::OutlinedBanknotes)
+            ->color('success')
+            ->visible(fn (PassiveInvoice $record): bool => ! $record->isPaid())
+            ->schema([
+                Select::make('transactions')
+                    ->label('Movimenti bancari')
+                    ->helperText('Uscite non ancora allocate, entro ±45 giorni dalla data documento e con importo entro ±50% del totale. Selezionane più di uno se la fattura è stata pagata a rate.')
+                    ->multiple()
+                    ->options(fn (PassiveInvoice $record): array => self::candidateTransactions($record))
+                    ->searchable()
+                    ->required(),
+            ])
+            ->action(function (array $data, PassiveInvoice $record): void {
+                $service = app(ReconciliationService::class);
+                $remaining = round($record->total() - $record->reconciledAmount(), 2);
+                $allocated = 0.0;
+
+                foreach ($data['transactions'] ?? [] as $txId) {
+                    if ($remaining <= 0.01) {
+                        break;
+                    }
+
+                    $tx = BankTransaction::find($txId);
+                    if ($tx === null) {
+                        continue;
+                    }
+
+                    // Alloca al massimo la quota residua della fattura (gestisce sia
+                    // lo spezzato sia il movimento cumulativo, di cui prende solo la parte).
+                    $alloc = round(min($tx->unreconciledAmount(), $remaining), 2);
+                    if ($alloc <= 0.01) {
+                        continue;
+                    }
+
+                    $service->attach($tx, $record, $alloc);
+                    $remaining = round($remaining - $alloc, 2);
+                    $allocated += $alloc;
+                }
+
+                if ($allocated <= 0.01) {
+                    Notification::make()->warning()->title('Nessun importo allocato')->send();
+
+                    return;
+                }
+
+                Notification::make()->success()
+                    ->title($record->fresh()->isPaid() ? 'Fattura segnata pagata' : 'Riconciliazione parziale registrata')
+                    ->send();
+            });
+    }
+
+    /**
+     * Movimenti candidati per una fattura passiva: uscite con quota ancora da
+     * allocare, entro ±45 giorni dalla data documento e importo entro ±50% del
+     * totale della fattura. Ordinati per vicinanza d'importo.
+     *
+     * @return array<int, string>
+     */
+    private static function candidateTransactions(PassiveInvoice $record): array
+    {
+        $total = (float) $record->amount_gross;
+        $from = $record->document_date->copy()->subDays(45);
+        $to = $record->document_date->copy()->addDays(45);
+
+        return BankTransaction::query()
+            ->where('amount', '<', 0)
+            ->whereBetween('booked_at', [$from, $to])
+            ->whereRaw('ABS(amount) BETWEEN ? AND ?', [$total * 0.5, $total * 1.5])
+            ->orderBy('booked_at')
+            ->get()
+            ->filter(fn (BankTransaction $tx): bool => $tx->unreconciledAmount() > 0.01)
+            ->sortBy(fn (BankTransaction $tx): float => abs(abs((float) $tx->amount) - $total))
+            ->mapWithKeys(fn (BankTransaction $tx): array => [
+                $tx->id => sprintf(
+                    '%s — €%s — %s',
+                    optional($tx->booked_at)->format('d/m/Y') ?? '',
+                    number_format($tx->unreconciledAmount(), 2, ',', '.'),
+                    str($tx->description ?: ($tx->counterparty ?? ''))->limit(45)->value(),
+                ),
+            ])
+            ->all();
     }
 }

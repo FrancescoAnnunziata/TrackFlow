@@ -56,6 +56,33 @@ it('still suggests a standalone expense (no passive) for an outflow', function (
     expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeTrue();
 });
 
+it('fuzzy-matches a foreign-currency outflow to the passive by name and near amount', function () {
+    $supplier = Supplier::create(['name' => 'Amazon Web Services EMEA SARL']);
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+
+    // Fattura 48,31 in USD; l'addebito in EUR è 48,43 due giorni dopo.
+    $passive = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'AWS-1', 'document_date' => '2026-03-01',
+        'amount_net' => 48.31, 'amount_vat' => 0, 'amount_gross' => 48.31,
+        'category' => 'Software e abbonamenti cloud', 'payment_status' => 'not_paid',
+    ]);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-03-03',
+        'amount' => -48.43, 'description' => 'PAGAMENTO POS aws.amazon.co AWS EMEA', 'dedup_hash' => 'aws1',
+    ]);
+
+    // Senza --fuzzy non deve agganciare (importo non esatto).
+    test()->artisan('finance:auto-reconcile')->assertSuccessful();
+    expect($tx->fresh()->reconciled)->toBeFalse();
+
+    // Con --fuzzy: nome "amazon" nella descrizione + importo entro tolleranza.
+    test()->artisan('finance:auto-reconcile', ['--fuzzy' => true])->assertSuccessful();
+
+    expect($tx->fresh()->reconciled)->toBeTrue();
+    // Copertura tollerante: pagato 48,43 per una fattura da 48,31 → pagata.
+    expect($passive->fresh()->payment_status)->toBe('paid');
+});
+
 it('creates a costo from an outflow and reconciles it (behaviour behind the UI action)', function () {
     $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
     $tx = BankTransaction::create([

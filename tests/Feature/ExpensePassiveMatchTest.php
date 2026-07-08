@@ -37,6 +37,34 @@ it('auto-links an expense to the exact passive invoice and inherits conto and su
     expect($expense->conto)->toBe('Trasferte');
 });
 
+it('auto-links within a 5-day window when the passive date differs slightly', function () {
+    $user = User::factory()->admin()->create();
+    $supplier = Supplier::create(['name' => 'Trenitalia S.p.A.']);
+    // Fattura passiva datata 3 giorni dopo l'acquisto (spesa il 9, fattura il 12).
+    $passive = passiveInvoice([
+        'supplier_id' => $supplier->id, 'number' => 'FP-9', 'document_date' => '2026-07-12',
+        'amount_net' => 90, 'amount_vat' => 9, 'amount_gross' => 99, 'category' => 'Trasferte',
+    ]);
+    $expense = Expense::create(['user_id' => $user->id, 'date' => '2026-07-09', 'amount' => 99]);
+
+    expect(app(ExpensePassiveMatcher::class)->autoLinkExact())->toBe(1);
+    expect($expense->fresh()->passive_invoice_id)->toBe($passive->id);
+    expect($expense->fresh()->conto)->toBe('Trasferte');
+});
+
+it('does not auto-link when the passive is outside the 5-day window', function () {
+    $user = User::factory()->admin()->create();
+    $supplier = Supplier::create(['name' => 'Trenitalia S.p.A.']);
+    passiveInvoice([
+        'supplier_id' => $supplier->id, 'number' => 'FP-far', 'document_date' => '2026-07-20',
+        'amount_gross' => 99, 'category' => 'Trasferte',
+    ]);
+    $expense = Expense::create(['user_id' => $user->id, 'date' => '2026-07-09', 'amount' => 99]);
+
+    expect(app(ExpensePassiveMatcher::class)->autoLinkExact())->toBe(0);
+    expect($expense->fresh()->passive_invoice_id)->toBeNull();
+});
+
 it('does not auto-link when two passive invoices match the same date and amount', function () {
     $user = User::factory()->admin()->create();
     $supplier = Supplier::create(['name' => 'Telepass S.p.A.']);
