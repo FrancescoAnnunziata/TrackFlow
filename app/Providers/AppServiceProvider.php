@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Costo;
+use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Reconciliation;
@@ -37,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
             'invoice' => Invoice::class,
             'passive_invoice' => PassiveInvoice::class,
             'costo' => Costo::class,
+            'expense' => Expense::class,
         ]);
 
         Reconciliation::observe(ReconciliationObserver::class);

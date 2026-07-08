@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[ObservedBy(ExpenseObserver::class)]
 class Expense extends Model
@@ -16,9 +17,12 @@ class Expense extends Model
         'user_id',
         'date',
         'amount',
+        'conto',
         'paid_with_personal_card',
         'attachaments',
         'client_id',
+        'supplier_id',
+        'passive_invoice_id',
         'notes',
     ];
 
@@ -39,6 +43,20 @@ class Expense extends Model
         return $this->belongsTo(Client::class);
     }
 
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Fattura passiva corrispondente alla spesa, se richiesta/ricevuta (il
+     * giustificativo fiscale da allegare al report del commercialista).
+     */
+    public function passiveInvoice(): BelongsTo
+    {
+        return $this->belongsTo(PassiveInvoice::class);
+    }
+
     public function invoices(): BelongsToMany
     {
         return $this->belongsToMany(Invoice::class)->withTimestamps();
@@ -51,5 +69,30 @@ class Expense extends Model
     public function reimbursement(): HasOne
     {
         return $this->hasOne(Reimbursement::class);
+    }
+
+    /**
+     * Riconciliazioni bancarie della spesa. La spesa è un documento di costo
+     * riconciliabile con un'uscita, come fattura passiva e costo.
+     */
+    public function reconciliations(): MorphMany
+    {
+        return $this->morphMany(Reconciliation::class, 'reconcilable');
+    }
+
+    /**
+     * Importo da coprire con la riconciliazione bancaria (totale della spesa).
+     */
+    public function total(): float
+    {
+        return round((float) $this->amount, 2);
+    }
+
+    /**
+     * Quota già riconciliata con movimenti bancari.
+     */
+    public function reconciledAmount(): float
+    {
+        return round((float) $this->reconciliations()->sum('amount'), 2);
     }
 }

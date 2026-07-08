@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BankTransactions\Tables;
 
 use App\Models\BankTransaction;
 use App\Models\Costo;
+use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Services\Reconciliation\MatchSuggestionService;
@@ -144,6 +145,7 @@ class BankTransactionsTable
                                 'invoice' => 'Fattura attiva',
                                 'passive_invoice' => 'Fattura passiva',
                                 'costo' => 'Costo',
+                                'expense' => 'Spesa',
                             ])
                             ->live(),
                         Select::make('manual_id')
@@ -225,6 +227,14 @@ class BankTransactionsTable
                 ->all(),
             'costo' => Costo::latest('date')->limit(100)->get()
                 ->mapWithKeys(fn (Costo $c): array => [$c->id => sprintf('%s (€%s)', $c->description, number_format($c->total(), 2, ',', '.'))])
+                ->all(),
+            'expense' => Expense::with(['supplier', 'client'])->latest('date')->limit(100)->get()
+                ->mapWithKeys(fn (Expense $e): array => [$e->id => sprintf(
+                    '%s — %s (€%s)',
+                    optional($e->date)->format('d/m/Y') ?? '',
+                    $e->supplier->name ?? $e->client->name ?? (string) ($e->notes ?? 'Spesa'),
+                    number_format($e->total(), 2, ',', '.'),
+                )])
                 ->all(),
             default => [],
         };

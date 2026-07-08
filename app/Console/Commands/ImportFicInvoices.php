@@ -105,6 +105,9 @@ class ImportFicInvoices extends Command
                     'status' => 'sent',
                     'fic_document_token' => Arr::get($doc, 'token'),
                     'fic_sent_at' => Arr::get($doc, 'date'),
+                    // Le note FIC contengono il dettaglio dei rimborsi spese
+                    // ("Vedi note"): le conserviamo per il recupero storico.
+                    'notes' => (string) (Arr::get($doc, 'notes') ?? ''),
                     'imported' => true,
                 ],
             );

@@ -1,0 +1,165 @@
+<?php
+
+use App\Models\BankAccount;
+use App\Models\BankTransaction;
+use App\Models\Client;
+use App\Models\Costo;
+use App\Models\Expense;
+use App\Models\Invoice;
+use App\Models\PassiveInvoice;
+use App\Models\Supplier;
+use App\Models\User;
+use App\Services\Reconciliation\MatchSuggestionService;
+use App\Services\Reconciliation\ReconciliationService;
+use App\Services\Reporting\PrimaNotaBuilder;
+use App\Services\Reporting\RegistroAcquistiBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+/** @return array<int, array<int, mixed>> celle delle sole righe dati */
+function dataCells(array $table): array
+{
+    return collect($table['rows'])->where('kind', 'data')->pluck('cells')->all();
+}
+
+it('reconciles an expense with a bank outflow and suggests it as a candidate', function () {
+    $user = User::factory()->admin()->create();
+    $account = BankAccount::create(['name' => 'Conto', 'bank_key' => 'generic', 'opening_balance' => 0]);
+    $expense = Expense::create([
+        'user_id' => $user->id, 'date' => '2026-06-15', 'amount' => 50,
+        'conto' => 'Ristorazione',
+    ]);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-15',
+        'amount' => -50, 'description' => 'POS Ristorante', 'dedup_hash' => 'e1',
+    ]);
+
+    // La spesa è fra i candidati per l'uscita.
+    $suggestions = app(MatchSuggestionService::class)->suggestions($tx);
+    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeTrue();
+
+    app(ReconciliationService::class)->attach($tx, $expense, 50);
+
+    expect($tx->fresh()->reconciled)->toBeTrue();
+    expect($expense->reconciledAmount())->toBe(50.0);
+
+    // Riconciliata, non è più fra i candidati.
+    $after = app(MatchSuggestionService::class)->suggestions($tx->fresh());
+    expect($after->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeFalse();
+});
+
+it('builds the registro acquisti with conto grouping, riaddebito and no double counting', function () {
+    $user = User::factory()->admin()->create();
+    $client = Client::create(['name' => 'Cliente SpA', 'vat_number' => 'IT11111111111']);
+    $supplier = Supplier::create(['name' => 'Trenitalia']);
+
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id, 'number' => '5/2026',
+        'issue_date' => '2026-06-30', 'period_from' => '2026-06-01', 'period_to' => '2026-06-30',
+        'vat_rate' => 22, 'status' => 'sent',
+    ]);
+
+    // Spesa con conto, fornitore e riaddebito a fattura attiva.
+    $expenseA = Expense::create([
+        'user_id' => $user->id, 'client_id' => $client->id, 'supplier_id' => $supplier->id,
+        'date' => '2026-06-10', 'amount' => 50, 'conto' => 'Trasferte',
+    ]);
+    $expenseA->invoices()->attach($invoice->id);
+
+    // Fattura passiva collegata a una spesa: NON deve comparire come riga a sé.
+    $pLinked = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'FP-1', 'document_date' => '2026-06-12',
+        'amount_net' => 30, 'amount_vat' => 0, 'amount_gross' => 30,
+        'category' => 'Software e abbonamenti cloud', 'payment_status' => 'not_paid',
+    ]);
+    Expense::create([
+        'user_id' => $user->id, 'supplier_id' => $supplier->id, 'passive_invoice_id' => $pLinked->id,
+        'date' => '2026-06-12', 'amount' => 30, 'conto' => 'Software e abbonamenti cloud',
+    ]);
+
+    // Costo senza fattura.
+    Costo::create([
+        'date' => '2026-06-20', 'description' => 'Commissione', 'category' => 'Commissioni bancarie',
+        'amount' => 10, 'vat_amount' => 0,
+    ]);
+
+    // Fattura passiva standalone (nessuna spesa la referenzia): riga a sé.
+    PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'FP-2', 'document_date' => '2026-06-25',
+        'amount_net' => 100, 'amount_vat' => 22, 'amount_gross' => 122,
+        'category' => 'Software e abbonamenti cloud', 'payment_status' => 'not_paid',
+    ]);
+
+    $table = app(RegistroAcquistiBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    );
+    $cells = dataCells($table);
+
+    // 4 righe dati: 2 spese + 1 costo + 1 passiva standalone (la passiva collegata è esclusa).
+    expect($cells)->toHaveCount(4);
+
+    // La passiva collegata (FP-1) non appare come riga "Fattura passiva".
+    expect(collect($cells)->contains(fn (array $c): bool => $c[0] === 'Fattura passiva' && $c[9] === 'FP-1'))->toBeFalse();
+    // La standalone FP-2 sì.
+    expect(collect($cells)->contains(fn (array $c): bool => $c[0] === 'Fattura passiva' && $c[9] === 'FP-2'))->toBeTrue();
+
+    // La spesa riaddebitata riporta il numero della fattura attiva.
+    $riadd = collect($cells)->firstWhere(0, 'Spesa');
+    expect(collect($cells)->contains(fn (array $c): bool => $c[10] === '5/2026'))->toBeTrue();
+
+    // Totale generale = 50 + 30 + 10 + 122 = 212 (nessun doppio conteggio).
+    $total = collect($table['rows'])->firstWhere('kind', 'total');
+    expect($total['cells'][7])->toBe(212.0);
+});
+
+it('builds the prima nota with a running balance and reconciled document labels', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 100]);
+
+    // Movimento prima del periodo: sposta il saldo di apertura di giugno a 70.
+    BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-05-20',
+        'amount' => -30, 'description' => 'Precedente', 'dedup_hash' => 'p0',
+    ]);
+    $txIn = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-05',
+        'amount' => 200, 'description' => 'Bonifico', 'dedup_hash' => 'p1',
+    ]);
+    $txOut = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-10',
+        'amount' => -50, 'description' => 'Commissione', 'dedup_hash' => 'p2',
+    ]);
+
+    $costo = Costo::create(['date' => '2026-06-10', 'description' => 'Commissione', 'amount' => 50, 'vat_amount' => 0]);
+    app(ReconciliationService::class)->attach($txOut, $costo, 50);
+
+    $table = app(PrimaNotaBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    );
+    $cells = dataCells($table);
+
+    expect($cells)->toHaveCount(2);
+    // Saldo progressivo: 70 + 200 = 270, poi 270 - 50 = 220.
+    expect($cells[0][6])->toBe(270.0);
+    expect($cells[1][6])->toBe(220.0);
+    // La riga in uscita è riconciliata e riporta la causale del costo.
+    expect($cells[1][7])->toBe('Sì');
+    expect($cells[1][8])->toContain('Costo');
+
+    // Riga di saldo finale.
+    $subtotal = collect($table['rows'])->firstWhere('kind', 'subtotal');
+    expect($subtotal['cells'][6])->toBe(220.0);
+});
+
+it('renders the report pages for an admin and hides them from non-admins', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->get('/registro-acquisti')->assertOk()->assertSee('Registro acquisti');
+    $this->actingAs($admin)->get('/prima-nota')->assertOk()->assertSee('Prima nota');
+
+    $member = User::factory()->create(['role' => 'member']);
+    $this->actingAs($member)->get('/registro-acquisti')->assertForbidden();
+    $this->actingAs($member)->get('/prima-nota')->assertForbidden();
+});

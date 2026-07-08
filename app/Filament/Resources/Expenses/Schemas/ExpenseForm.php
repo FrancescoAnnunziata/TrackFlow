@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Expenses\Schemas;
 
+use App\Models\PassiveInvoice;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,10 +29,10 @@ class ExpenseForm
             ->components([
                 Select::make('client_id')
                     ->label('Cliente')
+                    ->helperText('Solo se la spesa va riaddebitata al cliente.')
                     ->relationship(name: 'client', titleAttribute: 'name')
                     ->searchable()
-                    ->preload()
-                    ->required(),
+                    ->preload(),
                 DatePicker::make('date')
                     ->label('Data')
                     ->default(now())
@@ -40,6 +43,49 @@ class ExpenseForm
                     ->required()
                     ->prefix('EUR')
                     ->step(0.01),
+                Select::make('supplier_id')
+                    ->label('Fornitore')
+                    ->helperText('Di norma arriva dalla fattura passiva importata da Fatture in Cloud; crealo qui solo se manca.')
+                    ->relationship(name: 'supplier', titleAttribute: 'name')
+                    ->searchable()
+                    ->preload()
+                    ->createOptionForm([
+                        TextInput::make('name')->label('Nome')->required(),
+                        TextInput::make('vat_number')->label('Partita IVA'),
+                    ]),
+                TextInput::make('conto')
+                    ->label('Conto')
+                    ->helperText('Categoria di spesa. Ereditata dalla fattura passiva quando la colleghi; per le spese senza fattura scegli fra le categorie di Fatture in Cloud.')
+                    ->datalist(fn (): array => self::contoSuggestions()),
+                Select::make('passive_invoice_id')
+                    ->label('Fattura passiva collegata')
+                    ->helperText('Se per questa spesa hai ricevuto una fattura passiva, collegala qui: conto e fornitore vengono ereditati dal documento.')
+                    ->relationship(name: 'passiveInvoice', titleAttribute: 'number')
+                    ->getOptionLabelFromRecordUsing(fn (PassiveInvoice $record): string => trim(
+                        ($record->number ?: '—').' — '.($record->supplier->name ?? ''),
+                        ' —',
+                    ))
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    // Collegando la passiva, la spesa eredita fornitore e conto
+                    // (la categoria di Fatture in Cloud), senza sovrascrivere
+                    // valori già impostati a mano.
+                    ->afterStateUpdated(function ($state, Get $get, Set $set): void {
+                        if (blank($state)) {
+                            return;
+                        }
+                        $passive = PassiveInvoice::find($state);
+                        if ($passive === null) {
+                            return;
+                        }
+                        if (blank($get('supplier_id')) && filled($passive->supplier_id)) {
+                            $set('supplier_id', $passive->supplier_id);
+                        }
+                        if (blank($get('conto')) && filled($passive->category)) {
+                            $set('conto', $passive->category);
+                        }
+                    }),
                 Toggle::make('paid_with_personal_card')
                     ->label('Pagato con carta personale')
                     ->helperText('Di default le spese si intendono pagate con carta aziendale. Attivando questa opzione la spesa genera automaticamente un rimborso.')
@@ -62,6 +108,27 @@ class ExpenseForm
                     ->label('Note')
                     ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * Categorie di spesa suggerite: le categorie provenienti da Fatture in
+     * Cloud (sulle fatture passive) più quelle già usate a mano sulle spese.
+     *
+     * @return array<int, string>
+     */
+    private static function contoSuggestions(): array
+    {
+        return PassiveInvoice::query()
+            ->whereNotNull('category')->where('category', '!=', '')
+            ->distinct()->orderBy('category')->pluck('category')
+            ->merge(
+                \App\Models\Expense::query()
+                    ->whereNotNull('conto')->where('conto', '!=', '')
+                    ->distinct()->pluck('conto')
+            )
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

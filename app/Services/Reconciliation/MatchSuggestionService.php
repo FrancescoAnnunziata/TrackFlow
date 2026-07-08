@@ -4,6 +4,7 @@ namespace App\Services\Reconciliation;
 
 use App\Models\BankTransaction;
 use App\Models\Costo;
+use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use Illuminate\Database\Eloquent\Model;
@@ -98,7 +99,23 @@ class MatchSuggestionService
                 'name' => (string) ($c->supplier->name ?? $c->description),
             ]);
 
-        return $passive->concat($costi);
+        // Le spese (scontrini) sono documenti di costo riconciliabili: entrano
+        // fra i candidati solo se non ancora coperte da riconciliazioni.
+        $expenses = Expense::with(['supplier', 'client'])
+            ->withSum('reconciliations', 'amount')
+            ->whereBetween('date', [$from, $to])
+            ->limit(200)
+            ->get()
+            ->filter(fn (Expense $e): bool => (float) ($e->reconciliations_sum_amount ?? 0) + 0.01 < $e->total())
+            ->map(fn (Expense $e): array => [
+                'model' => $e,
+                'label' => sprintf('Spesa — %s', $e->supplier->name ?? $e->notes ?? (optional($e->date)->format('d/m/Y') ?? '')),
+                'amount' => $e->total(),
+                'date' => $e->date,
+                'name' => (string) ($e->supplier->name ?? $e->client->name ?? ''),
+            ]);
+
+        return $passive->concat($costi)->concat($expenses);
     }
 
     /**

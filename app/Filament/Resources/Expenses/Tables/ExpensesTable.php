@@ -30,6 +30,15 @@ class ExpensesTable
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('supplier.name')
+                    ->label('Fornitore')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('conto')
+                    ->label('Conto')
+                    ->badge()
+                    ->sortable(),
                 TextColumn::make('date')
                     ->label('Data')
                     ->date()
