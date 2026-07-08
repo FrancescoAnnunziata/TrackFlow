@@ -65,9 +65,10 @@ class InvoiceExpenseExtractor
 
             // Il dettaglio sta nella descrizione della riga; se rimanda alle note
             // ("Vedi note") o è vuota, si prova con le note della fattura.
+            // Le note grezze (con l'HTML): parseDetail riconosce la tabella FIC.
             $detailText = (string) $item->description;
             if ($this->isPointerToNotes($detailText)) {
-                $detailText = strip_tags((string) $invoice->notes);
+                $detailText = (string) $invoice->notes;
             }
 
             $parts = $this->parseDetail($detailText);
@@ -117,15 +118,68 @@ class InvoiceExpenseExtractor
     }
 
     /**
-     * Estrae le voci "etichetta + importo" da un blocco di testo libero. Per ogni
-     * riga toglie le date (che contengono numeri) e prende l'ultimo importo
-     * monetario; l'etichetta è il resto della riga. Ritorna [] se non trova nulla.
+     * Estrae le voci "etichetta + importo" da un blocco. Riconosce due formati:
+     * la tabella HTML delle note FIC (una riga per <tr>, con una cella importo) e
+     * il testo libero (una voce per riga). Ritorna [] se non trova nulla.
      *
      * @return array<int, array{label: string, amount: float}>
      */
     public function parseDetail(string $text): array
     {
-        $text = str_replace(["\r\n", "\r"], "\n", strip_tags($text));
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+        if (preg_match('#</tr>#i', $text) === 1) {
+            return $this->parseHtmlTable($text);
+        }
+
+        return $this->parseLines(strip_tags($text));
+    }
+
+    /**
+     * Tabella HTML (note FIC): ogni <tr> è una voce, la cella che è un importo
+     * puro è l'importo, le altre celle (data, descrizione) formano l'etichetta.
+     * La riga di intestazione non ha importi numerici e viene saltata da sola.
+     *
+     * @return array<int, array{label: string, amount: float}>
+     */
+    private function parseHtmlTable(string $html): array
+    {
+        $parts = [];
+
+        foreach (preg_split('#</tr>#i', $html) as $row) {
+            $cells = array_values(array_filter(array_map(
+                fn (string $c): string => trim(preg_replace('/\s+/', ' ', strip_tags($c))),
+                preg_split('#</td>#i', (string) $row),
+            ), fn (string $c): bool => $c !== ''));
+
+            $amount = null;
+            $labelParts = [];
+
+            foreach ($cells as $cell) {
+                if ($amount === null && preg_match('/^€?\s*\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?$|^€?\s*\d+(?:[.,]\d{1,2})?$/u', $cell) === 1) {
+                    $amount = $this->toFloat(ltrim($cell, "€ \t"));
+
+                    continue;
+                }
+                $labelParts[] = $cell;
+            }
+
+            if ($amount !== null && $amount > 0) {
+                $parts[] = ['label' => trim(implode(' ', $labelParts)), 'amount' => $amount];
+            }
+        }
+
+        return $parts;
+    }
+
+    /**
+     * Testo libero: una voce per riga; si toglie la data (che contiene numeri) e
+     * si prende l'ultimo importo monetario, il resto è l'etichetta.
+     *
+     * @return array<int, array{label: string, amount: float}>
+     */
+    private function parseLines(string $text): array
+    {
         $parts = [];
 
         foreach (explode("\n", $text) as $line) {

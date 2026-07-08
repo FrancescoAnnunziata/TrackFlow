@@ -20,6 +20,23 @@ it('parses inline detail lines into amounts, ignoring embedded dates', function 
     expect($parts[0]['label'])->toBe('Trenitalia');
 });
 
+it('parses the FiC HTML notes table into per-row amounts', function () {
+    $extractor = new InvoiceExpenseExtractor();
+
+    $html = '<table><tbody>'
+        .'<tr><td>Data</td><td>importo</td><td>note</td></tr>'
+        .'<tr><td>4 maggio</td><td>23,5</td><td>pranzo</td></tr>'
+        .'<tr><td>6. maggio</td><td>90</td><td>trenitalia</td></tr>'
+        .'<tr><td>7 maggio</td><td>30</td><td>pranzo</td></tr>'
+        .'</tbody></table>';
+
+    $parts = $extractor->parseDetail($html);
+
+    expect($parts)->toHaveCount(3); // l'intestazione (senza importo) è saltata
+    expect(array_column($parts, 'amount'))->toBe([23.5, 90.0, 30.0]);
+    expect($parts[1]['label'])->toContain('trenitalia');
+});
+
 it('infers the conto from keywords', function () {
     $extractor = new InvoiceExpenseExtractor();
 
