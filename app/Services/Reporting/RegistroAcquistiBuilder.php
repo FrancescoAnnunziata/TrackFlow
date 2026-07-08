@@ -179,6 +179,8 @@ class RegistroAcquistiBuilder
             ->map(function (PassiveInvoice $p): array {
                 $conto = $this->contoLabel($p->category);
                 $totale = round((float) $p->amount_gross, 2);
+                // PDF allegato (fatture estere caricate a mano) come giustificativo.
+                $giustificativo = filled($p->attachment) ? Storage::disk('public')->url($p->attachment) : '';
 
                 return [
                     'conto_sort' => $conto !== '' ? $conto : '~',
@@ -193,7 +195,7 @@ class RegistroAcquistiBuilder
                         round((float) $p->amount_net, 2),
                         round((float) $p->amount_vat, 2),
                         $totale,
-                        '',
+                        $giustificativo,
                         $p->number ?: '',
                         '',
                     ],

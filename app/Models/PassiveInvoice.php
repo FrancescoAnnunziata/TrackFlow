@@ -32,6 +32,7 @@ class PassiveInvoice extends Model
         'payment_status',
         'imported',
         'notes',
+        'attachment',
     ];
 
     protected $casts = [

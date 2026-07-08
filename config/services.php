@@ -59,4 +59,10 @@ return [
         'e_invoice' => (bool) env('FIC_E_INVOICE', true),
     ],
 
+    // Anthropic (Claude): estrazione dati dalle fatture estere in PDF.
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-4-8'),
+    ],
+
 ];
