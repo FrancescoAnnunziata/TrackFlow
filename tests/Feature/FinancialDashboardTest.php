@@ -84,6 +84,24 @@ it('tracks real cash flow and flags unreconciled outflows as non attribuite', fu
     expect($luglio['non_attribuite'])->toBe(350.0); // solo l'uscita non riconciliata
 });
 
+it('detects inter-account transfers and excludes them from cash flow and non attribuite', function () {
+    $a = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+    $b = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid', 'opening_balance' => 0]);
+
+    // Giroconto: -5000 da InBank, +5000 su Vivid a 1 giorno -> non è cassa operativa.
+    BankTransaction::create(['bank_account_id' => $a->id, 'booked_at' => '2026-04-10', 'amount' => -5000, 'description' => 'bonifico a Vivid', 'dedup_hash' => 'g1']);
+    BankTransaction::create(['bank_account_id' => $b->id, 'booked_at' => '2026-04-11', 'amount' => 5000, 'description' => 'da InBank', 'dedup_hash' => 'g2']);
+    // Uscita vera non riconciliata.
+    BankTransaction::create(['bank_account_id' => $a->id, 'booked_at' => '2026-04-15', 'amount' => -300, 'description' => 'spesa', 'dedup_hash' => 'g3']);
+
+    $aprile = collect(app(FinancialOverviewBuilder::class)->g8labsMonthly(2026))->firstWhere('mese', 4);
+
+    expect($aprile['giroconti'])->toBe(5000.0);
+    expect($aprile['entrate'])->toBe(0.0);          // il +5000 è un giroconto, escluso
+    expect($aprile['uscite'])->toBe(300.0);         // solo la spesa vera
+    expect($aprile['non_attribuite'])->toBe(300.0); // il -5000 è escluso
+});
+
 it('computes forfettario revenue and estimated taxes on the configured params', function () {
     $client = Client::create(['name' => 'Cliente Fiscozen', 'invoicing_provider' => Client::PROVIDER_FISCOZEN]);
     $inv = Invoice::create([

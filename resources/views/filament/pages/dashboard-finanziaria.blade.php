@@ -82,10 +82,13 @@
             </div>
         </div>
 
-        {{-- Avviso uscite non attribuite --}}
+        {{-- Avviso uscite non attribuite (già al netto dei giroconti) --}}
         @if ($gt['non_attribuite'] > 0)
             <div class="fd-callout" style="margin-top:1rem;">
-                ⚠️ Ci sono <strong>{{ $eur($gt['non_attribuite']) }}</strong> di uscite bancarie {{ $year }} <strong>non ancora collegate</strong> a una fattura passiva, un costo o una spesa: <strong>non sono contate nel margine contabile</strong>. Categorizzandole, il margine reale scenderà. Vedi la colonna "Non attrib." qui sotto e la cassa reale.
+                ⚠️ Ci sono <strong>{{ $eur($gt['non_attribuite']) }}</strong> di uscite bancarie {{ $year }} <strong>non ancora collegate</strong> a una fattura passiva, un costo o una spesa: <strong>non sono contate nel margine contabile</strong>, quindi il margine reale è più basso. Categorizzale per avere il quadro esatto.
+                @if ($gt['giroconti'] > 0)
+                    <br><span style="opacity:.85;">I <strong>giroconti</strong> tra i tuoi conti ({{ $eur($gt['giroconti']) }}) sono già esclusi da questo importo e dalla cassa: sono solo spostamenti di liquidità.</span>
+                @endif
             </div>
         @endif
 
@@ -103,7 +106,7 @@
             <div class="fd-card">
                 <div class="fd-lbl">Cassa {{ $year }} (entrate − uscite)</div>
                 <div class="fd-val {{ $gt['cassa'] >= 0 ? 'fd-pos' : 'fd-neg' }}">{{ $eur($gt['cassa']) }}</div>
-                <div class="fd-sub">{{ $eur($gt['entrate']) }} entrate · {{ $eur($gt['uscite']) }} uscite (reali dal conto)</div>
+                <div class="fd-sub">{{ $eur($gt['entrate']) }} entrate · {{ $eur($gt['uscite']) }} uscite @if ($gt['giroconti'] > 0)· giroconti {{ $eur($gt['giroconti']) }} esclusi @endif</div>
             </div>
             <div class="fd-card">
                 <div class="fd-lbl">Crediti (da incassare)</div>

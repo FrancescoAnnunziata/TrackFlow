@@ -22,6 +22,42 @@ class FinancialOverviewBuilder
 {
     private const MESI = ['', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
+    /** Finestra (giorni) entro cui un'uscita e un'entrata gemella sono lo stesso giroconto. */
+    private const TRANSFER_WINDOW = 7;
+
+    /**
+     * ID dei movimenti che fanno parte di un giroconto tra conti propri: un'uscita
+     * con un'entrata gemella di pari importo su un ALTRO conto, entro pochi giorni.
+     * Sono spostamenti di liquidità (non ricavi né costi) e si pareggiano, quindi
+     * vanno esclusi dal quadro operativo (cassa e "non attribuite").
+     *
+     * @return array<int, bool> id => true (sia lato uscita sia lato entrata)
+     */
+    private function transferIds(int $year): array
+    {
+        $out = BankTransaction::whereYear('booked_at', $year)->where('amount', '<', 0)
+            ->orderBy('booked_at')->get();
+        $in = BankTransaction::whereYear('booked_at', $year)->where('amount', '>', 0)->get();
+
+        $transfers = [];
+        $usedIn = [];
+        foreach ($out as $o) {
+            $amt = abs((float) $o->amount);
+            $match = $in->first(fn (BankTransaction $i): bool => ! isset($usedIn[$i->id])
+                && $i->bank_account_id !== $o->bank_account_id
+                && abs((float) $i->amount - $amt) < 0.01
+                && abs($i->booked_at->diffInDays($o->booked_at)) <= self::TRANSFER_WINDOW);
+
+            if ($match !== null) {
+                $usedIn[$match->id] = true;
+                $transfers[$o->id] = true;
+                $transfers[$match->id] = true;
+            }
+        }
+
+        return $transfers;
+    }
+
     /**
      * Quadro mensile G8LABS: una riga per mese con ricavi (imponibile), costi,
      * margine e saldo IVA (debito sulle vendite − credito sugli acquisti).
@@ -36,7 +72,7 @@ class FinancialOverviewBuilder
                 'mese' => $m, 'label' => self::MESI[$m],
                 'ricavi' => 0.0, 'costi' => 0.0,
                 'iva_debito' => 0.0, 'iva_credito' => 0.0,
-                'entrate' => 0.0, 'uscite' => 0.0, 'non_attribuite' => 0.0,
+                'entrate' => 0.0, 'uscite' => 0.0, 'non_attribuite' => 0.0, 'giroconti' => 0.0,
             ];
         }
 
@@ -76,9 +112,21 @@ class FinancialOverviewBuilder
         // ancora riconciliate a un documento sono "non attribuite": costi reali
         // usciti dal conto ma non ancora catturati fra i costi documentati (per
         // questo il margine contabile, da soli documenti, può risultare gonfiato).
+        // I giroconti tra conti propri sono esclusi dal quadro operativo e mostrati
+        // a parte: non sono ricavi né costi, si limitano a spostare liquidità.
+        $transfers = $this->transferIds($year);
         foreach (BankTransaction::whereYear('booked_at', $year)->withCount('reconciliations')->get() as $t) {
             $m = Carbon::parse($t->booked_at)->month;
             $amount = (float) $t->amount;
+
+            if (isset($transfers[$t->id])) {
+                if ($amount < 0) {
+                    $months[$m]['giroconti'] += abs($amount);
+                }
+
+                continue;
+            }
+
             if ($amount >= 0) {
                 $months[$m]['entrate'] += $amount;
             } else {
@@ -100,6 +148,7 @@ class FinancialOverviewBuilder
             $row['uscite'] = round($row['uscite'], 2);
             $row['cassa'] = round($row['entrate'] - $row['uscite'], 2);
             $row['non_attribuite'] = round($row['non_attribuite'], 2);
+            $row['giroconti'] = round($row['giroconti'], 2);
         }
 
         return array_values($months);
@@ -123,6 +172,7 @@ class FinancialOverviewBuilder
             'uscite' => round(array_sum(array_column($rows, 'uscite')), 2),
             'cassa' => round(array_sum(array_column($rows, 'cassa')), 2),
             'non_attribuite' => round(array_sum(array_column($rows, 'non_attribuite')), 2),
+            'giroconti' => round(array_sum(array_column($rows, 'giroconti')), 2),
         ];
     }
 
