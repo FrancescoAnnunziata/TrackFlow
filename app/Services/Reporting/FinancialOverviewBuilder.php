@@ -22,40 +22,22 @@ class FinancialOverviewBuilder
 {
     private const MESI = ['', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
-    /** Finestra (giorni) entro cui un'uscita e un'entrata gemella sono lo stesso giroconto. */
-    private const TRANSFER_WINDOW = 7;
-
     /**
-     * ID dei movimenti che fanno parte di un giroconto tra conti propri: un'uscita
-     * con un'entrata gemella di pari importo su un ALTRO conto, entro pochi giorni.
-     * Sono spostamenti di liquidità (non ricavi né costi) e si pareggiano, quindi
-     * vanno esclusi dal quadro operativo (cassa e "non attribuite").
+     * ID dei movimenti marcati come giroconto tra conti propri (comando
+     * finance:detect-transfers o azione manuale). Sono spostamenti di liquidità,
+     * non ricavi né costi, quindi esclusi dal quadro operativo (cassa e "non
+     * attribuite") e mostrati a parte.
      *
-     * @return array<int, bool> id => true (sia lato uscita sia lato entrata)
+     * @return array<int, bool> id => true
      */
     private function transferIds(int $year): array
     {
-        $out = BankTransaction::whereYear('booked_at', $year)->where('amount', '<', 0)
-            ->orderBy('booked_at')->get();
-        $in = BankTransaction::whereYear('booked_at', $year)->where('amount', '>', 0)->get();
-
-        $transfers = [];
-        $usedIn = [];
-        foreach ($out as $o) {
-            $amt = abs((float) $o->amount);
-            $match = $in->first(fn (BankTransaction $i): bool => ! isset($usedIn[$i->id])
-                && $i->bank_account_id !== $o->bank_account_id
-                && abs((float) $i->amount - $amt) < 0.01
-                && abs($i->booked_at->diffInDays($o->booked_at)) <= self::TRANSFER_WINDOW);
-
-            if ($match !== null) {
-                $usedIn[$match->id] = true;
-                $transfers[$o->id] = true;
-                $transfers[$match->id] = true;
-            }
-        }
-
-        return $transfers;
+        return BankTransaction::whereYear('booked_at', $year)
+            ->whereNotNull('transfer_pair_id')
+            ->pluck('id')
+            ->flip()
+            ->map(fn () => true)
+            ->all();
     }
 
     /**

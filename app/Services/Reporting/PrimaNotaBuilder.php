@@ -47,7 +47,7 @@ class PrimaNotaBuilder
             $running = $this->openingBalance($account, $from);
 
             $transactions = $account->transactions()
-                ->with(['reconciliations.reconcilable'])
+                ->with(['reconciliations.reconcilable', 'transferPair.bankAccount'])
                 ->whereBetween('booked_at', [$from, $to])
                 ->orderBy('booked_at')
                 ->orderBy('id')
@@ -112,10 +112,17 @@ class PrimaNotaBuilder
     }
 
     /**
-     * Etichetta breve dei documenti riconciliati col movimento (causale).
+     * Etichetta breve della causale del movimento: "Giroconto" se è uno
+     * spostamento tra conti propri, altrimenti i documenti riconciliati.
      */
     private function documentLabel(BankTransaction $tx): string
     {
+        if ($tx->isTransfer()) {
+            $other = $tx->transferPair?->bankAccount?->name;
+
+            return 'Giroconto'.($other ? ' ('.($tx->amount < 0 ? '→ ' : '← ').$other.')' : '');
+        }
+
         return $tx->reconciliations
             ->map(fn ($rec): ?string => $this->modelLabel($rec->reconcilable))
             ->filter()

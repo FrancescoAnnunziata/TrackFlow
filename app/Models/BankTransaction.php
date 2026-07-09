@@ -28,6 +28,7 @@ class BankTransaction extends Model
         'bank_reference',
         'dedup_hash',
         'reconciled',
+        'transfer_pair_id',
         'raw',
         'notes',
     ];
@@ -59,6 +60,22 @@ class BankTransaction extends Model
     public function reconciliations(): HasMany
     {
         return $this->hasMany(Reconciliation::class);
+    }
+
+    /**
+     * Movimento gemello del giroconto (l'entrata per un'uscita e viceversa).
+     */
+    public function transferPair(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'transfer_pair_id');
+    }
+
+    /**
+     * True se il movimento è un giroconto tra conti propri (marcato).
+     */
+    public function isTransfer(): bool
+    {
+        return $this->transfer_pair_id !== null;
     }
 
     /**

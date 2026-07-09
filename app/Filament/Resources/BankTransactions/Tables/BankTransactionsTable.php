@@ -104,7 +104,9 @@ class BankTransactionsTable
             ->recordActions([
                 self::reconcileAction(),
                 self::markAsCostoAction(),
+                self::markAsTransferAction(),
                 self::unreconcileAction(),
+                self::unmarkTransferAction(),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -263,6 +265,98 @@ class BankTransactionsTable
     /**
      * Rimuove tutte le riconciliazioni del movimento.
      */
+    /**
+     * Marca il movimento come giroconto verso un altro conto, scegliendo il
+     * movimento gemello (importo opposto su un conto diverso). Collega i due in
+     * modo reciproco (transfer_pair_id).
+     */
+    private static function markAsTransferAction(): Action
+    {
+        return Action::make('segnaGiroconto')
+            ->label('Segna come giroconto')
+            ->icon(Heroicon::OutlinedArrowsRightLeft)
+            ->color('gray')
+            ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer())
+            ->modalHeading('Segna come giroconto')
+            ->modalDescription(fn (BankTransaction $record): string => sprintf(
+                'Movimento del %s — %s € %s. Scegli il movimento gemello (l\'altra metà del trasferimento).',
+                optional($record->booked_at)->format('d/m/Y') ?? '',
+                $record->bankAccount->name ?? '',
+                number_format((float) $record->amount, 2, ',', '.'),
+            ))
+            ->schema([
+                Select::make('pair_id')
+                    ->label('Movimento gemello')
+                    ->options(fn (BankTransaction $record): array => self::transferCandidates($record))
+                    ->searchable()
+                    ->required(),
+            ])
+            ->action(function (array $data, BankTransaction $record): void {
+                $pair = BankTransaction::find($data['pair_id']);
+                if ($pair === null) {
+                    Notification::make()->warning()->title('Movimento gemello non trovato')->send();
+
+                    return;
+                }
+
+                $record->update(['transfer_pair_id' => $pair->id]);
+                $pair->update(['transfer_pair_id' => $record->id]);
+
+                Notification::make()->success()->title('Segnato come giroconto')->send();
+            });
+    }
+
+    private static function unmarkTransferAction(): Action
+    {
+        return Action::make('annullaGiroconto')
+            ->label('Annulla giroconto')
+            ->icon(Heroicon::OutlinedXMark)
+            ->color('gray')
+            ->requiresConfirmation()
+            ->visible(fn (BankTransaction $record): bool => $record->isTransfer())
+            ->action(function (BankTransaction $record): void {
+                $pair = $record->transferPair;
+                $record->update(['transfer_pair_id' => null]);
+                $pair?->update(['transfer_pair_id' => null]);
+
+                Notification::make()->success()->title('Giroconto annullato')->send();
+            });
+    }
+
+    /**
+     * Candidati come gemello di un giroconto: movimenti di segno opposto su un
+     * conto diverso, non già marcati, entro ±30 giorni, con l'importo più vicino
+     * in cima. Etichetta con data, conto, importo e descrizione.
+     *
+     * @return array<int, string>
+     */
+    private static function transferCandidates(BankTransaction $record): array
+    {
+        $amount = (float) $record->amount;
+        $from = $record->booked_at->copy()->subDays(30);
+        $to = $record->booked_at->copy()->addDays(30);
+
+        return BankTransaction::query()
+            ->with('bankAccount')
+            ->whereNull('transfer_pair_id')
+            ->where('bank_account_id', '!=', $record->bank_account_id)
+            ->where('amount', $amount < 0 ? '>' : '<', 0)
+            ->whereBetween('booked_at', [$from, $to])
+            ->get()
+            ->sortBy(fn (BankTransaction $t): float => abs(abs((float) $t->amount) - abs($amount)))
+            ->take(50)
+            ->mapWithKeys(fn (BankTransaction $t): array => [
+                $t->id => sprintf(
+                    '%s · %s · € %s · %s',
+                    optional($t->booked_at)->format('d/m/Y') ?? '',
+                    $t->bankAccount->name ?? '',
+                    number_format((float) $t->amount, 2, ',', '.'),
+                    str($t->description ?: ($t->counterparty ?? ''))->limit(40)->value(),
+                ),
+            ])
+            ->all();
+    }
+
     private static function unreconcileAction(): Action
     {
         return Action::make('annullaRiconciliazione')

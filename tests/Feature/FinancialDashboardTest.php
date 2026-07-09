@@ -94,6 +94,10 @@ it('detects inter-account transfers and excludes them from cash flow and non att
     // Uscita vera non riconciliata.
     BankTransaction::create(['bank_account_id' => $a->id, 'booked_at' => '2026-04-15', 'amount' => -300, 'description' => 'spesa', 'dedup_hash' => 'g3']);
 
+    // Il comando marca la coppia come giroconto (persistente).
+    $this->artisan('finance:detect-transfers')->assertSuccessful();
+    expect(BankTransaction::whereNotNull('transfer_pair_id')->count())->toBe(2);
+
     $aprile = collect(app(FinancialOverviewBuilder::class)->g8labsMonthly(2026))->firstWhere('mese', 4);
 
     expect($aprile['giroconti'])->toBe(5000.0);
