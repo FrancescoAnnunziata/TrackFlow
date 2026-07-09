@@ -10,6 +10,8 @@ class Client extends Model
 {
     public const PROVIDER_FIC = 'fatture_in_cloud';
 
+    public const PROVIDER_FISCOZEN = 'fiscozen';
+
     public const MODEL_FORFAIT = 'forfait';
 
     public const MODEL_HOURLY = 'hourly';
