@@ -86,6 +86,7 @@ class FattureEstere extends Page implements HasForms
                             ->label('')
                             ->addable(false)
                             ->reorderable(false)
+                            ->defaultItems(0)
                             ->columns(3)
                             ->schema([
                                 Hidden::make('attachment'),
@@ -136,7 +137,11 @@ class FattureEstere extends Page implements HasForms
             return;
         }
 
-        $paths = array_values($this->data['files'] ?? []);
+        // getState() dehydrata la form: sposta i file caricati sul disco e
+        // restituisce i path definitivi (leggerli da $this->data grezzo darebbe i
+        // riferimenti temporanei di Livewire, non ancora sul disco).
+        $state = $this->form->getState();
+        $paths = array_values($state['files'] ?? []);
         if ($paths === []) {
             Notification::make()->warning()->title('Nessun PDF caricato')->send();
 
@@ -148,9 +153,14 @@ class FattureEstere extends Page implements HasForms
 
         foreach ($paths as $path) {
             try {
-                $pdf = Storage::disk(self::DISK)->get($path);
-                $d = $extractor->extract((string) $pdf);
-                $rows[] = [
+                $pdf = $this->readPdf($path);
+                if (blank($pdf)) {
+                    throw new \RuntimeException('PDF non leggibile (vuoto).');
+                }
+                $d = $extractor->extract($pdf);
+                // Chiave UUID: il Repeater di Filament indicizza gli item per chiave,
+                // un array numerico ne rompe il rendering (getStateSnapshot on null).
+                $rows[(string) \Illuminate\Support\Str::uuid()] = [
                     'attachment' => $path,
                     'supplier_name' => $d['supplier_name'],
                     'supplier_vat' => $d['supplier_vat'],
@@ -168,11 +178,34 @@ class FattureEstere extends Page implements HasForms
             }
         }
 
-        $this->data['rows'] = $rows;
+        // fill() rigenera i componenti figli del Repeater dallo stato: settare
+        // $this->data['rows'] direttamente non li istanzia e il render fallisce.
+        $this->form->fill([...$this->data, 'files' => $paths, 'rows' => $rows]);
 
         Notification::make()->success()
             ->title('Estratti '.count($rows).' documenti'.($errors > 0 ? " ({$errors} falliti)" : ''))
             ->send();
+    }
+
+    /**
+     * Legge il contenuto binario del PDF caricato, gestendo sia i path sul disco
+     * public sia (per robustezza) un eventuale file temporaneo o assoluto.
+     */
+    private function readPdf(mixed $path): ?string
+    {
+        if ($path instanceof \Illuminate\Http\UploadedFile) {
+            return file_get_contents($path->getRealPath()) ?: null;
+        }
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        if (Storage::disk(self::DISK)->exists($path)) {
+            return Storage::disk(self::DISK)->get($path) ?: null;
+        }
+
+        return is_file($path) ? (file_get_contents($path) ?: null) : null;
     }
 
     public function crea(): void
