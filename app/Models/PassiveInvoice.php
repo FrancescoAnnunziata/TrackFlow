@@ -17,6 +17,9 @@ class PassiveInvoice extends Model
 
     public const STATUS_NOT_PAID = 'not_paid';
 
+    /** Nota di credito ricevuta (FIC): riduce i costi, non è un documento da pagare. */
+    public const TYPE_CREDIT_NOTE = 'passive_credit_note';
+
     protected $fillable = [
         'supplier_id',
         'fic_document_id',
@@ -80,5 +83,10 @@ class PassiveInvoice extends Model
     public function isPaid(): bool
     {
         return $this->payment_status === self::STATUS_PAID;
+    }
+
+    public function isCreditNote(): bool
+    {
+        return $this->type === self::TYPE_CREDIT_NOTE;
     }
 }

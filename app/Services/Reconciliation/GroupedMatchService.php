@@ -127,6 +127,7 @@ class GroupedMatchService
     {
         return PassiveInvoice::with('supplier')
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->orderBy('document_date')
             ->get();
     }
@@ -161,6 +162,7 @@ class GroupedMatchService
 
         return PassiveInvoice::with('supplier')
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->whereBetween('document_date', [$from, $to])->get()
             ->filter(fn (PassiveInvoice $p): bool => $this->nameMatches((string) ($p->supplier->name ?? ''), $tx))
             ->values();

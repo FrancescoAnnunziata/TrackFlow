@@ -178,7 +178,9 @@ class RegistroAcquistiBuilder
             ->get()
             ->map(function (PassiveInvoice $p): array {
                 $conto = $this->contoLabel($p->category);
-                $totale = round((float) $p->amount_gross, 2);
+                // Le note di credito riducono i costi: importi con segno negativo.
+                $sign = $p->isCreditNote() ? -1 : 1;
+                $totale = round($sign * (float) $p->amount_gross, 2);
                 // PDF allegato (fatture estere caricate a mano) come giustificativo.
                 $giustificativo = filled($p->attachment) ? Storage::disk('public')->url($p->attachment) : '';
 
@@ -187,13 +189,13 @@ class RegistroAcquistiBuilder
                     'date' => $p->document_date,
                     'totale' => $totale,
                     'cells' => [
-                        'Fattura passiva',
+                        $p->isCreditNote() ? 'Nota di credito' : 'Fattura passiva',
                         optional($p->document_date)->format('d/m/Y') ?? '',
                         $p->supplier->name ?? '',
                         $conto,
                         '',
-                        round((float) $p->amount_net, 2),
-                        round((float) $p->amount_vat, 2),
+                        round($sign * (float) $p->amount_net, 2),
+                        round($sign * (float) $p->amount_vat, 2),
                         $totale,
                         $giustificativo,
                         $p->number ?: '',

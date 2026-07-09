@@ -77,6 +77,7 @@ class MatchSuggestionService
 
         $passive = PassiveInvoice::with('supplier')
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->whereBetween('document_date', [$from, $to])
             ->limit(200)
             ->get()
@@ -194,6 +195,7 @@ class MatchSuggestionService
 
         return PassiveInvoice::with('supplier')
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->whereBetween('document_date', [$from, $to])
             ->get()
             ->filter(function (PassiveInvoice $p) use ($amount, $tolerance, $haystack): bool {

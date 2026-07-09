@@ -116,7 +116,7 @@ class PassiveInvoicesTable
             ->label('Segna pagata')
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
-            ->visible(fn (PassiveInvoice $record): bool => ! $record->isPaid())
+            ->visible(fn (PassiveInvoice $record): bool => ! $record->isPaid() && ! $record->isCreditNote())
             ->modalHeading('Segna pagata')
             ->modalDescription(fn (PassiveInvoice $record): string => sprintf(
                 'Fattura %s — %s — %s %s — %s',

@@ -290,7 +290,7 @@ class BankTransactionsTable
             'invoice' => Invoice::with('client')->where('status', '!=', 'paid')->latest('issue_date')->limit(100)->get()
                 ->mapWithKeys(fn (Invoice $i): array => [$i->id => sprintf('%s — %s (€%s)', $i->number, $i->client->name ?? '—', number_format($i->total(), 2, ',', '.'))])
                 ->all(),
-            'passive_invoice' => PassiveInvoice::with('supplier')->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)->latest('document_date')->limit(100)->get()
+            'passive_invoice' => PassiveInvoice::with('supplier')->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->latest('document_date')->limit(100)->get()
                 ->mapWithKeys(fn (PassiveInvoice $p): array => [$p->id => sprintf('%s — %s (€%s)', $p->number, $p->supplier->name ?? '—', number_format($p->total(), 2, ',', '.'))])
                 ->all(),
             'costo' => Costo::latest('date')->limit(100)->get()

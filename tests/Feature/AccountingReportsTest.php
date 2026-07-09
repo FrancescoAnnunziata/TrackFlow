@@ -114,6 +114,35 @@ it('builds the registro acquisti with conto grouping, riaddebito and no double c
     expect($total['cells'][7])->toBe(212.0);
 });
 
+it('shows credit notes as negative rows that reduce the registro total', function () {
+    $supplier = Supplier::create(['name' => 'Amazon EU']);
+    // Fattura + nota di credito dello stesso importo (reso): netto 0.
+    PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'FP-1', 'type' => 'expense',
+        'document_date' => '2026-06-10', 'amount_net' => 100, 'amount_vat' => 22, 'amount_gross' => 122,
+        'category' => 'Acquisto materiale e macchinari', 'payment_status' => 'not_paid',
+    ]);
+    PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'NC-1', 'type' => 'passive_credit_note',
+        'document_date' => '2026-06-11', 'amount_net' => 100, 'amount_vat' => 22, 'amount_gross' => 122,
+        'category' => 'Acquisto materiale e macchinari', 'payment_status' => 'not_paid',
+    ]);
+
+    $table = app(RegistroAcquistiBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    );
+    $data = collect($table['rows'])->where('kind', 'data')->values();
+
+    $creditRow = $data->firstWhere(fn ($r): bool => $r['cells'][0] === 'Nota di credito');
+    expect($creditRow)->not->toBeNull();
+    expect($creditRow['cells'][7])->toBe(-122.0); // totale negativo
+
+    // Fattura +122, nota -122 → totale generale 0.
+    $total = collect($table['rows'])->firstWhere('kind', 'total');
+    expect($total['cells'][7])->toBe(0.0);
+});
+
 it('builds the prima nota with a running balance and reconciled document labels', function () {
     $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 100]);
 
