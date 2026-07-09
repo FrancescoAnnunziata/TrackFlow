@@ -2,10 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\ExtractForeignInvoicesJob;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Ai\ForeignInvoiceExtractor;
 use BackedEnum;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -20,7 +23,6 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Carica fatture passive estere in PDF (SiteGround, Meilisearch, ...): Claude
@@ -49,6 +51,12 @@ class FattureEstere extends Page implements HasForms
 
     /** @var array<string, mixed> */
     public array $data = [];
+
+    /** Chiave cache del job di estrazione in corso (null = nessuna estrazione). */
+    public ?string $extractKey = null;
+
+    /** True mentre il job di estrazione è in corso: guida il polling nella view. */
+    public bool $extracting = false;
 
     public static function canAccess(): bool
     {
@@ -116,8 +124,9 @@ class FattureEstere extends Page implements HasForms
     {
         return [
             Action::make('estrai')
-                ->label('Estrai dati dai PDF')
+                ->label(fn (): string => $this->extracting ? 'Estrazione in corso…' : 'Estrai dati dai PDF')
                 ->icon(Heroicon::OutlinedSparkles)
+                ->disabled(fn (): bool => $this->extracting)
                 ->action('estrai'),
             Action::make('crea')
                 ->label('Crea fatture passive')
@@ -148,64 +157,58 @@ class FattureEstere extends Page implements HasForms
             return;
         }
 
-        $rows = [];
-        $errors = 0;
+        // L'estrazione (una chiamata a Claude per PDF) è troppo lenta per la
+        // richiesta web: la mandiamo in coda e la view interroga il risultato in
+        // polling (checkExtraction). Evita il timeout con molti PDF insieme.
+        $key = 'estere-extract:'.auth()->id().':'.Str::uuid();
+        Cache::put($key, ['status' => 'processing'], now()->addHour());
+        ExtractForeignInvoicesJob::dispatch($paths, $key, self::DISK);
 
-        foreach ($paths as $path) {
-            try {
-                $pdf = $this->readPdf($path);
-                if (blank($pdf)) {
-                    throw new \RuntimeException('PDF non leggibile (vuoto).');
-                }
-                $d = $extractor->extract($pdf);
-                // Chiave UUID: il Repeater di Filament indicizza gli item per chiave,
-                // un array numerico ne rompe il rendering (getStateSnapshot on null).
-                $rows[(string) \Illuminate\Support\Str::uuid()] = [
-                    'attachment' => $path,
-                    'supplier_name' => $d['supplier_name'],
-                    'supplier_vat' => $d['supplier_vat'],
-                    'number' => $d['number'],
-                    'document_date' => $d['document_date'],
-                    'category' => $d['category'],
-                    'currency' => $d['currency'],
-                    'amount_net' => $d['amount_net'],
-                    'amount_vat' => $d['amount_vat'],
-                    'amount_gross' => $d['amount_gross'],
-                ];
-            } catch (\Throwable $e) {
-                $errors++;
-                Notification::make()->warning()->title('Estrazione fallita per un PDF')->body($e->getMessage())->send();
-            }
-        }
+        $this->extractKey = $key;
+        $this->extracting = true;
 
-        // fill() rigenera i componenti figli del Repeater dallo stato: settare
-        // $this->data['rows'] direttamente non li istanzia e il render fallisce.
-        $this->form->fill([...$this->data, 'files' => $paths, 'rows' => $rows]);
-
-        Notification::make()->success()
-            ->title('Estratti '.count($rows).' documenti'.($errors > 0 ? " ({$errors} falliti)" : ''))
+        Notification::make()->info()
+            ->title('Estrazione avviata')
+            ->body('Sto elaborando '.count($paths).' PDF in background: i dati compariranno qui appena pronti.')
             ->send();
     }
 
     /**
-     * Legge il contenuto binario del PDF caricato, gestendo sia i path sul disco
-     * public sia (per robustezza) un eventuale file temporaneo o assoluto.
+     * Interrogata in polling dalla view mentre l'estrazione è in corso: quando il
+     * job ha finito, carica le righe estratte nella tabella di revisione.
      */
-    private function readPdf(mixed $path): ?string
+    public function checkExtraction(): void
     {
-        if ($path instanceof \Illuminate\Http\UploadedFile) {
-            return file_get_contents($path->getRealPath()) ?: null;
+        if (! $this->extracting || blank($this->extractKey)) {
+            return;
         }
 
-        if (! is_string($path) || $path === '') {
-            return null;
+        $result = Cache::get($this->extractKey);
+        if (! is_array($result) || ($result['status'] ?? null) === 'processing') {
+            return; // ancora in corso
         }
 
-        if (Storage::disk(self::DISK)->exists($path)) {
-            return Storage::disk(self::DISK)->get($path) ?: null;
+        $key = $this->extractKey;
+        $this->extracting = false;
+        $this->extractKey = null;
+        Cache::forget($key);
+
+        if (($result['status'] ?? null) === 'failed') {
+            Notification::make()->danger()->title('Estrazione fallita')->body($result['message'] ?? '')->send();
+
+            return;
         }
 
-        return is_file($path) ? (file_get_contents($path) ?: null) : null;
+        $rows = $result['rows'] ?? [];
+        $errors = (int) ($result['errors'] ?? 0);
+
+        // fill() rigenera i componenti figli del Repeater dallo stato: settare
+        // $this->data['rows'] direttamente non li istanzia e il render fallisce.
+        $this->form->fill([...$this->data, 'rows' => $rows]);
+
+        Notification::make()->success()
+            ->title('Estratti '.count($rows).' documenti'.($errors > 0 ? " ({$errors} falliti)" : ''))
+            ->send();
     }
 
     public function crea(): void

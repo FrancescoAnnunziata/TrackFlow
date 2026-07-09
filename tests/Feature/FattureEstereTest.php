@@ -1,11 +1,14 @@
 <?php
 
 use App\Filament\Pages\FattureEstere;
+use App\Jobs\ExtractForeignInvoicesJob;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Ai\ForeignInvoiceExtractor;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -30,15 +33,20 @@ function mockExtractor(): void
     app()->instance(ForeignInvoiceExtractor::class, $mock);
 }
 
-it('reads the uploaded PDF (via getState) and fills the review rows', function () {
+it('extracts via a queued job and fills the review rows on the next poll', function () {
     Storage::fake('public');
     mockExtractor();
     $this->actingAs(User::factory()->admin()->create());
 
+    // Queue sync (test): il job gira inline al dispatch; poi il polling
+    // (checkExtraction) trova il risultato in cache e popola le righe.
     Livewire\Livewire::test(FattureEstere::class)
         ->set('data.files', [UploadedFile::fake()->createWithContent('sg.pdf', '%PDF-1.4 contenuto finto')])
         ->call('estrai')
         ->assertHasNoErrors()
+        ->assertSet('extracting', true)
+        ->call('checkExtraction')
+        ->assertSet('extracting', false)
         ->assertSet('data.rows', function (array $rows): bool {
             $first = collect($rows)->first();
 
@@ -49,6 +57,36 @@ it('reads the uploaded PDF (via getState) and fills the review rows', function (
         });
 });
 
+it('enqueues the extraction job instead of running it in the web request', function () {
+    Storage::fake('public');
+    Queue::fake();
+    mockExtractor();
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire\Livewire::test(FattureEstere::class)
+        ->set('data.files', [UploadedFile::fake()->createWithContent('sg.pdf', '%PDF-1.4 x')])
+        ->call('estrai')
+        ->assertHasNoErrors()
+        ->assertSet('extracting', true);
+
+    Queue::assertPushed(ExtractForeignInvoicesJob::class);
+});
+
+it('the job extracts each PDF and writes the rows to cache', function () {
+    Storage::fake('public');
+    mockExtractor();
+    Storage::disk('public')->put('passive-attachments/sg.pdf', '%PDF-1.4 reale');
+
+    $key = 'estere-extract:test';
+    (new ExtractForeignInvoicesJob(['passive-attachments/sg.pdf'], $key))
+        ->handle(app(ForeignInvoiceExtractor::class));
+
+    $result = Cache::get($key);
+    expect($result['status'])->toBe('done');
+    expect($result['errors'])->toBe(0);
+    expect(collect($result['rows'])->first()['number'])->toBe('4535410');
+});
+
 it('keeps the uploaded PDF on disk after creating the invoice (not deleted)', function () {
     Storage::fake('public');
     mockExtractor();
@@ -56,7 +94,8 @@ it('keeps the uploaded PDF on disk after creating the invoice (not deleted)', fu
 
     $component = Livewire\Livewire::test(FattureEstere::class)
         ->set('data.files', [UploadedFile::fake()->createWithContent('sg.pdf', '%PDF-1.4 reale')])
-        ->call('estrai');
+        ->call('estrai')
+        ->call('checkExtraction');
 
     $attachment = collect($component->get('data')['rows'])->first()['attachment'];
     expect(Storage::disk('public')->exists($attachment))->toBeTrue();
