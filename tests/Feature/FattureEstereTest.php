@@ -49,6 +49,25 @@ it('reads the uploaded PDF (via getState) and fills the review rows', function (
         });
 });
 
+it('keeps the uploaded PDF on disk after creating the invoice (not deleted)', function () {
+    Storage::fake('public');
+    mockExtractor();
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = Livewire\Livewire::test(FattureEstere::class)
+        ->set('data.files', [UploadedFile::fake()->createWithContent('sg.pdf', '%PDF-1.4 reale')])
+        ->call('estrai');
+
+    $attachment = collect($component->get('data')['rows'])->first()['attachment'];
+    expect(Storage::disk('public')->exists($attachment))->toBeTrue();
+
+    $component->call('crea')->assertHasNoErrors();
+
+    // Il PDF resta su disco ed è collegato alla fattura (giustificativo).
+    expect(PassiveInvoice::first()->attachment)->toBe($attachment);
+    expect(Storage::disk('public')->exists($attachment))->toBeTrue();
+});
+
 it('creates the passive invoice with supplier and attachment from the reviewed rows', function () {
     Storage::fake('public');
     $this->actingAs(User::factory()->admin()->create());
