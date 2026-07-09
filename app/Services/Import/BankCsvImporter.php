@@ -3,7 +3,10 @@
 namespace App\Services\Import;
 
 use App\Models\BankTransaction;
+use DateTimeInterface;
 use Illuminate\Support\Carbon;
+use OpenSpout\Reader\ODS\Reader as OdsReader;
+use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 use RuntimeException;
 use Throwable;
 
@@ -45,6 +48,15 @@ class BankCsvImporter
 
         $columns = (array) ($options['columns'] ?? []);
         $mode = $options['amount_mode'] ?? 'signed';
+
+        // Alcuni export (es. Directa) antepongono righe di intestazione del
+        // documento prima della vera riga di header: scartiamo tutto ciò che
+        // precede la riga che contiene il nome della colonna Data.
+        $rows = $this->stripPreamble($rows, (string) ($columns['booked_at'] ?? ''));
+        if (count($rows) < 2) {
+            return ['imported' => 0, 'skipped' => 0, 'duplicates' => 0];
+        }
+
         $header = array_shift($rows);
 
         $idx = [];
@@ -218,13 +230,19 @@ class BankCsvImporter
     }
 
     /**
-     * Legge le righe del CSV come array indicizzati per posizione.
+     * Legge le righe del file (CSV o foglio XLSX/ODS) come array indicizzati per
+     * posizione. Il formato è dedotto dall'estensione.
      *
      * @param  array<string, mixed>  $options
      * @return array<int, array<int, string>>
      */
     public function readRows(string $path, array $options): array
     {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['xlsx', 'ods'], true)) {
+            return $this->readSpreadsheet($path, $ext);
+        }
+
         $handle = fopen($path, 'r');
         if ($handle === false) {
             throw new RuntimeException('Impossibile aprire il file CSV.');
@@ -242,6 +260,66 @@ class BankCsvImporter
         }
 
         fclose($handle);
+
+        return $rows;
+    }
+
+    /**
+     * Legge il primo foglio di un file XLSX/ODS come righe di stringhe. Date e
+     * numeri sono normalizzati a stringa (le date a Y-m-d), così passano per lo
+     * stesso parsing dei CSV.
+     *
+     * @return array<int, array<int, string>>
+     */
+    private function readSpreadsheet(string $path, string $ext): array
+    {
+        $reader = $ext === 'ods' ? new OdsReader() : new XlsxReader();
+        $reader->open($path);
+
+        $rows = [];
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $cells = [];
+                foreach ($row->getCells() as $cell) {
+                    $value = $cell->getValue();
+                    if ($value instanceof DateTimeInterface) {
+                        $value = $value->format('Y-m-d');
+                    }
+                    $cells[] = is_scalar($value) ? (string) $value : '';
+                }
+                $rows[] = $cells;
+            }
+
+            break; // solo il primo foglio
+        }
+
+        $reader->close();
+
+        return $rows;
+    }
+
+    /**
+     * Scarta le righe di preambolo che precedono l'intestazione: ritorna le
+     * righe a partire dalla prima che contiene, in una cella, il nome della
+     * colonna Data. Se non la trova (header già in prima riga), ritorna invariato.
+     *
+     * @param  array<int, array<int, string>>  $rows
+     * @return array<int, array<int, string>>
+     */
+    private function stripPreamble(array $rows, string $bookedAtHeader): array
+    {
+        $needle = mb_strtolower(trim($bookedAtHeader));
+        if ($needle === '') {
+            return $rows;
+        }
+
+        foreach ($rows as $i => $row) {
+            foreach ($row as $cell) {
+                if (mb_strtolower(trim((string) $cell)) === $needle) {
+                    return array_values(array_slice($rows, $i));
+                }
+            }
+        }
 
         return $rows;
     }

@@ -58,6 +58,25 @@ return [
             ],
         ],
 
+        'directa' => [
+            'label' => 'Directa',
+            'delimiter' => ';',
+            'decimal' => '.',
+            'thousands' => '',
+            'date_format' => 'd-m-Y',
+            'amount_mode' => 'signed',
+            'columns' => [
+                'booked_at' => 'Data operazione',
+                'value_date' => 'Data valuta',
+                'amount' => 'Importo euro',
+                'description' => 'Tipo operazione',
+                'counterparty' => 'Descrizione',
+                'reference' => 'Protocollo',
+                'dare' => '',
+                'avere' => '',
+            ],
+        ],
+
         'generic' => [
             'label' => 'Generico',
             'delimiter' => ';',

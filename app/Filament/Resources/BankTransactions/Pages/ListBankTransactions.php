@@ -37,11 +37,11 @@ class ListBankTransactions extends ListRecords
     private function importCsvAction(): Action
     {
         return Action::make('importCsv')
-            ->label('Importa CSV')
+            ->label('Importa movimenti')
             ->icon(Heroicon::OutlinedArrowUpTray)
             ->color('gray')
             ->visible(fn (): bool => auth()->user()->isAdmin())
-            ->modalHeading('Importa movimenti da CSV')
+            ->modalHeading('Importa movimenti da CSV/XLSX')
             ->modalSubmitActionLabel('Importa')
             ->schema([
                 Select::make('bank_account_id')
@@ -67,8 +67,12 @@ class ListBankTransactions extends ListRecords
                         }
                     }),
                 FileUpload::make('file')
-                    ->label('File CSV')
-                    ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
+                    ->label('File CSV o XLSX')
+                    ->acceptedFileTypes([
+                        'text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'application/vnd.oasis.opendocument.spreadsheet',
+                    ])
                     ->disk('local')
                     ->directory('imports')
                     ->required(),

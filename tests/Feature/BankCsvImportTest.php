@@ -76,6 +76,35 @@ it('keeps legitimately identical rows without a reference, but stays idempotent 
     expect($account->transactions()->count())->toBe(2);
 });
 
+it('skips document preamble rows before the header (Directa style)', function () {
+    // Gli export Directa antepongono righe descrittive prima dell'intestazione
+    // vera; l'importo è già con segno e il decimale è il punto.
+    $account = BankAccount::create(['name' => 'Directa', 'bank_key' => 'directa']);
+
+    $rows = [
+        ['Conto : P2284 G8LABS S.R.L. UNIPERSONALE'],
+        ['Data estrazione : 8-7-2026 9:56:19'],
+        [],
+        ['Data operazione', 'Data valuta', 'Tipo operazione', 'Descrizione', 'Importo euro'],
+        ['14-01-2026', '14-01-2026', 'Conferimento con bonifico', '', '2000'],
+        ['15-01-2026', '19-01-2026', 'Acquisto', 'Vanguard Ftse All-World Ucits', '-1953.38'],
+        ['10-04-2026', '31-03-2026', 'Bollo portafoglio titoli', '', '-0.8'],
+    ];
+
+    $options = config('banks.presets.directa');
+
+    $result = app(BankCsvImporter::class)->importRows($rows, $account->id, $options);
+
+    expect($result['imported'])->toBe(3);
+    expect($account->transactions()->entrate()->count())->toBe(1);
+    expect($account->transactions()->uscite()->count())->toBe(2);
+    $bollo = $account->transactions()->where('description', 'Bollo portafoglio titoli')->first();
+    expect((float) $bollo->amount)->toBe(-0.8);
+    expect($bollo->counterparty)->toBeNull();
+    $etf = $account->transactions()->where('description', 'Acquisto')->first();
+    expect($etf->counterparty)->toBe('Vanguard Ftse All-World Ucits');
+});
+
 it('deduplicates on re-import', function () {
     $account = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
     $rows = [
