@@ -11,8 +11,9 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
+use Illuminate\Support\Collection;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -116,13 +117,25 @@ class PassiveInvoicesTable
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
             ->visible(fn (PassiveInvoice $record): bool => ! $record->isPaid())
+            ->modalHeading('Segna pagata')
+            ->modalDescription(fn (PassiveInvoice $record): string => sprintf(
+                'Fattura %s — %s — %s %s — %s',
+                $record->number ?: '(s.n.)',
+                $record->supplier->name ?? '—',
+                $record->currency ?: 'EUR',
+                number_format((float) $record->amount_gross, 2, ',', '.'),
+                optional($record->document_date)->format('d/m/Y') ?? '',
+            ))
+            ->modalSubmitActionLabel('Segna pagata')
             ->schema([
-                Select::make('transactions')
-                    ->label('Movimenti bancari')
-                    ->helperText('Uscite non ancora allocate, entro ±45 giorni dalla data documento e con importo entro ±50% del totale. Selezionane più di uno se la fattura è stata pagata a rate.')
-                    ->multiple()
-                    ->options(fn (PassiveInvoice $record): array => self::candidateTransactions($record))
+                CheckboxList::make('transactions')
+                    ->label('Seleziona il/i movimento/i bancario/i che pagano questa fattura')
+                    ->helperText('Uscite entro ±45 giorni dalla data documento e importo entro ±50% del totale. Selezionane più di uno per un pagamento a rate.')
+                    ->options(fn (PassiveInvoice $record): array => self::candidateOptions($record))
+                    ->descriptions(fn (PassiveInvoice $record): array => self::candidateDescriptions($record))
                     ->searchable()
+                    ->bulkToggleable()
+                    ->noSearchResultsMessage('Nessun movimento compatibile trovato.')
                     ->required(),
             ])
             ->action(function (array $data, PassiveInvoice $record): void {
@@ -169,15 +182,16 @@ class PassiveInvoicesTable
      * allocare, entro ±45 giorni dalla data documento e importo entro ±50% del
      * totale della fattura. Ordinati per vicinanza d'importo.
      *
-     * @return array<int, string>
+     * @return Collection<int, BankTransaction>
      */
-    private static function candidateTransactions(PassiveInvoice $record): array
+    private static function candidateTransactions(PassiveInvoice $record): Collection
     {
         $total = (float) $record->amount_gross;
         $from = $record->document_date->copy()->subDays(45);
         $to = $record->document_date->copy()->addDays(45);
 
         return BankTransaction::query()
+            ->with('bankAccount')
             ->where('amount', '<', 0)
             ->whereBetween('booked_at', [$from, $to])
             ->whereRaw('ABS(amount) BETWEEN ? AND ?', [$total * 0.5, $total * 1.5])
@@ -185,13 +199,41 @@ class PassiveInvoicesTable
             ->get()
             ->filter(fn (BankTransaction $tx): bool => $tx->unreconciledAmount() > 0.01)
             ->sortBy(fn (BankTransaction $tx): float => abs(abs((float) $tx->amount) - $total))
+            ->values();
+    }
+
+    /**
+     * Etichetta "colonna" di ogni movimento nella lista di scelta: data e importo.
+     *
+     * @return array<int, string>
+     */
+    private static function candidateOptions(PassiveInvoice $record): array
+    {
+        return self::candidateTransactions($record)
             ->mapWithKeys(fn (BankTransaction $tx): array => [
                 $tx->id => sprintf(
-                    '%s — €%s — %s',
+                    '%s  ·  € %s',
                     optional($tx->booked_at)->format('d/m/Y') ?? '',
                     number_format($tx->unreconciledAmount(), 2, ',', '.'),
-                    str($tx->description ?: ($tx->counterparty ?? ''))->limit(45)->value(),
                 ),
+            ])
+            ->all();
+    }
+
+    /**
+     * Descrizione (riga sotto l'etichetta): conto bancario + descrizione del movimento.
+     *
+     * @return array<int, string>
+     */
+    private static function candidateDescriptions(PassiveInvoice $record): array
+    {
+        return self::candidateTransactions($record)
+            ->mapWithKeys(fn (BankTransaction $tx): array => [
+                $tx->id => trim(sprintf(
+                    '%s — %s',
+                    $tx->bankAccount->name ?? '',
+                    str($tx->description ?: ($tx->counterparty ?? ''))->limit(70)->value(),
+                ), ' —'),
             ])
             ->all();
     }
