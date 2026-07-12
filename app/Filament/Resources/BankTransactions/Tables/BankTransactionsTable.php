@@ -47,8 +47,8 @@ class BankTransactionsTable
                 TextColumn::make('description')
                     ->label('Descrizione')
                     ->searchable()
-                    ->limit(50)
-                    ->wrap(),
+                    ->wrap()
+                    ->extraHeaderAttributes(['style' => 'min-width: 28rem;']),
                 TextColumn::make('counterparty')
                     ->label('Controparte')
                     ->searchable()
