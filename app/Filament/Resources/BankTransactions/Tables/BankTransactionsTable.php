@@ -51,15 +51,15 @@ class BankTransactionsTable
                     ->searchable()
                     ->wrap()
                     ->extraHeaderAttributes(['style' => 'min-width: 28rem;']),
-                TextColumn::make('counterparty')
-                    ->label('Controparte')
-                    ->searchable()
-                    ->toggleable(),
                 TextColumn::make('amount')
                     ->label('Importo')
                     ->money('EUR')
                     ->color(fn ($record): string => $record->amount >= 0 ? 'success' : 'danger')
                     ->sortable(),
+                TextColumn::make('counterparty')
+                    ->label('Controparte')
+                    ->searchable()
+                    ->toggleable(),
                 IconColumn::make('reconciled')
                     ->label('Riconciliato')
                     ->boolean(),
