@@ -44,7 +44,7 @@ class FinancialOverviewBuilder
      * Quadro mensile G8LABS: una riga per mese con ricavi (imponibile), costi,
      * margine e saldo IVA (debito sulle vendite − credito sugli acquisti).
      *
-     * @return array<int, array{mese: int, label: string, ricavi: float, costi: float, margine: float, iva_debito: float, iva_credito: float, iva_saldo: float}>
+     * @return array<int, array{mese: int, label: string, ricavi: float, costi: float, iva_versata: float, margine: float, iva_debito: float, iva_credito: float, iva_saldo: float}>
      */
     public function g8labsMonthly(int $year): array
     {
@@ -52,7 +52,7 @@ class FinancialOverviewBuilder
         for ($m = 1; $m <= 12; $m++) {
             $months[$m] = [
                 'mese' => $m, 'label' => self::MESI[$m],
-                'ricavi' => 0.0, 'costi' => 0.0,
+                'ricavi' => 0.0, 'costi' => 0.0, 'iva_versata' => 0.0,
                 'iva_debito' => 0.0, 'iva_credito' => 0.0,
                 'entrate' => 0.0, 'uscite' => 0.0, 'non_attribuite' => 0.0, 'giroconti' => 0.0,
             ];
@@ -82,6 +82,15 @@ class FinancialOverviewBuilder
         }
         foreach (Costo::whereYear('date', $year)->get() as $c) {
             $m = Carbon::parse($c->date)->month;
+            // La liquidazione IVA (F24) è imposta di giro, già contata sul lato
+            // vendite: non è costo operativo → voce IVA versata separata, fuori dal
+            // margine. Le altre imposte e tasse (ritenute/contributi sul compenso)
+            // sono costo vero e restano nel margine come un normale costo.
+            if ($c->category === Costo::CATEGORY_VAT) {
+                $months[$m]['iva_versata'] += (float) $c->amount;
+
+                continue;
+            }
             $months[$m]['costi'] += (float) $c->amount - (float) $c->vat_amount;
             $months[$m]['iva_credito'] += (float) $c->vat_amount;
         }
@@ -122,6 +131,7 @@ class FinancialOverviewBuilder
         foreach ($months as &$row) {
             $row['ricavi'] = round($row['ricavi'], 2);
             $row['costi'] = round($row['costi'], 2);
+            $row['iva_versata'] = round($row['iva_versata'], 2);
             $row['margine'] = round($row['ricavi'] - $row['costi'], 2);
             $row['iva_debito'] = round($row['iva_debito'], 2);
             $row['iva_credito'] = round($row['iva_credito'], 2);
@@ -139,7 +149,7 @@ class FinancialOverviewBuilder
     /**
      * Totali annui G8LABS derivati dal quadro mensile.
      *
-     * @return array{ricavi: float, costi: float, margine: float, iva_saldo: float}
+     * @return array{ricavi: float, costi: float, iva_versata: float, margine: float, iva_saldo: float}
      */
     public function g8labsTotals(int $year): array
     {
@@ -148,6 +158,7 @@ class FinancialOverviewBuilder
         return [
             'ricavi' => round(array_sum(array_column($rows, 'ricavi')), 2),
             'costi' => round(array_sum(array_column($rows, 'costi')), 2),
+            'iva_versata' => round(array_sum(array_column($rows, 'iva_versata')), 2),
             'margine' => round(array_sum(array_column($rows, 'margine')), 2),
             'iva_saldo' => round(array_sum(array_column($rows, 'iva_saldo')), 2),
             'entrate' => round(array_sum(array_column($rows, 'entrate')), 2),

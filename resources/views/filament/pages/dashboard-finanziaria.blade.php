@@ -118,6 +118,13 @@
                 <div class="fd-val fd-neg">{{ $eur($snap['debiti']) }}</div>
                 <div class="fd-sub">fatture passive non ancora pagate</div>
             </div>
+            @if ($gt['iva_versata'] > 0)
+                <div class="fd-card">
+                    <div class="fd-lbl">IVA versata {{ $year }} (F24)</div>
+                    <div class="fd-val">{{ $eur($gt['iva_versata']) }}</div>
+                    <div class="fd-sub">liquidazioni IVA: imposta di giro, esclusa dal margine</div>
+                </div>
+            @endif
         </div>
 
         {{-- Tabella mensile --}}

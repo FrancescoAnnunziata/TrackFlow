@@ -15,6 +15,20 @@ class Costo extends Model
 {
     protected $table = 'costi';
 
+    /**
+     * Imposte e tasse che sono costo vero (es. ritenuta IRPEF + contributi INPS
+     * sul compenso amministratore versati con F24): completano il costo del
+     * compenso al lordo e contano nel margine come un normale costo.
+     */
+    public const CATEGORY_TAXES = 'Imposte e tasse';
+
+    /**
+     * Liquidazione IVA (IVA a debito incassata dai clienti e versata con F24):
+     * imposta di giro, già contata sul lato vendite. NON è un costo operativo →
+     * voce separata fuori dal margine; il movimento bancario resta riconciliato.
+     */
+    public const CATEGORY_VAT = 'IVA';
+
     protected $fillable = [
         'date',
         'description',

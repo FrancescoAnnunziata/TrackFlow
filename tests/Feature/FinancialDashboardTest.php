@@ -50,6 +50,20 @@ it('builds the G8LABS monthly view with revenue, costs, margin and VAT', functio
     expect($giugno['iva_saldo'])->toBe(154.0);
 });
 
+it('keeps compensation taxes in the margin but treats VAT payments as a separate voice', function () {
+    // F24 del compenso (ritenuta+contributi): costo vero, entra nel margine.
+    Costo::create(['date' => '2026-02-18', 'description' => 'F24 compenso', 'category' => Costo::CATEGORY_TAXES, 'amount' => 500, 'vat_amount' => 0]);
+    // F24 liquidazione IVA: imposta di giro, fuori dal margine, in voce separata.
+    Costo::create(['date' => '2026-02-20', 'description' => 'F24 IVA', 'category' => Costo::CATEGORY_VAT, 'amount' => 2000, 'vat_amount' => 0]);
+
+    $feb = collect(app(FinancialOverviewBuilder::class)->g8labsMonthly(2026))->firstWhere('mese', 2);
+
+    expect($feb['costi'])->toBe(500.0);        // solo il compenso
+    expect($feb['margine'])->toBe(-500.0);     // ricavi 0 − costi 500
+    expect($feb['iva_versata'])->toBe(2000.0); // l'IVA in voce separata
+    expect($feb['iva_credito'])->toBe(0.0);    // l'F24 IVA non è IVA a credito
+});
+
 it('excludes credit notes as positive cost and counts them negative', function () {
     $supplier = Supplier::create(['name' => 'Amazon']);
     PassiveInvoice::create([
