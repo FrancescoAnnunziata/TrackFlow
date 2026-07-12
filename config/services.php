@@ -46,7 +46,7 @@ return [
         // e l'anagrafica fornitori (r) per il controllo finanziario. Cambiare
         // questo valore richiede un "Riconnetti" su Impostazioni → Fatture in
         // Cloud (nuovo consenso dell'utente).
-        'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a received_documents:r entity.suppliers:r'),
+        'scopes' => env('FIC_SCOPES', 'issued_documents.invoices:a issued_documents.credit_notes:r received_documents:r entity.suppliers:r'),
         // ID del tipo IVA "Escluso Art.15" nell'azienda FIC (per i rimborsi
         // spese). Per-azienda: leggibile solo con scope aggiuntivo, quindi
         // configurabile con default noto.

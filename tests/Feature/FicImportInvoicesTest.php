@@ -22,7 +22,7 @@ beforeEach(function () {
 
     User::factory()->admin()->create();
 
-    $detail = [
+    $invoiceDetail = [
         'id' => 999,
         'numeration' => '',
         'number' => 14,
@@ -34,13 +34,32 @@ beforeEach(function () {
             ['name' => 'Rimborsi spese', 'qty' => 1, 'net_price' => 143.5, 'measure' => '', 'vat' => ['id' => 32, 'value' => 0]],
         ],
     ];
+    $creditNoteDetail = [
+        'id' => 1000,
+        'numeration' => 'NC',
+        'number' => 2,
+        'date' => '2026-06-20',
+        'token' => 'nc-tok',
+        'entity' => ['vat_number' => '01234567890'],
+        'items_list' => [
+            ['name' => 'Storno rimborsi spese', 'qty' => 1, 'net_price' => 143.5, 'measure' => '', 'vat' => ['id' => 0, 'value' => 22]],
+        ],
+    ];
 
+    // Fatture e note di credito hanno id diversi e si distinguono per il
+    // parametro `type` dell'elenco (come nell'API reale di Fatture in Cloud).
     Http::fake([
-        '*/issued_documents/*' => Http::response(['data' => $detail]),
+        '*/issued_documents/999*' => Http::response(['data' => $invoiceDetail]),
+        '*/issued_documents/1000*' => Http::response(['data' => $creditNoteDetail]),
         '*/issued_documents*' => function ($request) {
-            return str_contains($request->url(), 'page=1')
-                ? Http::response(['data' => [['id' => 999]]])
-                : Http::response(['data' => []]);
+            $url = $request->url();
+            if (! str_contains($url, 'page=1')) {
+                return Http::response(['data' => []]);
+            }
+
+            return str_contains($url, 'type=credit_note')
+                ? Http::response(['data' => [['id' => 1000]]])
+                : Http::response(['data' => [['id' => 999]]]);
         },
     ]);
 });
@@ -53,10 +72,24 @@ it('imports issued invoices and maps them to the client by VAT number', function
     $invoice = Invoice::where('fic_document_id', 999)->first();
     expect($invoice)->not->toBeNull();
     expect($invoice->imported)->toBeTrue();
+    expect($invoice->type)->toBe(Invoice::TYPE_INVOICE);
     expect($invoice->number)->toBe('14/2026');
     expect($invoice->items)->toHaveCount(2);
     // La riga rimborsi (vat id 32) è marcata art.15.
     expect($invoice->items->firstWhere('name', 'Rimborsi spese')->vat_kind)->toBe('art15');
+});
+
+it('imports issued credit notes with the credit_note type', function () {
+    Client::create(['name' => 'Fedespedi', 'vat_number' => '01234567890', 'vat_rate' => 22]);
+
+    $this->artisan('fic:import-invoices')->assertSuccessful();
+
+    $cn = Invoice::where('fic_document_id', 1000)->first();
+    expect($cn)->not->toBeNull();
+    expect($cn->type)->toBe(Invoice::TYPE_CREDIT_NOTE);
+    expect($cn->number)->toBe('NC 2/2026');
+    // Nota di credito e fattura restano documenti distinti.
+    expect(Invoice::where('fic_document_id', 999)->value('type'))->toBe(Invoice::TYPE_INVOICE);
 });
 
 it('is idempotent on re-run', function () {

@@ -43,10 +43,10 @@ class ImportFicInvoices extends Command
         $skipped = 0;
         $maxPages = (int) $this->option('pages');
 
-        try {
-            // Fatture e note di credito: stesso endpoint, tipo diverso. Le NC
-            // stornano una fattura emessa (collegamento alla fattura poi in UI).
-            foreach (['invoice' => Invoice::TYPE_INVOICE, 'credit_note' => Invoice::TYPE_CREDIT_NOTE] as $ficType => $localType) {
+        // Fatture e note di credito: stesso endpoint, tipo diverso. Le NC stornano
+        // una fattura emessa (collegamento alla fattura poi in UI).
+        foreach (['invoice' => Invoice::TYPE_INVOICE, 'credit_note' => Invoice::TYPE_CREDIT_NOTE] as $ficType => $localType) {
+            try {
                 for ($page = 1; $page <= $maxPages; $page++) {
                     $list = $fic->listIssuedDocuments($ficType, $page);
 
@@ -61,11 +61,19 @@ class ImportFicInvoices extends Command
                             : $skipped++;
                     }
                 }
-            }
-        } catch (FicException $e) {
-            $this->error($e->getMessage());
+            } catch (FicException $e) {
+                // Le note di credito richiedono lo scope issued_documents.credit_notes:
+                // se non è concesso, non bloccare l'import delle fatture.
+                if ($ficType === 'credit_note') {
+                    $this->warn("Note di credito non importate ({$e->getMessage()}). Aggiungi lo scope 'issued_documents.credit_notes:r' a FIC_SCOPES e ri-autorizza la connessione FIC (Riconnetti).");
 
-            return self::FAILURE;
+                    continue;
+                }
+
+                $this->error($e->getMessage());
+
+                return self::FAILURE;
+            }
         }
 
         $this->info("Importate/aggiornate: {$imported}. Saltate (cliente non trovato): {$skipped}.");
