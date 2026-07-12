@@ -219,6 +219,17 @@ class FicClient
      */
     public function listInvoices(int $page = 1, int $perPage = 50): array
     {
+        return $this->listIssuedDocuments('invoice', $page, $perPage);
+    }
+
+    /**
+     * Elenca i documenti emessi di un dato tipo (`invoice`, `credit_note`, ...),
+     * una pagina. Ritorna il nodo `data`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listIssuedDocuments(string $type = 'invoice', int $page = 1, int $perPage = 50): array
+    {
         $credential = FicCredential::current();
 
         if ($credential === null || blank($credential->company_id)) {
@@ -228,7 +239,7 @@ class FicClient
         $response = $this->client()
             ->withToken($this->accessToken())
             ->get(sprintf('%s/c/%s/issued_documents', $this->baseUrl, $credential->company_id), [
-                'type' => 'invoice',
+                'type' => $type,
                 'per_page' => $perPage,
                 'page' => $page,
                 'sort' => '-date',

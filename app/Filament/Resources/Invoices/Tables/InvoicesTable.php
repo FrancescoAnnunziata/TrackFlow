@@ -14,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -52,10 +53,22 @@ class InvoicesTable
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('type')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === Invoice::TYPE_CREDIT_NOTE ? 'Nota di credito' : 'Fattura')
+                    ->color(fn (string $state): string => $state === Invoice::TYPE_CREDIT_NOTE ? 'danger' : 'gray')
+                    ->description(fn (Invoice $record): ?string => $record->isCreditNote() && $record->relatedInvoice
+                        ? 'storna '.$record->relatedInvoice->number
+                        : null)
+                    ->toggleable(),
                 TextColumn::make('total')
                     ->label('Totale')
-                    ->state(fn ($record): float => $record->total())
+                    ->state(fn (Invoice $record): float => $record->total())
                     ->money('EUR')
+                    ->description(fn (Invoice $record): ?string => (! $record->isCreditNote() && $record->creditedAmount() > 0)
+                        ? 'da incassare € '.number_format($record->amountToCollect(), 2, ',', '.').' (stornata di € '.number_format($record->creditedAmount(), 2, ',', '.').')'
+                        : null)
                     ->sortable(false),
                 TextColumn::make('status')
                     ->label('Stato')
@@ -101,6 +114,12 @@ class InvoicesTable
                     ->relationship('client', 'name')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('type')
+                    ->label('Tipo')
+                    ->options([
+                        Invoice::TYPE_INVOICE => 'Fattura',
+                        Invoice::TYPE_CREDIT_NOTE => 'Nota di credito',
+                    ]),
                 SelectFilter::make('status')
                     ->label('Stato')
                     ->options([
@@ -134,6 +153,7 @@ class InvoicesTable
                     }),
             ])
             ->recordActions([
+                self::linkCreditNoteAction(),
                 self::reconcileAction(),
                 ViewAction::make(),
                 EditAction::make(),
@@ -157,20 +177,20 @@ class InvoicesTable
             ->label('Registra incasso')
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
-            ->visible(fn (Invoice $record): bool => $record->status === 'sent')
+            ->visible(fn (Invoice $record): bool => $record->status === 'sent' && ! $record->isCreditNote() && $record->amountToCollect() > 0.01)
             ->modalHeading('Registra incasso')
             ->modalDescription(fn (Invoice $record): string => sprintf(
-                'Fattura %s — %s — € %s — %s',
+                'Fattura %s — %s — da incassare € %s — %s',
                 $record->number ?: '(s.n.)',
                 $record->client->name ?? '—',
-                number_format($record->total(), 2, ',', '.'),
+                number_format($record->amountToCollect(), 2, ',', '.'),
                 optional($record->issue_date)->format('d/m/Y') ?? '',
             ))
             ->modalSubmitActionLabel('Registra incasso')
             ->schema([
                 CheckboxList::make('transactions')
                     ->label('Seleziona il/i movimento/i in entrata che incassano questa fattura')
-                    ->helperText('Entrate entro ±45 giorni dalla data di emissione e importo entro ±50% del totale. Selezionane più di uno per un incasso a rate.')
+                    ->helperText('Entrate entro ±45 giorni dalla data di emissione e importo entro ±50% dell\'importo da incassare. Selezionane più di uno per un incasso a rate.')
                     ->options(fn (Invoice $record): array => self::candidateOptions($record))
                     ->descriptions(fn (Invoice $record): array => self::candidateDescriptions($record))
                     ->searchable()
@@ -180,7 +200,7 @@ class InvoicesTable
             ])
             ->action(function (array $data, Invoice $record): void {
                 $service = app(ReconciliationService::class);
-                $remaining = round($record->total() - $record->reconciledAmount(), 2);
+                $remaining = round($record->amountToCollect() - $record->reconciledAmount(), 2);
                 $allocated = 0.0;
 
                 foreach ($data['transactions'] ?? [] as $txId) {
@@ -218,15 +238,83 @@ class InvoicesTable
     }
 
     /**
+     * Collega manualmente una nota di credito attiva alla fattura che storna.
+     * Ridefinisce l'importo da incassare della fattura (e ne ricalcola lo stato),
+     * sia della nuova fattura collegata sia dell'eventuale precedente.
+     */
+    private static function linkCreditNoteAction(): Action
+    {
+        return Action::make('collega_fattura')
+            ->label('Collega a fattura')
+            ->icon('heroicon-o-link')
+            ->color('warning')
+            ->visible(fn (Invoice $record): bool => $record->isCreditNote())
+            ->modalHeading('Collega la nota di credito alla fattura stornata')
+            ->modalDescription(fn (Invoice $record): string => sprintf(
+                'NC %s — %s — € %s',
+                $record->number ?: '(s.n.)',
+                $record->client->name ?? '—',
+                number_format($record->total(), 2, ',', '.'),
+            ))
+            ->fillForm(fn (Invoice $record): array => ['related_invoice_id' => $record->related_invoice_id])
+            ->schema([
+                Select::make('related_invoice_id')
+                    ->label('Fattura stornata da questa nota di credito')
+                    ->options(fn (Invoice $record): array => self::relatedInvoiceOptions($record))
+                    ->searchable()
+                    ->helperText('Riduce l\'importo da incassare della fattura scelta. Lascia vuoto per scollegare.'),
+            ])
+            ->modalSubmitActionLabel('Salva collegamento')
+            ->action(function (array $data, Invoice $record): void {
+                $service = app(ReconciliationService::class);
+                $previous = $record->relatedInvoice;
+
+                $record->update(['related_invoice_id' => $data['related_invoice_id'] ?: null]);
+
+                // Ricalcola lo stato sia della fattura ora collegata sia di quella
+                // eventualmente scollegata (il loro importo da incassare è cambiato).
+                foreach ([$previous, $record->fresh()->relatedInvoice] as $inv) {
+                    if ($inv !== null) {
+                        $service->recomputeDocument($inv->fresh());
+                    }
+                }
+
+                Notification::make()->success()->title('Collegamento aggiornato')->send();
+            });
+    }
+
+    /**
+     * Fatture (non note di credito) dello stesso cliente, candidate allo storno.
+     *
+     * @return array<int, string>
+     */
+    private static function relatedInvoiceOptions(Invoice $record): array
+    {
+        return Invoice::where('type', Invoice::TYPE_INVOICE)
+            ->where('client_id', $record->client_id)
+            ->orderByDesc('issue_date')
+            ->get()
+            ->mapWithKeys(fn (Invoice $i): array => [
+                $i->id => sprintf(
+                    '%s — € %s — %s',
+                    $i->number,
+                    number_format($i->total(), 2, ',', '.'),
+                    optional($i->issue_date)->format('d/m/Y') ?? '',
+                ),
+            ])
+            ->all();
+    }
+
+    /**
      * Movimenti candidati per una fattura attiva: entrate con quota ancora da
-     * allocare, entro ±45 giorni dalla data di emissione e importo entro ±50% del
-     * totale della fattura. Ordinati per vicinanza d'importo.
+     * allocare, entro ±45 giorni dalla data di emissione e importo entro ±50%
+     * dell'importo da incassare (al netto degli storni). Ordinati per vicinanza.
      *
      * @return Collection<int, BankTransaction>
      */
     private static function candidateTransactions(Invoice $record): Collection
     {
-        $total = $record->total();
+        $total = $record->amountToCollect();
         $from = $record->issue_date->copy()->subDays(45);
         $to = $record->issue_date->copy()->addDays(45);
 

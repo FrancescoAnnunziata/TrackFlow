@@ -12,10 +12,18 @@ use Illuminate\Support\Facades\Storage;
 
 class Invoice extends Model
 {
+    /** Fattura ordinaria emessa. */
+    public const TYPE_INVOICE = 'invoice';
+
+    /** Nota di credito attiva: storna (in parte o del tutto) una fattura emessa. */
+    public const TYPE_CREDIT_NOTE = 'credit_note';
+
     protected $fillable = [
         'user_id',
         'client_id',
         'number',
+        'type',
+        'related_invoice_id',
         'issue_date',
         'period_from',
         'period_to',
@@ -78,11 +86,50 @@ class Invoice extends Model
     }
 
     /**
+     * Fattura stornata da questa nota di credito.
+     */
+    public function relatedInvoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'related_invoice_id');
+    }
+
+    /**
+     * Note di credito che stornano questa fattura.
+     */
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'related_invoice_id')
+            ->where('type', self::TYPE_CREDIT_NOTE);
+    }
+
+    public function isCreditNote(): bool
+    {
+        return $this->type === self::TYPE_CREDIT_NOTE;
+    }
+
+    /**
      * Quota già riconciliata con movimenti bancari.
      */
     public function reconciledAmount(): float
     {
         return round((float) $this->reconciliations()->sum('amount'), 2);
+    }
+
+    /**
+     * Totale stornato dalle note di credito collegate (lordo).
+     */
+    public function creditedAmount(): float
+    {
+        return round((float) $this->creditNotes->sum(fn (Invoice $note): float => $note->total()), 2);
+    }
+
+    /**
+     * Importo effettivamente da incassare: totale meno gli storni delle note di
+     * credito collegate. È il bersaglio della riconciliazione bancaria.
+     */
+    public function amountToCollect(): float
+    {
+        return round($this->total() - $this->creditedAmount(), 2);
     }
 
     /**

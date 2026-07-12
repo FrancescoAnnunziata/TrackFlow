@@ -59,6 +59,8 @@ class FinancialOverviewBuilder
         }
 
         // Ricavi + IVA a debito: fatture attive emesse (non bozza) a clienti FiC.
+        // Le note di credito attive entrano col segno negativo (stornano ricavo e
+        // IVA a debito), come le note di credito passive sul lato costi.
         $invoices = Invoice::query()
             ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FIC))
             ->where('status', '!=', 'draft')
@@ -67,8 +69,9 @@ class FinancialOverviewBuilder
             ->get();
         foreach ($invoices as $inv) {
             $m = Carbon::parse($inv->issue_date)->month;
-            $months[$m]['ricavi'] += $inv->taxableAmount();
-            $months[$m]['iva_debito'] += $inv->vatAmount();
+            $sign = $inv->isCreditNote() ? -1 : 1;
+            $months[$m]['ricavi'] += $sign * $inv->taxableAmount();
+            $months[$m]['iva_debito'] += $sign * $inv->vatAmount();
         }
 
         // Costi + IVA a credito: fatture passive (netto), costi e spese non
@@ -182,14 +185,18 @@ class FinancialOverviewBuilder
             ->map(fn (BankAccount $a): array => ['name' => $a->name, 'balance' => $a->currentBalance()])
             ->all();
 
+        // Crediti = fatture da incassare al netto degli storni (note di credito
+        // collegate) e di quanto già riconciliato. Le note di credito non sono
+        // crediti: si limitano a ridurre la fattura stornata.
         $crediti = 0.0;
         $unpaidInvoices = Invoice::query()
             ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FIC))
             ->whereNotIn('status', ['draft', 'paid'])
-            ->with(['items', 'hours', 'expenses', 'reconciliations'])
+            ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
+            ->with(['items', 'hours', 'expenses', 'reconciliations', 'creditNotes.items'])
             ->get();
         foreach ($unpaidInvoices as $inv) {
-            $crediti += max(0, $inv->total() - $inv->reconciledAmount());
+            $crediti += max(0, $inv->amountToCollect() - $inv->reconciledAmount());
         }
 
         $debiti = 0.0;

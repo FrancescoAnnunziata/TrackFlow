@@ -44,18 +44,22 @@ class ImportFicInvoices extends Command
         $maxPages = (int) $this->option('pages');
 
         try {
-            for ($page = 1; $page <= $maxPages; $page++) {
-                $list = $fic->listInvoices($page);
+            // Fatture e note di credito: stesso endpoint, tipo diverso. Le NC
+            // stornano una fattura emessa (collegamento alla fattura poi in UI).
+            foreach (['invoice' => Invoice::TYPE_INVOICE, 'credit_note' => Invoice::TYPE_CREDIT_NOTE] as $ficType => $localType) {
+                for ($page = 1; $page <= $maxPages; $page++) {
+                    $list = $fic->listIssuedDocuments($ficType, $page);
 
-                if ($list === []) {
-                    break;
-                }
+                    if ($list === []) {
+                        break;
+                    }
 
-                foreach ($list as $summary) {
-                    $detail = $fic->getInvoice((int) $summary['id']);
-                    $this->importOne($detail, $userId, $art15VatId, $createClients)
-                        ? $imported++
-                        : $skipped++;
+                    foreach ($list as $summary) {
+                        $detail = $fic->getInvoice((int) $summary['id']);
+                        $this->importOne($detail, $userId, $art15VatId, $createClients, $localType)
+                            ? $imported++
+                            : $skipped++;
+                    }
                 }
             }
         } catch (FicException $e) {
@@ -76,7 +80,7 @@ class ImportFicInvoices extends Command
     /**
      * @param  array<string, mixed>  $doc
      */
-    private function importOne(array $doc, int $userId, int $art15VatId, bool $createClients): bool
+    private function importOne(array $doc, int $userId, int $art15VatId, bool $createClients, string $type = Invoice::TYPE_INVOICE): bool
     {
         $client = $this->resolveClient((array) Arr::get($doc, 'entity', []), $createClients);
 
@@ -90,13 +94,17 @@ class ImportFicInvoices extends Command
         $year = Carbon::parse((string) Arr::get($doc, 'date'))->year;
         $number = ($base !== '' ? $base : (string) $doc['id']).'/'.$year;
 
-        return DB::transaction(function () use ($doc, $client, $userId, $art15VatId, $number): bool {
+        return DB::transaction(function () use ($doc, $client, $userId, $art15VatId, $number, $type): bool {
+            // 'related_invoice_id' non è impostato qui: il collegamento della nota
+            // di credito alla fattura stornata si fa a mano in UI e va preservato
+            // fra un import e l'altro.
             $invoice = Invoice::updateOrCreate(
                 ['fic_document_id' => (int) $doc['id']],
                 [
                     'user_id' => $userId,
                     'client_id' => $client->id,
                     'number' => $number !== '' ? $number : (string) $doc['id'],
+                    'type' => $type,
                     'issue_date' => Arr::get($doc, 'date'),
                     // Le fatture importate non hanno un periodo: usiamo la data doc.
                     'period_from' => Arr::get($doc, 'date'),

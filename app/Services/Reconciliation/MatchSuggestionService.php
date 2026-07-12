@@ -50,8 +50,9 @@ class MatchSuggestionService
      */
     private function activeInvoiceCandidates(BankTransaction $transaction): Collection
     {
-        return Invoice::with('client')
+        return Invoice::with('client', 'creditNotes.items')
             ->where('status', '!=', 'paid')
+            ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
             ->whereBetween('issue_date', [
                 $transaction->booked_at->copy()->subDays(self::WINDOW_DAYS),
                 $transaction->booked_at->copy()->addDays(self::WINDOW_DAYS),
@@ -61,7 +62,7 @@ class MatchSuggestionService
             ->map(fn (Invoice $i): array => [
                 'model' => $i,
                 'label' => sprintf('Fattura %s — %s', $i->number, $i->client->name ?? '—'),
-                'amount' => $i->total(),
+                'amount' => $i->amountToCollect(),
                 'date' => $i->issue_date,
                 'name' => (string) ($i->client->name ?? ''),
             ]);
