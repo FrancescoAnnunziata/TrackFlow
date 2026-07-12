@@ -69,6 +69,27 @@ it('reverts the linked passives to not paid when the reimbursement is unreconcil
     expect($passive->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_NOT_PAID);
 });
 
+it('links the passive invoices selected in the create form', function () {
+    $user = User::factory()->admin()->create();
+    $supplier = Supplier::create(['name' => 'Tekworld']);
+    $passive = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'FP-9', 'document_date' => '2026-01-12',
+        'amount_net' => 400, 'amount_vat' => 5.31, 'amount_gross' => 405.31,
+        'category' => 'X', 'payment_status' => 'not_paid',
+    ]);
+
+    $this->actingAs($user);
+    Livewire\Livewire::test(App\Filament\Resources\Reimbursements\Pages\CreateReimbursement::class)
+        ->fillForm([
+            'type' => 'trasferta', 'date' => '2026-01-31', 'amount' => 405.31,
+            'status' => 'pending', 'passiveInvoices' => [$passive->id],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect($passive->fresh()->reimbursement_id)->not->toBeNull();
+});
+
 it('excludes reimbursement-linked passive invoices from bank match candidates', function () {
     $user = User::factory()->admin()->create();
     $supplier = Supplier::create(['name' => 'Trenitalia S.p.A.']);

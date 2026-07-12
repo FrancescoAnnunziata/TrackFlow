@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Reimbursements\Schemas;
 
 use App\Enums\ReimbursementStatus;
 use App\Enums\ReimbursementType;
+use App\Models\PassiveInvoice;
 use App\Models\Reimbursement;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -64,6 +65,26 @@ class ReimbursementForm
                     ->searchable()
                     ->preload()
                     ->disabled($fromExpense),
+                Select::make('passiveInvoices')
+                    ->label('Fatture passive anticipate (chiuse da questo rimborso)')
+                    ->helperText('Fatture che hai pagato di tasca tua: si marcano pagate quando il rimborso è riconciliato al bonifico.')
+                    ->relationship(
+                        name: 'passiveInvoices',
+                        titleAttribute: 'number',
+                        modifyQueryUsing: fn ($query) => $query
+                            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
+                            ->where(fn ($q) => $q->whereNull('reimbursement_id')
+                                ->orWhere('payment_status', '!=', PassiveInvoice::STATUS_PAID)),
+                    )
+                    ->getOptionLabelFromRecordUsing(fn (PassiveInvoice $r): string => sprintf(
+                        '%s — %s (€%s)', $r->number, $r->supplier->name ?? '—', number_format((float) $r->amount_gross, 2, ',', '.'),
+                    ))
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (): bool => auth()->user()->isAdmin())
+                    ->disabled($fromExpense)
+                    ->columnSpanFull(),
                 FileUpload::make('attachments')
                     ->label('Allegati (ricevute/scontrini)')
                     ->helperText('Foto o PDF di giustificativi.')
