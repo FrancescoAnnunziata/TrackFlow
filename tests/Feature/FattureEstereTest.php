@@ -6,11 +6,11 @@ use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Ai\ForeignInvoiceExtractor;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
@@ -27,7 +27,7 @@ function mockExtractor(): void
             'number' => '4535410', 'document_date' => '2026-03-19',
             'amount_net' => 12.99, 'amount_vat' => 0.0, 'amount_gross' => 12.99,
             'currency' => 'EUR', 'category' => 'Software e abbonamenti cloud',
-            'description' => 'Rinnovo dominio',
+            'description' => 'Rinnovo dominio', 'is_credit_note' => false,
         ];
     });
     app()->instance(ForeignInvoiceExtractor::class, $mock);
@@ -127,5 +127,27 @@ it('creates the passive invoice with supplier and attachment from the reviewed r
     expect($invoice->number)->toBe('4535410');
     expect($invoice->currency)->toBe('EUR');
     expect($invoice->attachment)->toBe('passive-attachments/sg.pdf');
+    expect($invoice->type)->toBe('expense');
     expect(Supplier::where('name', 'SiteGround Spain S.L.')->exists())->toBeTrue();
+});
+
+it('creates a passive credit note when the row is flagged as such', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire\Livewire::test(FattureEstere::class)
+        ->set('data.rows', [[
+            'attachment' => 'passive-attachments/anthropic-cn.pdf',
+            'supplier_name' => 'Anthropic, PBC', 'supplier_vat' => null,
+            'number' => 'VQXFWWQB-0004-CN-01', 'document_date' => '2026-04-05',
+            'category' => 'Software e abbonamenti cloud', 'currency' => 'EUR',
+            'amount_net' => 90, 'amount_vat' => 19.80, 'amount_gross' => 109.80,
+            'is_credit_note' => true,
+        ]])
+        ->call('crea')
+        ->assertHasNoErrors();
+
+    $note = PassiveInvoice::first();
+    expect($note->type)->toBe(PassiveInvoice::TYPE_CREDIT_NOTE);
+    expect($note->isCreditNote())->toBeTrue();
 });

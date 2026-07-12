@@ -65,6 +65,7 @@ class ExtractForeignInvoicesJob implements ShouldQueue
                     'amount_net' => $d['amount_net'],
                     'amount_vat' => $d['amount_vat'],
                     'amount_gross' => $d['amount_gross'],
+                    'is_credit_note' => $d['is_credit_note'],
                 ];
             } catch (Throwable) {
                 $errors++;

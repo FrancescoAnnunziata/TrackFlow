@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use Anthropic\Client;
+use Anthropic\Messages\Message;
 use RuntimeException;
 
 /**
@@ -40,7 +41,8 @@ class ForeignInvoiceExtractor
      * @return array{
      *   supplier_name: string, supplier_vat: ?string, number: ?string,
      *   document_date: ?string, amount_net: float, amount_vat: float,
-     *   amount_gross: float, currency: string, category: ?string, description: ?string
+     *   amount_gross: float, currency: string, category: ?string, description: ?string,
+     *   is_credit_note: bool
      * }
      */
     public function extract(string $pdfBinary): array
@@ -94,6 +96,9 @@ class ForeignInvoiceExtractor
         - "category": il conto contabile più adatto, scelto SOLO fra: {$conti}. Usa
           "Software e abbonamenti cloud" per hosting, domini, SaaS, licenze software.
         - "description": breve descrizione di cosa è stato acquistato, stringa.
+        - "is_credit_note": true se il documento è una NOTA DI CREDITO (credit note,
+          storno, rimborso di una fattura), false se è una normale fattura. Gli
+          importi vanno comunque riportati POSITIVI anche per le note di credito.
 
         Il fornitore è chi EMETTE la fattura, non il cliente (G8LABS / Giorgio Giotto è
         il cliente, non il fornitore). Gli importi devono essere numeri, non stringhe.
@@ -101,7 +106,7 @@ class ForeignInvoiceExtractor
     }
 
     /**
-     * @param  \Anthropic\Messages\Message  $message
+     * @param  Message  $message
      */
     private function firstText($message): string
     {
@@ -145,6 +150,7 @@ class ForeignInvoiceExtractor
             'currency' => strtoupper(trim((string) ($data['currency'] ?? 'EUR'))) ?: 'EUR',
             'category' => $this->stringOrNull($data['category'] ?? null),
             'description' => $this->stringOrNull($data['description'] ?? null),
+            'is_credit_note' => (bool) ($data['is_credit_note'] ?? false),
         ];
     }
 

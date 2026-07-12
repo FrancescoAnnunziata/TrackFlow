@@ -7,8 +7,6 @@ use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Ai\ForeignInvoiceExtractor;
 use BackedEnum;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -16,6 +14,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -23,6 +22,8 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * Carica fatture passive estere in PDF (SiteGround, Meilisearch, ...): Claude
@@ -111,6 +112,10 @@ class FattureEstere extends Page implements HasForms
                                 TextInput::make('amount_net')->label('Imponibile')->numeric()->required(),
                                 TextInput::make('amount_vat')->label('IVA')->numeric()->default(0)->required(),
                                 TextInput::make('amount_gross')->label('Totale')->numeric()->required(),
+                                Toggle::make('is_credit_note')
+                                    ->label('Nota di credito')
+                                    ->helperText('Storna il costo invece di aggiungerlo.')
+                                    ->default(false),
                             ]),
                     ]),
             ])
@@ -238,7 +243,8 @@ class FattureEstere extends Page implements HasForms
             PassiveInvoice::create([
                 'supplier_id' => $supplier->id,
                 'number' => $row['number'],
-                'type' => 'expense',
+                // Le note di credito stornano il costo: tipo dedicato (conta negativo).
+                'type' => ($row['is_credit_note'] ?? false) ? PassiveInvoice::TYPE_CREDIT_NOTE : 'expense',
                 'document_date' => $row['document_date'],
                 'amount_net' => $net,
                 'amount_vat' => $vat,
