@@ -91,7 +91,7 @@ class ExpensePassiveMatcher
 
         $matches = PassiveInvoice::whereBetween('document_date', [$from, $to])
             ->where('amount_gross', $expense->amount)
-            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->whereNull('reimbursement_id')
             ->whereNotIn('id', $used)
             ->get();
 
@@ -116,7 +116,7 @@ class ExpensePassiveMatcher
 
         return PassiveInvoice::with('supplier')
             ->whereNotIn('id', $used)
-            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
+            ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->whereNull('reimbursement_id')
             ->whereBetween('document_date', [$from, $to])
             ->get()
             ->map(fn (PassiveInvoice $p): array => [

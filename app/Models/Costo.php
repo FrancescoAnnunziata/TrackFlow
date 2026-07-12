@@ -22,6 +22,7 @@ class Costo extends Model
         'amount',
         'vat_amount',
         'supplier_id',
+        'reimbursement_id',
         'bank_transaction_id',
         'notes',
     ];
@@ -40,6 +41,14 @@ class Costo extends Model
     public function bankTransaction(): BelongsTo
     {
         return $this->belongsTo(BankTransaction::class);
+    }
+
+    /**
+     * Richiesta di rimborso di cui questo costo (km, pasto, ...) fa parte.
+     */
+    public function reimbursement(): BelongsTo
+    {
+        return $this->belongsTo(Reimbursement::class);
     }
 
     public function reconciliations(): MorphMany

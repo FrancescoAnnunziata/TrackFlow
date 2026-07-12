@@ -7,6 +7,8 @@ use App\Enums\ReimbursementType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Reimbursement extends Model
 {
@@ -59,5 +61,47 @@ class Reimbursement extends Model
     public function isFromExpense(): bool
     {
         return $this->expense_id !== null;
+    }
+
+    /**
+     * Fatture passive anticipate dal dipendente e coperte da questa richiesta
+     * di rimborso: si marcano pagate quando il rimborso viene riconciliato.
+     */
+    public function passiveInvoices(): HasMany
+    {
+        return $this->hasMany(PassiveInvoice::class);
+    }
+
+    /**
+     * Costi senza fattura (km, pasti, ...) parte di questa richiesta di rimborso.
+     */
+    public function costi(): HasMany
+    {
+        return $this->hasMany(Costo::class);
+    }
+
+    /**
+     * Riconciliazioni col bonifico di rimborso: il Reimbursement è il documento
+     * (uscita) che il bonifico chiude.
+     */
+    public function reconciliations(): MorphMany
+    {
+        return $this->morphMany(Reconciliation::class, 'reconcilable');
+    }
+
+    /**
+     * Importo da coprire con la riconciliazione bancaria (totale del rimborso).
+     */
+    public function total(): float
+    {
+        return round((float) $this->amount, 2);
+    }
+
+    /**
+     * Quota già coperta da bonifici riconciliati a questo rimborso.
+     */
+    public function reconciledAmount(): float
+    {
+        return round((float) $this->reconciliations()->sum('amount'), 2);
     }
 }

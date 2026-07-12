@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Reconciliation;
+use App\Models\Reimbursement;
 use App\Models\User;
 use App\Observers\ReconciliationObserver;
 use Illuminate\Auth\Access\Response;
@@ -39,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
             'passive_invoice' => PassiveInvoice::class,
             'costo' => Costo::class,
             'expense' => Expense::class,
+            'reimbursement' => Reimbursement::class,
         ]);
 
         Reconciliation::observe(ReconciliationObserver::class);

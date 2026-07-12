@@ -34,6 +34,7 @@ class PassiveInvoice extends Model
         'currency',
         'category',
         'payment_status',
+        'reimbursement_id',
         'imported',
         'notes',
         'attachment',
@@ -51,6 +52,16 @@ class PassiveInvoice extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Richiesta di rimborso che copre questa fattura (anticipata dal dipendente
+     * col conto personale): quando il bonifico chiude il rimborso, la fattura
+     * risulta pagata.
+     */
+    public function reimbursement(): BelongsTo
+    {
+        return $this->belongsTo(Reimbursement::class);
     }
 
     public function items(): HasMany
@@ -88,5 +99,10 @@ class PassiveInvoice extends Model
     public function isCreditNote(): bool
     {
         return $this->type === self::TYPE_CREDIT_NOTE;
+    }
+
+    public function isPaidViaReimbursement(): bool
+    {
+        return $this->reimbursement_id !== null;
     }
 }

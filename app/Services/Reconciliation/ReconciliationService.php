@@ -6,6 +6,7 @@ use App\Models\BankTransaction;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Reconciliation;
+use App\Models\Reimbursement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -101,6 +102,24 @@ class ReconciliationService
                 ? PassiveInvoice::STATUS_PAID
                 : PassiveInvoice::STATUS_NOT_PAID;
             $document->saveQuietly();
+
+            return;
+        }
+
+        // Rimborso spese: quando il bonifico lo copre, il rimborso è pagato e le
+        // fatture passive anticipate dal dipendente e collegate risultano pagate
+        // (si "chiudono" tramite il rimborso, non con un pagamento diretto).
+        if ($document instanceof Reimbursement) {
+            $document->status = $covered
+                ? \App\Enums\ReimbursementStatus::Paid
+                : \App\Enums\ReimbursementStatus::Pending;
+            $document->saveQuietly();
+
+            $document->passiveInvoices()->update([
+                'payment_status' => $covered
+                    ? PassiveInvoice::STATUS_PAID
+                    : PassiveInvoice::STATUS_NOT_PAID,
+            ]);
         }
     }
 }
