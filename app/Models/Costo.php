@@ -25,12 +25,14 @@ class Costo extends Model
         'reimbursement_id',
         'bank_transaction_id',
         'notes',
+        'attachments',
     ];
 
     protected $casts = [
         'date' => 'date',
         'amount' => 'decimal:2',
         'vat_amount' => 'decimal:2',
+        'attachments' => 'array',
     ];
 
     public function supplier(): BelongsTo

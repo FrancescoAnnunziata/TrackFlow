@@ -69,6 +69,29 @@ it('reverts the linked passives to not paid when the reimbursement is unreconcil
     expect($passive->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_NOT_PAID);
 });
 
+it('registers a payslip as a cost and reconciles the salary bonifico', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+    $bonifico = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-02-23', 'amount' => -1500,
+        'description' => 'BONIFICO retribuzione gennaio', 'dedup_hash' => 'p1',
+    ]);
+
+    $spec = json_encode([
+        'date' => '2026-01-31', 'amount' => 1500, 'conto' => 'Collaboratori',
+        'descrizione' => 'Compenso amministratore Gennaio 2026', 'bonifico_tx' => $bonifico->id,
+    ]);
+    $this->artisan('finance:register-payslip', ['--spec' => $spec])->assertSuccessful();
+
+    $costo = App\Models\Costo::where('category', 'Collaboratori')->where('amount', 1500)->first();
+    expect($costo)->not->toBeNull();
+    expect($bonifico->fresh()->reconciled)->toBeTrue();
+    expect($bonifico->fresh()->unreconciledAmount())->toBe(0.0);
+
+    // Idempotente: una seconda esecuzione non duplica.
+    $this->artisan('finance:register-payslip', ['--spec' => $spec])->assertSuccessful();
+    expect(App\Models\Costo::where('category', 'Collaboratori')->where('amount', 1500)->count())->toBe(1);
+});
+
 it('links the passive invoices selected in the create form', function () {
     $user = User::factory()->admin()->create();
     $supplier = Supplier::create(['name' => 'Tekworld']);
