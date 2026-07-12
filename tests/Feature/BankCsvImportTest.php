@@ -105,6 +105,34 @@ it('skips document preamble rows before the header (Directa style)', function ()
     expect($etf->counterparty)->toBe('Vanguard Ftse All-World Ucits');
 });
 
+it('skips InBank balance summary rows but keeps a "Saldo Fattura" transfer', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+
+    $rows = [
+        ['Data contabile', 'Dare', 'Avere', 'Descrizione'],
+        ['05/06/2026', '', '2.440,00', 'Bonifico'],
+        // Bonifico con causale "Saldo Fattura...": è un movimento vero, va tenuto.
+        ['06/06/2026', '', '1.000,00', 'Saldo Fattura 14 SOCIETA BOCCIOFILA'],
+        // Righe di riepilogo in coda all'estratto: NON sono movimenti.
+        ['06/07/2026', '', '282,29', 'Saldo contabile'],
+        ['06/07/2026', '', '282,29', 'Saldo liquido'],
+        ['06/07/2026', '', '0,00', 'Saldo SBF per conti unici al'],
+        ['06/07/2026', '', '256,02', 'Disponibilità al'],
+    ];
+    $options = [
+        'decimal' => ',', 'thousands' => '.', 'date_format' => 'd/m/Y', 'amount_mode' => 'dare_avere',
+        'columns' => ['booked_at' => 'Data contabile', 'dare' => 'Dare', 'avere' => 'Avere', 'description' => 'Descrizione'],
+    ];
+
+    $result = app(BankCsvImporter::class)->importRows($rows, $account->id, $options);
+
+    expect($result['imported'])->toBe(2);
+    expect($result['skipped'])->toBe(4);
+    expect($account->transactions()->count())->toBe(2);
+    expect($account->transactions()->where('description', 'like', 'Saldo Fattura%')->exists())->toBeTrue();
+    expect($account->transactions()->where('description', 'like', 'Disponibilit%')->exists())->toBeFalse();
+});
+
 it('deduplicates on re-import', function () {
     $account = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
     $rows = [

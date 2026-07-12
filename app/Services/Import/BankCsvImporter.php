@@ -27,6 +27,21 @@ use Throwable;
 class BankCsvImporter
 {
     /**
+     * Righe di riepilogo che alcuni estratti (InBank) mettono in coda: NON sono
+     * movimenti ma saldi/disponibilità. Match per prefisso esatto della
+     * descrizione, così un bonifico con causale "Saldo Fattura…" resta importato.
+     *
+     * @var array<int, string>
+     */
+    private const SUMMARY_DESCRIPTION_PREFIXES = [
+        'saldo contabile',
+        'saldo liquido',
+        'saldo sbf',
+        'disponibilità al',
+        'disponibilita al',
+    ];
+
+    /**
      * @param  array<string, mixed>  $options
      * @return array{imported: int, skipped: int, duplicates: int}
      */
@@ -105,6 +120,14 @@ class BankCsvImporter
             }
 
             $description = trim((string) $this->cell($row, $idx['description'] ?? null));
+
+            // Righe di riepilogo (saldo/disponibilità): non sono movimenti.
+            if ($this->isSummaryRow($description)) {
+                $skipped++;
+
+                continue;
+            }
+
             $counterparty = trim((string) $this->cell($row, $idx['counterparty'] ?? null));
             $reference = trim((string) $this->cell($row, $idx['reference'] ?? null));
             $valueDate = $this->parseDate($this->cell($row, $idx['value_date'] ?? null), (string) ($options['date_format'] ?? 'd/m/Y'));
@@ -142,6 +165,26 @@ class BankCsvImporter
         }
 
         return ['imported' => $imported, 'skipped' => $skipped, 'duplicates' => $duplicates];
+    }
+
+    /**
+     * True se la descrizione è una riga di riepilogo (saldo/disponibilità), da
+     * non importare come movimento.
+     */
+    private function isSummaryRow(string $description): bool
+    {
+        $desc = mb_strtolower(trim($description));
+        if ($desc === '') {
+            return false;
+        }
+
+        foreach (self::SUMMARY_DESCRIPTION_PREFIXES as $prefix) {
+            if (str_starts_with($desc, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -273,7 +316,7 @@ class BankCsvImporter
      */
     private function readSpreadsheet(string $path, string $ext): array
     {
-        $reader = $ext === 'ods' ? new OdsReader() : new XlsxReader();
+        $reader = $ext === 'ods' ? new OdsReader : new XlsxReader;
         $reader->open($path);
 
         $rows = [];

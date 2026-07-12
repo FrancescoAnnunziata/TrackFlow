@@ -14,6 +14,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -74,12 +75,19 @@ class BankTransactionsTable
                         'out' => 'Uscite',
                     ]),
                 TernaryFilter::make('reconciled')
-                    ->label('Riconciliato'),
+                    ->label('Riconciliato')
+                    // I giroconti sono già "chiusi" (spostamenti tra conti): non
+                    // devono comparire tra i "non riconciliati".
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->where('reconciled', true),
+                        false: fn (Builder $query): Builder => $query->where('reconciled', false)->whereNull('transfer_pair_id'),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
                 Filter::make('booked_at')
                     ->label('Data')
                     ->schema([
-                        \Filament\Forms\Components\DatePicker::make('from')->label('Dal'),
-                        \Filament\Forms\Components\DatePicker::make('until')->label('Al'),
+                        DatePicker::make('from')->label('Dal'),
+                        DatePicker::make('until')->label('Al'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -126,7 +134,8 @@ class BankTransactionsTable
         return Action::make('riconcilia')
             ->label('Riconcilia')
             ->icon(Heroicon::OutlinedLink)
-            ->visible(fn (BankTransaction $record): bool => $record->unreconciledAmount() > 0.01)
+            // Non su un giroconto (non è un costo/ricavo, solo spostamento).
+            ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer() && $record->unreconciledAmount() > 0.01)
             ->fillForm(fn (BankTransaction $record): array => ['amount' => $record->unreconciledAmount()])
             ->schema([
                 Select::make('suggestion')
@@ -207,6 +216,7 @@ class BankTransactionsTable
             ->icon(Heroicon::OutlinedReceiptPercent)
             ->color('warning')
             ->visible(fn (BankTransaction $record): bool => $record->direction === BankTransaction::DIRECTION_OUT
+                && ! $record->isTransfer()
                 && $record->unreconciledAmount() > 0.01)
             ->fillForm(fn (BankTransaction $record): array => [
                 'description' => str($record->description ?: 'Costo')->limit(80)->value(),
@@ -276,7 +286,8 @@ class BankTransactionsTable
             ->label('Segna come giroconto')
             ->icon(Heroicon::OutlinedArrowsRightLeft)
             ->color('gray')
-            ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer())
+            // Non su un movimento già riconciliato a un documento né già giroconto.
+            ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer() && ! $record->reconciled)
             ->modalHeading('Segna come giroconto')
             ->modalDescription(fn (BankTransaction $record): string => sprintf(
                 'Movimento del %s — %s € %s. Scegli il movimento gemello (l\'altra metà del trasferimento).',
