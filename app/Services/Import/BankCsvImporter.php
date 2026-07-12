@@ -102,6 +102,13 @@ class BankCsvImporter
         // file resta idempotente.
         $occurrences = [];
 
+        // Alcune carte (Vivid) esportano due righe per pagamento: l'autorizzazione
+        // (descrizione vuota) e l'addebito col nome del merchant, a 1-2 giorni.
+        // Il dedup content-based non le unisce (descrizioni diverse), quindi
+        // saltiamo la riga di autorizzazione quando esiste un addebito descritto
+        // dello stesso importo entro pochi giorni.
+        $describedDates = $this->describedDateMap($rows, $idx, $mode, $options);
+
         foreach ($rows as $row) {
             $dateRaw = $this->cell($row, $idx['booked_at'] ?? null);
 
@@ -123,6 +130,13 @@ class BankCsvImporter
 
             // Righe di riepilogo (saldo/disponibilità): non sono movimenti.
             if ($this->isSummaryRow($description)) {
+                $skipped++;
+
+                continue;
+            }
+
+            // Riga di autorizzazione (descrizione vuota) con addebito gemello descritto.
+            if ($description === '' && $this->hasDescribedTwin($describedDates, $amount, $bookedAt)) {
                 $skipped++;
 
                 continue;
@@ -165,6 +179,51 @@ class BankCsvImporter
         }
 
         return ['imported' => $imported, 'skipped' => $skipped, 'duplicates' => $duplicates];
+    }
+
+    /**
+     * Mappa importo → date delle righe CON descrizione (gli addebiti veri), usata
+     * per riconoscere le righe di autorizzazione a descrizione vuota da saltare.
+     *
+     * @param  array<int, array<int, string>>  $rows
+     * @param  array<string, int|null>  $idx
+     * @param  array<string, mixed>  $options
+     * @return array<string, array<int, string>>
+     */
+    private function describedDateMap(array $rows, array $idx, string $mode, array $options): array
+    {
+        $map = [];
+        foreach ($rows as $row) {
+            $desc = trim((string) $this->cell($row, $idx['description'] ?? null));
+            if ($desc === '' || $this->isSummaryRow($desc)) {
+                continue;
+            }
+            $amount = $this->resolveAmount($row, $idx, $mode, $options);
+            $date = $this->parseDate($this->cell($row, $idx['booked_at'] ?? null), (string) ($options['date_format'] ?? 'd/m/Y'));
+            if ($amount === null || $date === null) {
+                continue;
+            }
+            $map[number_format($amount, 2, '.', '')][] = $date->format('Y-m-d');
+        }
+
+        return $map;
+    }
+
+    /**
+     * True se esiste un addebito descritto dello stesso importo entro ±2 giorni:
+     * la riga vuota è la sua autorizzazione (duplicato da saltare).
+     *
+     * @param  array<string, array<int, string>>  $describedDates
+     */
+    private function hasDescribedTwin(array $describedDates, float $amount, Carbon $bookedAt): bool
+    {
+        foreach ($describedDates[number_format($amount, 2, '.', '')] ?? [] as $date) {
+            if (abs(Carbon::parse($date)->diffInDays($bookedAt)) <= 2) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

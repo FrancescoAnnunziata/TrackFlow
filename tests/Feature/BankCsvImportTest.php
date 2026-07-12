@@ -133,6 +133,32 @@ it('skips InBank balance summary rows but keeps a "Saldo Fattura" transfer', fun
     expect($account->transactions()->where('description', 'like', 'Disponibilit%')->exists())->toBeFalse();
 });
 
+it('skips a Vivid authorization row (empty description) when a described charge twin exists', function () {
+    $account = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid', 'opening_balance' => 0]);
+
+    $rows = [
+        ['Booking Date', 'Amount', 'Description'],
+        // Autorizzazione: descrizione vuota, giorno prima.
+        ['2026-04-15', '-64.00', ''],
+        // Addebito vero col merchant, giorno dopo, stesso importo: si tiene questo.
+        ['2026-04-16', '-64.00', 'TRATTORIA TRE STELLE'],
+        // Due pasti veri identici (entrambi descritti): NON vanno uniti.
+        ['2026-05-01', '-31.00', 'RISTORANTE GIAPPONESE'],
+        ['2026-05-02', '-31.00', 'RISTORANTE GIAPPONESE'],
+    ];
+    $options = [
+        'decimal' => '.', 'thousands' => ',', 'date_format' => 'Y-m-d', 'amount_mode' => 'signed',
+        'columns' => ['booked_at' => 'Booking Date', 'amount' => 'Amount', 'description' => 'Description'],
+    ];
+
+    $result = app(BankCsvImporter::class)->importRows($rows, $account->id, $options);
+
+    expect($result['imported'])->toBe(3);   // 1 auth saltata, 1 addebito + 2 pasti veri
+    expect($result['skipped'])->toBe(1);
+    expect($account->transactions()->whereNull('description')->count())->toBe(0);
+    expect($account->transactions()->where('description', 'like', 'RISTORANTE%')->count())->toBe(2);
+});
+
 it('deduplicates on re-import', function () {
     $account = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
     $rows = [
