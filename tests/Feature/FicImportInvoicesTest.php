@@ -31,7 +31,9 @@ beforeEach(function () {
         'entity' => ['vat_number' => '01234567890'],
         'items_list' => [
             ['name' => 'Consulenza', 'qty' => 1, 'net_price' => 1800, 'measure' => '', 'vat' => ['id' => 0, 'value' => 22]],
-            ['name' => 'Rimborsi spese', 'qty' => 1, 'net_price' => 143.5, 'measure' => '', 'vat' => ['id' => 32, 'value' => 0]],
+            // ID art.15 reale dell'azienda FIC (≠ dal default in config): va
+            // riconosciuta come esclusa art.15 per aliquota 0, non per ID.
+            ['name' => 'Rimborsi spese', 'qty' => 1, 'net_price' => 143.5, 'measure' => '', 'vat' => ['id' => 13509782, 'value' => 0]],
         ],
     ];
     $creditNoteDetail = [
@@ -75,8 +77,12 @@ it('imports issued invoices and maps them to the client by VAT number', function
     expect($invoice->type)->toBe(Invoice::TYPE_INVOICE);
     expect($invoice->number)->toBe('14/2026');
     expect($invoice->items)->toHaveCount(2);
-    // La riga rimborsi (vat id 32) è marcata art.15.
+    // La riga rimborsi (aliquota 0) è marcata art.15, non standard.
     expect($invoice->items->firstWhere('name', 'Rimborsi spese')->vat_kind)->toBe('art15');
+    // Totale corretto: 1.800 al 22% + 143,50 art.15 = 2.339,50 (l'art.15 NON prende IVA).
+    expect($invoice->taxableAmount())->toBe(1800.0);
+    expect($invoice->vatAmount())->toBe(396.0);
+    expect($invoice->total())->toBe(2339.5);
 });
 
 it('imports issued credit notes with the credit_note type', function () {

@@ -131,14 +131,21 @@ class ImportFicInvoices extends Command
             $invoice->items()->delete();
 
             foreach (Arr::get($doc, 'items_list', []) as $i => $item) {
+                // Una riga senza IVA (rimborsi spese "esclusi ex art. 15") va nel
+                // bucket art.15: altrimenti il modello le applica l'aliquota della
+                // fattura e gonfia il totale. Il riconoscimento è per aliquota
+                // (vat.value == 0) — robusto — con l'ID art.15 come fallback,
+                // perché l'ID del tipo IVA cambia da azienda ad azienda su FIC.
                 $vatId = (int) Arr::get($item, 'vat.id', 0);
+                $vatValue = (float) Arr::get($item, 'vat.value', 0);
+                $isVatFree = $vatValue == 0.0 || $vatId === $art15VatId;
                 $invoice->items()->create([
                     'name' => (string) ($item['name'] ?? 'Voce'),
                     'description' => (string) ($item['description'] ?? ''),
                     'qty' => (float) ($item['qty'] ?? 1),
                     'measure' => (string) ($item['measure'] ?? ''),
                     'net_price' => (float) ($item['net_price'] ?? 0),
-                    'vat_kind' => $vatId === $art15VatId ? InvoiceItem::VAT_ART15 : InvoiceItem::VAT_STANDARD,
+                    'vat_kind' => $isVatFree ? InvoiceItem::VAT_ART15 : InvoiceItem::VAT_STANDARD,
                     'line_kind' => 'consulting',
                     'sort' => $i,
                 ]);
