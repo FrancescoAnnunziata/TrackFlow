@@ -20,6 +20,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Cache;
@@ -112,6 +113,11 @@ class FattureEstere extends Page implements HasForms
                                 TextInput::make('amount_net')->label('Imponibile')->numeric()->required(),
                                 TextInput::make('amount_vat')->label('IVA')->numeric()->default(0)->required(),
                                 TextInput::make('amount_gross')->label('Totale')->numeric()->required(),
+                                TextInput::make('amount_eur')
+                                    ->label('Importo EUR (cambio)')
+                                    ->helperText('Convertito al cambio BCE della data documento. Correggilo col netto realmente addebitato dalla carta per far quadrare la riconciliazione.')
+                                    ->numeric()
+                                    ->visible(fn (Get $get): bool => ($get('currency') ?? 'EUR') !== 'EUR'),
                                 Toggle::make('is_credit_note')
                                     ->label('Nota di credito')
                                     ->helperText('Storna il costo invece di aggiungerlo.')
@@ -239,6 +245,25 @@ class FattureEstere extends Page implements HasForms
             $net = round((float) $row['amount_net'], 2);
             $vat = round((float) $row['amount_vat'], 2);
             $gross = round((float) $row['amount_gross'], 2);
+            $currency = $row['currency'] ?? 'EUR';
+            $originalCurrency = null;
+            $originalAmount = null;
+
+            // Valuta estera: registriamo in EUR (per riconciliare col movimento),
+            // convertendo con lo stesso rapporto dell'importo EUR (cambio BCE o
+            // netto carta corretto dall'utente). L'originale resta come riferimento.
+            if ($currency !== 'EUR') {
+                $eurGross = round((float) ($row['amount_eur'] ?? 0), 2);
+                if ($eurGross > 0.01 && $gross > 0) {
+                    $rate = $eurGross / $gross;
+                    $originalCurrency = $currency;
+                    $originalAmount = $gross;
+                    $net = round($net * $rate, 2);
+                    $vat = round($vat * $rate, 2);
+                    $gross = $eurGross;
+                    $currency = 'EUR';
+                }
+            }
 
             PassiveInvoice::create([
                 'supplier_id' => $supplier->id,
@@ -249,7 +274,9 @@ class FattureEstere extends Page implements HasForms
                 'amount_net' => $net,
                 'amount_vat' => $vat,
                 'amount_gross' => $gross > 0 ? $gross : round($net + $vat, 2),
-                'currency' => $row['currency'] ?? 'EUR',
+                'currency' => $currency,
+                'original_currency' => $originalCurrency,
+                'original_amount' => $originalAmount,
                 'category' => $row['category'],
                 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
                 'imported' => false,

@@ -32,6 +32,8 @@ class PassiveInvoice extends Model
         'amount_vat',
         'amount_gross',
         'currency',
+        'original_currency',
+        'original_amount',
         'category',
         'payment_status',
         'reimbursement_id',
@@ -46,6 +48,7 @@ class PassiveInvoice extends Model
         'amount_net' => 'decimal:2',
         'amount_vat' => 'decimal:2',
         'amount_gross' => 'decimal:2',
+        'original_amount' => 'decimal:2',
         'imported' => 'boolean',
     ];
 

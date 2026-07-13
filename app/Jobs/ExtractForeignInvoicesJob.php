@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\Ai\ForeignInvoiceExtractor;
+use App\Services\CurrencyConverter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -38,7 +39,7 @@ class ExtractForeignInvoicesJob implements ShouldQueue
         private readonly string $disk = 'public',
     ) {}
 
-    public function handle(ForeignInvoiceExtractor $extractor): void
+    public function handle(ForeignInvoiceExtractor $extractor, CurrencyConverter $fx): void
     {
         $rows = [];
         $errors = 0;
@@ -52,6 +53,9 @@ class ExtractForeignInvoicesJob implements ShouldQueue
                     throw new \RuntimeException('PDF non leggibile (vuoto).');
                 }
                 $d = $extractor->extract($pdf);
+                // Valuta estera: pre-calcola l'importo in EUR al cambio BCE della
+                // data documento (l'utente può correggerlo col netto reale carta).
+                $amountEur = $fx->toEur($d['amount_gross'], $d['currency'], $d['document_date']);
                 // Chiave UUID: il Repeater di Filament indicizza gli item per
                 // chiave (un array numerico ne rompe il rendering).
                 $rows[(string) Str::uuid()] = [
@@ -65,6 +69,7 @@ class ExtractForeignInvoicesJob implements ShouldQueue
                     'amount_net' => $d['amount_net'],
                     'amount_vat' => $d['amount_vat'],
                     'amount_gross' => $d['amount_gross'],
+                    'amount_eur' => $amountEur,
                     'is_credit_note' => $d['is_credit_note'],
                 ];
             } catch (Throwable) {

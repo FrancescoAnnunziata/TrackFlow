@@ -6,6 +6,7 @@ use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Ai\ForeignInvoiceExtractor;
+use App\Services\CurrencyConverter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -79,7 +80,7 @@ it('the job extracts each PDF and writes the rows to cache', function () {
 
     $key = 'estere-extract:test';
     (new ExtractForeignInvoicesJob(['passive-attachments/sg.pdf'], $key))
-        ->handle(app(ForeignInvoiceExtractor::class));
+        ->handle(app(ForeignInvoiceExtractor::class), app(CurrencyConverter::class));
 
     $result = Cache::get($key);
     expect($result['status'])->toBe('done');
@@ -129,6 +130,40 @@ it('creates the passive invoice with supplier and attachment from the reviewed r
     expect($invoice->attachment)->toBe('passive-attachments/sg.pdf');
     expect($invoice->type)->toBe('expense');
     expect(Supplier::where('name', 'SiteGround Spain S.L.')->exists())->toBeTrue();
+});
+
+it('converts a foreign amount to EUR via the ECB reference rate', function () {
+    Http::fake([
+        '*/2025-11-15*' => Http::response(['amount' => 1, 'base' => 'USD', 'date' => '2025-11-14', 'rates' => ['EUR' => 0.8618]]),
+    ]);
+    $fx = app(CurrencyConverter::class);
+
+    expect($fx->toEur(228, 'USD', '2025-11-15'))->toBe(196.49); // 228 * 0.8618
+    // EUR o importo nullo: nessuna conversione (niente chiamata di rete).
+    expect($fx->toEur(100, 'EUR', '2025-11-15'))->toBeNull();
+});
+
+it('registers a foreign-currency invoice in EUR keeping the original as reference', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire\Livewire::test(FattureEstere::class)
+        ->set('data.rows', [[
+            'attachment' => 'passive-attachments/webflow.pdf',
+            'supplier_name' => 'Webflow, Inc.', 'supplier_vat' => null,
+            'number' => '1763199638', 'document_date' => '2025-11-15',
+            'category' => 'Software e abbonamenti cloud', 'currency' => 'USD',
+            'amount_net' => 228, 'amount_vat' => 0, 'amount_gross' => 228,
+            'amount_eur' => 196.48, 'is_credit_note' => false,
+        ]])
+        ->call('crea')
+        ->assertHasNoErrors();
+
+    $inv = PassiveInvoice::first();
+    expect($inv->currency)->toBe('EUR');
+    expect((float) $inv->amount_gross)->toBe(196.48);
+    expect($inv->original_currency)->toBe('USD');
+    expect((float) $inv->original_amount)->toBe(228.0);
 });
 
 it('creates a passive credit note when the row is flagged as such', function () {
