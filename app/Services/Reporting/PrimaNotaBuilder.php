@@ -2,12 +2,18 @@
 
 namespace App\Services\Reporting;
 
+use App\Filament\Resources\Costi\CostoResource;
+use App\Filament\Resources\Expenses\ExpenseResource;
+use App\Filament\Resources\Invoices\InvoiceResource;
+use App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource;
+use App\Filament\Resources\Reimbursements\ReimbursementResource;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -29,6 +35,7 @@ class PrimaNotaBuilder
         'Saldo',
         'Riconciliato',
         'Documento',
+        'Link documento',
     ];
 
     /**
@@ -73,11 +80,12 @@ class PrimaNotaBuilder
                     // documento: lo distinguiamo dal Sì/No delle riconciliazioni.
                     $tx->isTransfer() ? 'Giroconto' : ($tx->reconciled ? 'Sì' : 'No'),
                     $this->documentLabel($tx),
+                    $this->documentUrl($tx),
                 ]];
             }
 
             $rows[] = ['kind' => 'subtotal', 'cells' => [
-                '', $account->name, 'Saldo finale', '', null, null, $running, '', '',
+                '', $account->name, 'Saldo finale', '', null, null, $running, '', '', '',
             ]];
         }
 
@@ -150,9 +158,34 @@ class PrimaNotaBuilder
         return match (true) {
             $model instanceof Invoice => 'Fattura '.$model->number,
             $model instanceof PassiveInvoice => 'Fatt. passiva '.($model->number ?: '—'),
-            $model instanceof Costo => 'Costo: '.$model->description,
+            // Un costo generico creato dal movimento non ha un numero documento:
+            // basta indicarlo come "Costo" (con il conto, se presente).
+            $model instanceof Costo => 'Costo'.($model->category ? ' · '.$model->category : ''),
+            $model instanceof Reimbursement => 'Rimborso spese'.($model->notes ? ': '.$model->notes : ''),
             $model instanceof Expense => 'Spesa: '.($model->supplier->name ?? $model->notes ?? (optional($model->date)->format('d/m/Y') ?? '')),
             default => null,
+        };
+    }
+
+    /**
+     * URL della pagina del primo documento riconciliato al movimento (per la
+     * colonna "Link documento"). Vuoto per i giroconti o i movimenti scoperti.
+     */
+    private function documentUrl(BankTransaction $tx): string
+    {
+        if ($tx->isTransfer()) {
+            return '';
+        }
+
+        $model = $tx->reconciliations->first()?->reconcilable;
+
+        return match (true) {
+            $model instanceof Invoice => InvoiceResource::getUrl('view', ['record' => $model]),
+            $model instanceof PassiveInvoice => PassiveInvoiceResource::getUrl('edit', ['record' => $model]),
+            $model instanceof Costo => CostoResource::getUrl('edit', ['record' => $model]),
+            $model instanceof Reimbursement => ReimbursementResource::getUrl('edit', ['record' => $model]),
+            $model instanceof Expense => ExpenseResource::getUrl('edit', ['record' => $model]),
+            default => '',
         };
     }
 }

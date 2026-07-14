@@ -21,8 +21,17 @@ beforeEach(function () {
     ]);
 
     User::factory()->admin()->create();
+});
 
-    $detail = [
+/**
+ * Registra le risposte FIC per un singolo documento ricevuto. La fake sta nel
+ * test (non nel beforeEach) così ogni caso può variarne i campi.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function fakeReceivedDocument(array $overrides = []): void
+{
+    $detail = array_merge([
         'id' => 555,
         'numeration' => '',
         'number' => 3,
@@ -37,19 +46,18 @@ beforeEach(function () {
         'items_list' => [
             ['name' => 'Hosting', 'qty' => 1, 'net_price' => 200, 'measure' => '', 'vat' => ['id' => 0, 'value' => 22]],
         ],
-    ];
+    ], $overrides);
 
     Http::fake([
         '*/received_documents/*' => Http::response(['data' => $detail]),
-        '*/received_documents*' => function ($request) {
-            return str_contains($request->url(), 'page=1')
-                ? Http::response(['data' => [['id' => 555]]])
-                : Http::response(['data' => []]);
-        },
+        '*/received_documents*' => fn ($request) => str_contains($request->url(), 'page=1')
+            ? Http::response(['data' => [['id' => $detail['id']]]])
+            : Http::response(['data' => []]),
     ]);
-});
+}
 
 it('imports received documents as passive invoices, creating the supplier', function () {
+    fakeReceivedDocument();
     $this->artisan('fic:import-passive-invoices', ['--types' => 'expense', '--create-suppliers' => true])
         ->assertSuccessful();
 
@@ -66,6 +74,7 @@ it('imports received documents as passive invoices, creating the supplier', func
 });
 
 it('is idempotent on re-run', function () {
+    fakeReceivedDocument();
     $this->artisan('fic:import-passive-invoices', ['--types' => 'expense', '--create-suppliers' => true])->assertSuccessful();
     $this->artisan('fic:import-passive-invoices', ['--types' => 'expense', '--create-suppliers' => true])->assertSuccessful();
 
@@ -74,7 +83,20 @@ it('is idempotent on re-run', function () {
 });
 
 it('skips documents whose supplier is not found without --create-suppliers', function () {
+    fakeReceivedDocument();
     $this->artisan('fic:import-passive-invoices', ['--types' => 'expense'])->assertSuccessful();
 
     expect(PassiveInvoice::count())->toBe(0);
+});
+
+it('uses the supplier invoice_number as the passive number when present', function () {
+    // Sui documenti ricevuti il numero vero è in invoice_number; numeration/number
+    // sono vuoti, quindi senza questo campo si ripiegava sull'id FIC.
+    fakeReceivedDocument([
+        'id' => 777, 'number' => null, 'invoice_number' => 'FT/2025/0042', 'date' => '2025-11-10',
+    ]);
+
+    $this->artisan('fic:import-passive-invoices', ['--types' => 'expense', '--create-suppliers' => true])->assertSuccessful();
+
+    expect(PassiveInvoice::where('fic_document_id', 777)->value('number'))->toBe('FT/2025/0042');
 });

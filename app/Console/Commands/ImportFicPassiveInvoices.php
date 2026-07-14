@@ -85,11 +85,20 @@ class ImportFicPassiveInvoices extends Command
             return false;
         }
 
-        // FIC riparte la numerazione ogni anno: includiamo l'anno per leggibilità
-        // (convenzione italiana "N/anno").
-        $base = trim((string) (Arr::get($doc, 'numeration') ?? '').' '.(Arr::get($doc, 'number') ?? ''));
-        $year = Carbon::parse((string) Arr::get($doc, 'date'))->year;
-        $number = ($base !== '' ? $base : (string) $doc['id']).'/'.$year;
+        // Per i documenti RICEVUTI il numero vero della fattura del fornitore è
+        // in `invoice_number` (i campi numeration/number sono per i documenti
+        // emessi e qui sono vuoti): usiamo quello così com'è. In sua assenza
+        // ricadiamo su numeration/number e infine sull'id FIC, con l'anno
+        // (convenzione italiana "N/anno") perché la numerazione riparte ogni anno.
+        $invoiceNumber = trim((string) (Arr::get($doc, 'invoice_number') ?? ''));
+
+        if ($invoiceNumber !== '') {
+            $number = $invoiceNumber;
+        } else {
+            $base = trim((string) (Arr::get($doc, 'numeration') ?? '').' '.(Arr::get($doc, 'number') ?? ''));
+            $year = Carbon::parse((string) Arr::get($doc, 'date'))->year;
+            $number = ($base !== '' ? $base : (string) $doc['id']).'/'.$year;
+        }
 
         return DB::transaction(function () use ($doc, $type, $supplier, $number): bool {
             $passive = PassiveInvoice::updateOrCreate(

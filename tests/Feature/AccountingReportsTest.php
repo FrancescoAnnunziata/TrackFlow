@@ -7,6 +7,7 @@ use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Reconciliation\MatchSuggestionService;
@@ -173,13 +174,38 @@ it('builds the prima nota with a running balance and reconciled document labels'
     // Saldo progressivo: 70 + 200 = 270, poi 270 - 50 = 220.
     expect($cells[0][6])->toBe(270.0);
     expect($cells[1][6])->toBe(220.0);
-    // La riga in uscita è riconciliata e riporta la causale del costo.
+    // La riga in uscita è riconciliata e riporta solo "Costo" (niente
+    // descrizione rumorosa), con il link alla pagina del costo.
     expect($cells[1][7])->toBe('Sì');
-    expect($cells[1][8])->toContain('Costo');
+    expect($cells[1][8])->toBe('Costo');
+    expect($cells[1][9])->toContain('/costi/');
 
     // Riga di saldo finale.
     $subtotal = collect($table['rows'])->firstWhere('kind', 'subtotal');
     expect($subtotal['cells'][6])->toBe(220.0);
+});
+
+it('labels a reimbursement reconciliation and links it in the prima nota', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 1000]);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-15',
+        'amount' => -573.77, 'description' => 'BONIFICO A fav: Giorgio Giotto', 'dedup_hash' => 'r1',
+    ]);
+    $reimbursement = Reimbursement::create([
+        'user_id' => User::factory()->create()->id, 'type' => 'trasferta', 'status' => 'paid',
+        'date' => '2026-06-15', 'amount' => 573.77, 'notes' => 'Rimborsi spese agosto',
+    ]);
+    app(ReconciliationService::class)->attach($tx, $reimbursement, 573.77);
+
+    $table = app(PrimaNotaBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    );
+    $cells = dataCells($table);
+
+    expect($cells[0][7])->toBe('Sì');
+    expect($cells[0][8])->toBe('Rimborso spese: Rimborsi spese agosto');
+    expect($cells[0][9])->toContain('/reimbursements/');
 });
 
 it('labels inter-account transfers as "Giroconto" in the prima nota', function () {
