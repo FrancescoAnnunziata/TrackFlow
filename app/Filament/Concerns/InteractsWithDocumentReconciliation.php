@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\BankTransaction;
 use App\Models\Invoice;
 use App\Services\Reconciliation\ReconciliationService;
@@ -13,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Azioni condivise dalle view delle fatture (attive e passive) per riconciliare
@@ -75,12 +77,13 @@ trait InteractsWithDocumentReconciliation
             ->label('Riconciliazioni collegate')
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
-            ->visible(fn (Model $record): bool => $record->reconciliations()->exists())
-            ->modalHeading('Movimenti riconciliati')
+            ->visible(fn (Model $record): bool => $record->reconciliations()->exists() || $this->documentCreditNotes($record)->isNotEmpty())
+            ->modalHeading('Come è coperto il documento')
             ->modalWidth(Width::Large)
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Chiudi')
             ->modalContent(function (Model $record) {
+                // Movimenti bancari (riconciliazioni vere e proprie).
                 $rows = $record->reconciliations()
                     ->with('bankTransaction.bankAccount')
                     ->get()
@@ -88,6 +91,7 @@ trait InteractsWithDocumentReconciliation
                         $tx = $r->bankTransaction;
 
                         return [
+                            'kind' => 'Movimento',
                             'label' => $tx !== null ? sprintf(
                                 '%s · %s · € %s · %s',
                                 optional($tx->booked_at)->format('d/m/Y') ?? '',
@@ -102,11 +106,38 @@ trait InteractsWithDocumentReconciliation
                     })
                     ->all();
 
+                // Note di credito collegate (fatture attive): stornano parte del
+                // totale, quindi coprono il documento tanto quanto un incasso.
+                foreach ($this->documentCreditNotes($record) as $note) {
+                    $rows[] = [
+                        'kind' => 'Nota di credito',
+                        'label' => sprintf('Nota di credito %s — %s', $note->number, optional($note->issue_date)->format('d/m/Y') ?? ''),
+                        'amount' => (float) $note->total(),
+                        'matchedBy' => null,
+                        'url' => InvoiceResource::getUrl('view', ['record' => $note]),
+                    ];
+                }
+
                 return view('filament.documents.reconciliation-list', [
                     'rows' => $rows,
                     'remaining' => $this->documentRemaining($record),
                 ]);
             });
+    }
+
+    /**
+     * Note di credito che stornano il documento (solo fatture attive: le note di
+     * credito passive sono documenti autonomi, non collegate a una passiva).
+     *
+     * @return Collection<int, Invoice>
+     */
+    private function documentCreditNotes(Model $record): Collection
+    {
+        if (! $record instanceof Invoice) {
+            return collect();
+        }
+
+        return $record->creditNotes()->get();
     }
 
     /**

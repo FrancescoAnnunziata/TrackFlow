@@ -3,6 +3,12 @@
         @foreach ($rows as $row)
             <li class="flex items-center justify-between gap-4 py-3">
                 <div class="min-w-0">
+                    @if (($row['kind'] ?? null))
+                        <span class="mr-1 inline-block rounded px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide {{ $row['kind'] === 'Nota di credito' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' : 'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-400' }}">
+                            {{ $row['kind'] }}
+                        </span>
+                    @endif
+
                     @if ($row['url'])
                         <a
                             href="{{ $row['url'] }}"
