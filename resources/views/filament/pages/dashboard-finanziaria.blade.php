@@ -41,7 +41,22 @@
         .fd-bar { height:100%; border-radius:9999px; }
         .fd-year { border-radius:.5rem; border:1px solid #d1d5db; padding:.35rem .6rem; font-size:.9rem; background:#fff; color:#111; }
         .dark .fd-year { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.15); color:#eee; }
+        .fd-link { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px; }
+        .fd-link:hover { text-decoration-style:solid; }
     </style>
+
+    @php
+        // Rende un importo cliccabile: apre la modale coi movimenti dietro la cella.
+        // mese = 0 → tutto l'anno (totale annuo / avviso uscite non riconciliate).
+        $cell = function ($value, string $tipo, int $mese) use ($eur, $year) {
+            if ((float) $value == 0.0) {
+                return e($eur($value));
+            }
+            $args = json_encode(['tipo' => $tipo, 'mese' => $mese, 'anno' => $year]);
+
+            return '<button type="button" class="fd-link" wire:click=\'mountAction("movimenti", ' . $args . ')\'>' . e($eur($value)) . '</button>';
+        };
+    @endphp
 
     {{-- Selettore anno --}}
     <div style="display:flex; align-items:center; gap:.6rem;">
@@ -85,7 +100,7 @@
         {{-- Avviso uscite non attribuite (già al netto dei giroconti) --}}
         @if ($gt['non_attribuite'] > 0)
             <div class="fd-callout" style="margin-top:1rem;">
-                ⚠️ Ci sono <strong>{{ $eur($gt['non_attribuite']) }}</strong> di uscite bancarie {{ $year }} <strong>non ancora collegate</strong> a una fattura passiva, un costo o una spesa: <strong>non sono contate nel margine contabile</strong>, quindi il margine reale è più basso. Categorizzale per avere il quadro esatto.
+                ⚠️ Ci sono <strong>{!! $cell($gt['non_attribuite'], 'non_attribuite', 0) !!}</strong> di uscite bancarie {{ $year }} <strong>non ancora collegate</strong> a una fattura passiva, un costo o una spesa: <strong>non sono contate nel margine contabile</strong>, quindi il margine reale è più basso. Categorizzale per avere il quadro esatto.
                 @if ($gt['giroconti'] > 0)
                     <br><span style="opacity:.85;">I <strong>giroconti</strong> tra i tuoi conti ({{ $eur($gt['giroconti']) }}) sono già esclusi da questo importo e dalla cassa: sono solo spostamenti di liquidità.</span>
                 @endif
@@ -149,9 +164,9 @@
                             <td>{{ $eur($row['ricavi']) }}</td>
                             <td>{{ $eur($row['costi']) }}</td>
                             <td class="{{ $row['margine'] >= 0 ? 'fd-pos' : 'fd-neg' }}">{{ $eur($row['margine']) }}</td>
-                            <td class="fd-pos">{{ $eur($row['entrate']) }}</td>
-                            <td class="fd-neg">{{ $eur($row['uscite']) }}</td>
-                            <td class="{{ $row['non_attribuite'] > 0 ? 'fd-warn' : '' }}">{{ $eur($row['non_attribuite']) }}</td>
+                            <td class="fd-pos">{!! $cell($row['entrate'], 'entrate', $row['mese']) !!}</td>
+                            <td class="fd-neg">{!! $cell($row['uscite'], 'uscite', $row['mese']) !!}</td>
+                            <td class="{{ $row['non_attribuite'] > 0 ? 'fd-warn' : '' }}">{!! $cell($row['non_attribuite'], 'non_attribuite', $row['mese']) !!}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -161,9 +176,9 @@
                         <td>{{ $eur($gt['ricavi']) }}</td>
                         <td>{{ $eur($gt['costi']) }}</td>
                         <td class="{{ $gt['margine'] >= 0 ? 'fd-pos' : 'fd-neg' }}">{{ $eur($gt['margine']) }}</td>
-                        <td>{{ $eur($gt['entrate']) }}</td>
-                        <td>{{ $eur($gt['uscite']) }}</td>
-                        <td class="{{ $gt['non_attribuite'] > 0 ? 'fd-warn' : '' }}">{{ $eur($gt['non_attribuite']) }}</td>
+                        <td>{!! $cell($gt['entrate'], 'entrate', 0) !!}</td>
+                        <td>{!! $cell($gt['uscite'], 'uscite', 0) !!}</td>
+                        <td class="{{ $gt['non_attribuite'] > 0 ? 'fd-warn' : '' }}">{!! $cell($gt['non_attribuite'], 'non_attribuite', 0) !!}</td>
                     </tr>
                 </tfoot>
             </table>
