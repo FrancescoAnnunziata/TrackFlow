@@ -94,6 +94,44 @@ class BankTransaction extends Model
         return round(abs((float) $this->amount) - $this->reconciledAmount(), 2);
     }
 
+    /**
+     * Elenco leggibile dei documenti a cui il movimento è riconciliato, con la
+     * quota allocata e il modello sorgente (per costruire i link in Filament).
+     *
+     * @return array<int, array{model: ?Model, label: string, amount: float, matchedBy: ?string}>
+     */
+    public function reconciliationDetails(): array
+    {
+        return $this->reconciliations()
+            ->with('reconcilable')
+            ->get()
+            ->map(fn (Reconciliation $r): array => [
+                'model' => $r->reconcilable,
+                'label' => self::describeReconcilable($r->reconcilable),
+                'amount' => (float) $r->amount,
+                'matchedBy' => $r->matched_by,
+            ])
+            ->all();
+    }
+
+    private static function describeReconcilable(?Model $doc): string
+    {
+        return match (true) {
+            $doc instanceof Invoice => sprintf(
+                '%s %s — %s',
+                $doc->isCreditNote() ? 'Nota di credito' : 'Fattura',
+                $doc->number,
+                $doc->client->name ?? '—',
+            ),
+            $doc instanceof PassiveInvoice => sprintf('Fattura passiva %s — %s', $doc->number, $doc->supplier->name ?? '—'),
+            $doc instanceof Costo => sprintf('Costo — %s', $doc->description),
+            $doc instanceof Reimbursement => sprintf('Rimborso spese %s — %s', $doc->date?->format('d/m/Y') ?? '', $doc->notes ?? ''),
+            $doc instanceof Expense => sprintf('Spesa — %s', $doc->conto ?? $doc->notes ?? ''),
+            $doc === null => 'Documento non disponibile',
+            default => class_basename($doc),
+        };
+    }
+
     public function scopeUnreconciled(Builder $query): Builder
     {
         return $query->where('reconciled', false);
