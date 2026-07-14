@@ -19,6 +19,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class EditBankTransaction extends EditRecord
 {
@@ -50,12 +51,19 @@ class EditBankTransaction extends EditRecord
             ->modalCancelActionLabel('Chiudi')
             ->modalContent(function (BankTransaction $record) {
                 $rows = collect($record->reconciliationDetails())
-                    ->map(fn (array $d): array => [
-                        'label' => $d['label'],
-                        'amount' => $d['amount'],
-                        'matchedBy' => $d['matchedBy'],
-                        'url' => $this->documentUrl($d['model']),
-                    ])
+                    ->map(function (array $d): array {
+                        $attachment = $this->documentAttachment($d['model']);
+
+                        return [
+                            'label' => $d['label'],
+                            'amount' => $d['amount'],
+                            'matchedBy' => $d['matchedBy'],
+                            'url' => $this->documentUrl($d['model']),
+                            'pdfUrl' => $attachment !== null ? Storage::disk('public')->url($attachment) : null,
+                            'pdfName' => $attachment !== null ? basename($attachment) : null,
+                            'isPdf' => $attachment !== null && str_ends_with(strtolower($attachment), '.pdf'),
+                        ];
+                    })
                     ->all();
 
                 return view('filament.bank-transactions.reconciliation-list', [
@@ -75,5 +83,34 @@ class EditBankTransaction extends EditRecord
             $doc instanceof Expense => ExpenseResource::getUrl('edit', ['record' => $doc]),
             default => null,
         };
+    }
+
+    /**
+     * Percorso (sul disco public) del giustificativo allegato al documento, se
+     * presente. I diversi tipi memorizzano l'allegato in campi diversi: si
+     * preferisce un PDF, altrimenti il primo allegato disponibile.
+     */
+    private function documentAttachment(?Model $doc): ?string
+    {
+        $paths = match (true) {
+            $doc instanceof PassiveInvoice => [$doc->attachment],
+            $doc instanceof Costo, $doc instanceof Reimbursement => $doc->attachments ?? [],
+            $doc instanceof Expense => $doc->attachaments ?? [],
+            default => [],
+        };
+
+        $paths = array_values(array_filter($paths, fn ($p): bool => is_string($p) && $p !== ''));
+
+        if ($paths === []) {
+            return null;
+        }
+
+        foreach ($paths as $path) {
+            if (str_ends_with(strtolower($path), '.pdf')) {
+                return $path;
+            }
+        }
+
+        return $paths[0];
     }
 }

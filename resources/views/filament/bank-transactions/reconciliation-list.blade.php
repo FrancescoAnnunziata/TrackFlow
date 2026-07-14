@@ -21,9 +21,23 @@
                     @endif
                 </div>
 
-                <span class="shrink-0 font-mono text-sm tabular-nums text-gray-950 dark:text-white">
-                    € {{ number_format($row['amount'], 2, ',', '.') }}
-                </span>
+                <div class="flex shrink-0 items-center gap-3">
+                    @if ($row['pdfUrl'])
+                        <a
+                            href="{{ $row['pdfUrl'] }}"
+                            download="{{ $row['pdfName'] }}"
+                            target="_blank"
+                            class="inline-flex items-center gap-1 rounded-md bg-primary-600 px-2 py-1 text-xs font-medium text-white hover:bg-primary-500"
+                        >
+                            <x-heroicon-o-arrow-down-tray class="h-4 w-4" />
+                            {{ $row['isPdf'] ? 'PDF' : 'Allegato' }}
+                        </a>
+                    @endif
+
+                    <span class="font-mono text-sm tabular-nums text-gray-950 dark:text-white">
+                        € {{ number_format($row['amount'], 2, ',', '.') }}
+                    </span>
+                </div>
             </li>
         @endforeach
     </ul>
