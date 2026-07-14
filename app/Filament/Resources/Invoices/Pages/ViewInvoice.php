@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Pages;
 
+use App\Filament\Concerns\InteractsWithDocumentReconciliation;
 use App\Filament\Resources\Hours\HourResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\FicCredential;
@@ -17,11 +18,15 @@ use Illuminate\Support\HtmlString;
 
 class ViewInvoice extends ViewRecord
 {
+    use InteractsWithDocumentReconciliation;
+
     protected static string $resource = InvoiceResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
+            $this->viewDocumentReconciliationsAction(),
+            $this->reconcileDocumentAction(),
             Action::make('viewHours')
                 ->label('Vedi ore fatturate')
                 ->icon(Heroicon::OutlinedClock)
