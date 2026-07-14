@@ -196,8 +196,16 @@ it('labels inter-account transfers as "Giroconto" in the prima nota', function (
     );
     $cells = collect($table['rows'])->where('kind', 'data')->pluck('cells');
 
-    // La causale (indice 8) riporta "Giroconto" per entrambe le metà.
+    // La causale (indice 8) riporta "Giroconto" con conto gemello e data.
     expect($cells->every(fn ($c): bool => str_contains($c[8], 'Giroconto')))->toBeTrue();
+    // L'uscita da InBank punta a Vivid, l'entrata su Vivid punta a InBank; in
+    // entrambe compare la data del movimento gemello (10/06/2026).
+    $causali = $cells->pluck(8);
+    expect($causali->contains(fn ($c): bool => str_contains($c, '→ Vivid') && str_contains($c, '10/06/2026')))->toBeTrue();
+    expect($causali->contains(fn ($c): bool => str_contains($c, '← InBank') && str_contains($c, '10/06/2026')))->toBeTrue();
+
+    // Anche la colonna Riconciliato (indice 7) mostra "Giroconto", non "No".
+    expect($cells->every(fn ($c): bool => $c[7] === 'Giroconto'))->toBeTrue();
 });
 
 it('renders the report pages for an admin and hides them from non-admins', function () {

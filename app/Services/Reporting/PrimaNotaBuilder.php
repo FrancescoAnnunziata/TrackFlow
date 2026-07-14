@@ -69,7 +69,9 @@ class PrimaNotaBuilder
                     $amount > 0 ? $amount : null,
                     $amount < 0 ? abs($amount) : null,
                     $running,
-                    $tx->reconciled ? 'Sì' : 'No',
+                    // Un giroconto è "chiuso" pur non essendo riconciliato a un
+                    // documento: lo distinguiamo dal Sì/No delle riconciliazioni.
+                    $tx->isTransfer() ? 'Giroconto' : ($tx->reconciled ? 'Sì' : 'No'),
                     $this->documentLabel($tx),
                 ]];
             }
@@ -118,9 +120,23 @@ class PrimaNotaBuilder
     private function documentLabel(BankTransaction $tx): string
     {
         if ($tx->isTransfer()) {
-            $other = $tx->transferPair?->bankAccount?->name;
+            $pair = $tx->transferPair;
+            $other = $pair?->bankAccount?->name;
 
-            return 'Giroconto'.($other ? ' ('.($tx->amount < 0 ? '→ ' : '← ').$other.')' : '');
+            if ($other === null) {
+                return 'Giroconto';
+            }
+
+            // Identifica il movimento gemello con conto, direzione e data, così
+            // nel report è tracciabile a quale trasferimento corrisponde.
+            $data = optional($pair->booked_at)->format('d/m/Y');
+
+            return sprintf(
+                'Giroconto (%s%s%s)',
+                $tx->amount < 0 ? '→ ' : '← ',
+                $other,
+                $data ? ' · '.$data : '',
+            );
         }
 
         return $tx->reconciliations
