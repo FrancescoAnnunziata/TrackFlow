@@ -2,11 +2,6 @@
 
 namespace App\Services\Reporting;
 
-use App\Filament\Resources\Costi\CostoResource;
-use App\Filament\Resources\Expenses\ExpenseResource;
-use App\Filament\Resources\Invoices\InvoiceResource;
-use App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource;
-use App\Filament\Resources\Reimbursements\ReimbursementResource;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Costo;
@@ -169,11 +164,10 @@ class PrimaNotaBuilder
     }
 
     /**
-     * Link della colonna "Link documento": preferisce il PDF/giustificativo
-     * caricato (così si apre il documento vero), altrimenti ripiega sulla pagina
-     * TrackFlow del documento. Le fatture importate da FiC non hanno il PDF in
-     * locale (sta su Fatture in Cloud): per quelle resta il link alla pagina.
-     * Vuoto per i giroconti o i movimenti scoperti.
+     * Link della colonna "Link documento": il PDF/giustificativo caricato, così
+     * si apre il documento vero. Se il documento non ha un PDF in locale (es. i
+     * costi senza giustificativo, o le fatture importate da FiC il cui PDF sta
+     * su Fatture in Cloud) la cella resta vuota. Vuoto anche per i giroconti.
      */
     private function documentUrl(BankTransaction $tx): string
     {
@@ -181,9 +175,7 @@ class PrimaNotaBuilder
             return '';
         }
 
-        $model = $tx->reconciliations->first()?->reconcilable;
-
-        return $this->attachmentUrl($model) ?? $this->documentPageUrl($model);
+        return $this->attachmentUrl($tx->reconciliations->first()?->reconcilable) ?? '';
     }
 
     /**
@@ -212,17 +204,5 @@ class PrimaNotaBuilder
         }
 
         return Storage::disk('public')->url($paths[0]);
-    }
-
-    private function documentPageUrl(?Model $model): string
-    {
-        return match (true) {
-            $model instanceof Invoice => InvoiceResource::getUrl('view', ['record' => $model]),
-            $model instanceof PassiveInvoice => PassiveInvoiceResource::getUrl('edit', ['record' => $model]),
-            $model instanceof Costo => CostoResource::getUrl('edit', ['record' => $model]),
-            $model instanceof Reimbursement => ReimbursementResource::getUrl('edit', ['record' => $model]),
-            $model instanceof Expense => ExpenseResource::getUrl('edit', ['record' => $model]),
-            default => '',
-        };
     }
 }

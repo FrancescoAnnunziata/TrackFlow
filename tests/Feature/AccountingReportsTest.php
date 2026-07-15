@@ -175,10 +175,10 @@ it('builds the prima nota with a running balance and reconciled document labels'
     expect($cells[0][6])->toBe(270.0);
     expect($cells[1][6])->toBe(220.0);
     // La riga in uscita è riconciliata e riporta solo "Costo" (niente
-    // descrizione rumorosa), con il link alla pagina del costo.
+    // descrizione rumorosa). Senza giustificativo, nessun link.
     expect($cells[1][7])->toBe('Sì');
     expect($cells[1][8])->toBe('Costo');
-    expect($cells[1][9])->toContain('/costi/');
+    expect($cells[1][9])->toBe('');
 
     // Riga di saldo finale.
     $subtotal = collect($table['rows'])->firstWhere('kind', 'subtotal');
@@ -205,7 +205,8 @@ it('labels a reimbursement reconciliation and links it in the prima nota', funct
 
     expect($cells[0][7])->toBe('Sì');
     expect($cells[0][8])->toBe('Rimborso spese: Rimborsi spese agosto');
-    expect($cells[0][9])->toContain('/reimbursements/');
+    // Rimborso senza giustificativo allegato: nessun link.
+    expect($cells[0][9])->toBe('');
 });
 
 it('links the giustificativo PDF when the reconciled document has one', function () {
@@ -233,9 +234,9 @@ it('links the giustificativo PDF when the reconciled document has one', function
         Carbon\Carbon::parse('2026-06-30')->endOfDay(),
     ));
 
-    // Con PDF locale: il link punta al file; senza PDF: fallback alla pagina.
+    // Con PDF locale: il link punta al file; senza PDF: nessun link.
     expect($cells[0][9])->toContain('passive-attachments/inv-1.pdf');
-    expect($cells[1][9])->toContain('/costi/');
+    expect($cells[1][9])->toBe('');
 });
 
 it('labels inter-account transfers as "Giroconto" in the prima nota', function () {
