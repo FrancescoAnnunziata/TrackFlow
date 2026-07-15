@@ -208,6 +208,36 @@ it('labels a reimbursement reconciliation and links it in the prima nota', funct
     expect($cells[0][9])->toContain('/reimbursements/');
 });
 
+it('links the giustificativo PDF when the reconciled document has one', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 500]);
+    $txPdf = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-08',
+        'amount' => -90, 'description' => 'Fattura estera', 'dedup_hash' => 'a1',
+    ]);
+    $txNoPdf = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-09',
+        'amount' => -10, 'description' => 'Costo senza pdf', 'dedup_hash' => 'a2',
+    ]);
+    $supplier = Supplier::create(['name' => 'Anthropic']);
+    $withPdf = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'INV-1', 'type' => 'expense', 'document_date' => '2026-06-08',
+        'amount_net' => 90, 'amount_vat' => 0, 'amount_gross' => 90, 'payment_status' => 'not_paid',
+        'attachment' => 'passive-attachments/inv-1.pdf',
+    ]);
+    $costo = Costo::create(['date' => '2026-06-09', 'description' => 'Costo', 'amount' => 10, 'vat_amount' => 0]);
+    app(ReconciliationService::class)->attach($txPdf, $withPdf, 90);
+    app(ReconciliationService::class)->attach($txNoPdf, $costo, 10);
+
+    $cells = dataCells(app(PrimaNotaBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    ));
+
+    // Con PDF locale: il link punta al file; senza PDF: fallback alla pagina.
+    expect($cells[0][9])->toContain('passive-attachments/inv-1.pdf');
+    expect($cells[1][9])->toContain('/costi/');
+});
+
 it('labels inter-account transfers as "Giroconto" in the prima nota', function () {
     $a = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
     $b = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid', 'opening_balance' => 0]);

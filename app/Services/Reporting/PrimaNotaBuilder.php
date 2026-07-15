@@ -16,6 +16,7 @@ use App\Models\PassiveInvoice;
 use App\Models\Reimbursement;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -168,8 +169,11 @@ class PrimaNotaBuilder
     }
 
     /**
-     * URL della pagina del primo documento riconciliato al movimento (per la
-     * colonna "Link documento"). Vuoto per i giroconti o i movimenti scoperti.
+     * Link della colonna "Link documento": preferisce il PDF/giustificativo
+     * caricato (così si apre il documento vero), altrimenti ripiega sulla pagina
+     * TrackFlow del documento. Le fatture importate da FiC non hanno il PDF in
+     * locale (sta su Fatture in Cloud): per quelle resta il link alla pagina.
+     * Vuoto per i giroconti o i movimenti scoperti.
      */
     private function documentUrl(BankTransaction $tx): string
     {
@@ -179,6 +183,39 @@ class PrimaNotaBuilder
 
         $model = $tx->reconciliations->first()?->reconcilable;
 
+        return $this->attachmentUrl($model) ?? $this->documentPageUrl($model);
+    }
+
+    /**
+     * URL del giustificativo (PDF/foto) allegato al documento, se presente sul
+     * disco public. I diversi tipi lo memorizzano in campi diversi.
+     */
+    private function attachmentUrl(?Model $model): ?string
+    {
+        $paths = match (true) {
+            $model instanceof PassiveInvoice => [$model->attachment],
+            $model instanceof Costo, $model instanceof Reimbursement => $model->attachments ?? [],
+            $model instanceof Expense => $model->attachaments ?? [],
+            default => [],
+        };
+
+        $paths = array_values(array_filter($paths, fn ($p): bool => is_string($p) && $p !== ''));
+
+        if ($paths === []) {
+            return null;
+        }
+
+        foreach ($paths as $path) {
+            if (str_ends_with(strtolower($path), '.pdf')) {
+                return Storage::disk('public')->url($path);
+            }
+        }
+
+        return Storage::disk('public')->url($paths[0]);
+    }
+
+    private function documentPageUrl(?Model $model): string
+    {
         return match (true) {
             $model instanceof Invoice => InvoiceResource::getUrl('view', ['record' => $model]),
             $model instanceof PassiveInvoice => PassiveInvoiceResource::getUrl('edit', ['record' => $model]),
