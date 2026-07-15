@@ -48,9 +48,9 @@
                                         <span class="{{ $i === 5 ? 'text-danger-600 dark:text-danger-400' : '' }} {{ $i === 4 ? 'text-success-600 dark:text-success-400' : '' }}">
                                             € {{ number_format((float) $cell, 2, ',', '.') }}
                                         </span>
-                                    @elseif ($i === 9 && filled($cell))
+                                    @elseif ($i === 9 && \Illuminate\Support\Str::startsWith($cell, 'http'))
                                         <a href="{{ $cell }}" target="_blank" rel="noopener"
-                                            class="text-primary-600 dark:text-primary-400 underline">apri</a>
+                                            class="text-primary-600 dark:text-primary-400 underline">apri PDF</a>
                                     @else
                                         {{ $cell }}
                                     @endif

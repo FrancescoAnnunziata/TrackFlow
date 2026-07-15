@@ -11,7 +11,6 @@ use App\Models\PassiveInvoice;
 use App\Models\Reimbursement;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -153,7 +152,8 @@ class PrimaNotaBuilder
     {
         return match (true) {
             $model instanceof Invoice => 'Fattura '.$model->number,
-            $model instanceof PassiveInvoice => 'Fatt. passiva '.($model->number ?: '—'),
+            // Le passive estere (caricate a mano) vanno distinte da quelle FiC.
+            $model instanceof PassiveInvoice => 'Fatt. passiva '.(DocumentReference::isForeignPassive($model) ? 'estera ' : '').($model->number ?: '—'),
             // Un costo generico creato dal movimento non ha un numero documento:
             // basta indicarlo come "Costo" (con il conto, se presente).
             $model instanceof Costo => 'Costo'.($model->category ? ' · '.$model->category : ''),
@@ -164,10 +164,9 @@ class PrimaNotaBuilder
     }
 
     /**
-     * Link della colonna "Link documento": il PDF/giustificativo caricato, così
-     * si apre il documento vero. Se il documento non ha un PDF in locale (es. i
-     * costi senza giustificativo, o le fatture importate da FiC il cui PDF sta
-     * su Fatture in Cloud) la cella resta vuota. Vuoto anche per i giroconti.
+     * Cella "Link documento": PDF pubblico del giustificativo, testo "Vedere
+     * fattura … su Fatture in Cloud" per le fatture FiC, o vuoto (costi senza
+     * giustificativo, giroconti). Logica condivisa con le altre esportazioni.
      */
     private function documentUrl(BankTransaction $tx): string
     {
@@ -175,34 +174,6 @@ class PrimaNotaBuilder
             return '';
         }
 
-        return $this->attachmentUrl($tx->reconciliations->first()?->reconcilable) ?? '';
-    }
-
-    /**
-     * URL del giustificativo (PDF/foto) allegato al documento, se presente sul
-     * disco public. I diversi tipi lo memorizzano in campi diversi.
-     */
-    private function attachmentUrl(?Model $model): ?string
-    {
-        $paths = match (true) {
-            $model instanceof PassiveInvoice => [$model->attachment],
-            $model instanceof Costo, $model instanceof Reimbursement => $model->attachments ?? [],
-            $model instanceof Expense => $model->attachaments ?? [],
-            default => [],
-        };
-
-        $paths = array_values(array_filter($paths, fn ($p): bool => is_string($p) && $p !== ''));
-
-        if ($paths === []) {
-            return null;
-        }
-
-        foreach ($paths as $path) {
-            if (str_ends_with(strtolower($path), '.pdf')) {
-                return Storage::disk('public')->url($path);
-            }
-        }
-
-        return Storage::disk('public')->url($paths[0]);
+        return DocumentReference::linkCell($tx->reconciliations->first()?->reconcilable);
     }
 }

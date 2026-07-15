@@ -7,7 +7,6 @@ use App\Models\Expense;
 use App\Models\PassiveInvoice;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -94,9 +93,11 @@ class RegistroAcquistiBuilder
             ->get()
             ->map(function (Expense $e): array {
                 $conto = trim((string) $e->conto);
-                $atts = $e->attachaments ?? [];
-                $giustificativo = filled($atts) ? Storage::disk('public')->url($atts[0]) : '';
                 $passive = $e->passiveInvoice;
+                // Giustificativo: il PDF proprio della spesa; in mancanza, quello
+                // della fattura passiva collegata (PDF locale o rimando a FiC).
+                $giustificativo = DocumentReference::attachmentUrl($e)
+                    ?? ($passive ? DocumentReference::linkCell($passive) : '');
                 $passiva = $passive
                     ? trim(($passive->number ?: '—').' — '.($passive->supplier->name ?? ''), ' —')
                     : '';
@@ -154,7 +155,7 @@ class RegistroAcquistiBuilder
                         round((float) $c->amount, 2),
                         round((float) $c->vat_amount, 2),
                         $totale,
-                        '',
+                        DocumentReference::linkCell($c),
                         '',
                         '',
                     ],
@@ -181,15 +182,18 @@ class RegistroAcquistiBuilder
                 // Le note di credito riducono i costi: importi con segno negativo.
                 $sign = $p->isCreditNote() ? -1 : 1;
                 $totale = round($sign * (float) $p->amount_gross, 2);
-                // PDF allegato (fatture estere caricate a mano) come giustificativo.
-                $giustificativo = filled($p->attachment) ? Storage::disk('public')->url($p->attachment) : '';
+                // Giustificativo: PDF locale (estere) o rimando a Fatture in Cloud.
+                $giustificativo = DocumentReference::linkCell($p);
+                $tipo = $p->isCreditNote()
+                    ? 'Nota di credito'
+                    : 'Fattura passiva'.(DocumentReference::isForeignPassive($p) ? ' estera' : '');
 
                 return [
                     'conto_sort' => $conto !== '' ? $conto : '~',
                     'date' => $p->document_date,
                     'totale' => $totale,
                     'cells' => [
-                        $p->isCreditNote() ? 'Nota di credito' : 'Fattura passiva',
+                        $tipo,
                         optional($p->document_date)->format('d/m/Y') ?? '',
                         $p->supplier->name ?? '',
                         $conto,

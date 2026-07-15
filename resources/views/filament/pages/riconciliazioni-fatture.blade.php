@@ -39,6 +39,9 @@
                                 <td class="px-3 py-2 align-top {{ in_array($i, $numeric) ? 'text-right whitespace-nowrap tabular-nums' : '' }}">
                                     @if (in_array($i, $numeric) && is_numeric($cell) && $cell !== '')
                                         € {{ number_format((float) $cell, 2, ',', '.') }}
+                                    @elseif (\Illuminate\Support\Str::startsWith($cell, 'http'))
+                                        <a href="{{ $cell }}" target="_blank" rel="noopener"
+                                            class="text-primary-600 dark:text-primary-400 underline">apri PDF</a>
                                     @else
                                         <span style="white-space: pre-line;">{{ $cell }}</span>
                                     @endif

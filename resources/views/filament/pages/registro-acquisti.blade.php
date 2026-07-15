@@ -38,9 +38,9 @@
                                 <td class="px-3 py-2 align-top {{ in_array($i, [5, 6, 7]) ? 'text-right whitespace-nowrap tabular-nums' : '' }}">
                                     @if (in_array($i, [5, 6, 7]) && is_numeric($cell) && $cell !== '')
                                         € {{ number_format((float) $cell, 2, ',', '.') }}
-                                    @elseif ($i === 8 && $isData && filled($cell))
+                                    @elseif ($i === 8 && $isData && \Illuminate\Support\Str::startsWith($cell, 'http'))
                                         <a href="{{ $cell }}" target="_blank" rel="noopener"
-                                            class="text-primary-600 dark:text-primary-400 underline">apri</a>
+                                            class="text-primary-600 dark:text-primary-400 underline">apri PDF</a>
                                     @else
                                         {{ $cell }}
                                     @endif

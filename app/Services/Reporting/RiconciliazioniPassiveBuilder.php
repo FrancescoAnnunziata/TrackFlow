@@ -26,6 +26,7 @@ class RiconciliazioniPassiveBuilder
         'Residuo',
         'Stato',
         'Pagamento',
+        'Giustificativo',
     ];
 
     /** Colonne numeriche (allineate a destra e formattate in euro). */
@@ -53,8 +54,11 @@ class RiconciliazioniPassiveBuilder
             $pagato = $invoice->reconciledAmount();
             $residuo = round(max(0, $totale - $pagato), 2);
 
+            // Le fatture estere (caricate a mano) sono rese esplicite nel numero.
+            $numero = $invoice->number.(DocumentReference::isForeignPassive($invoice) ? ' (estera)' : '');
+
             $rows[] = ['kind' => 'data', 'cells' => [
-                $invoice->number,
+                $numero,
                 optional($invoice->document_date)->format('d/m/Y') ?? '',
                 $invoice->supplier->name ?? '',
                 $totale,
@@ -62,6 +66,7 @@ class RiconciliazioniPassiveBuilder
                 $residuo,
                 $this->stato($invoice, $totale, $pagato),
                 $this->pagamento($invoice),
+                DocumentReference::linkCell($invoice),
             ]];
 
             $totTotale += $totale;
@@ -73,7 +78,7 @@ class RiconciliazioniPassiveBuilder
             $rows[] = ['kind' => 'total', 'cells' => [
                 'TOTALE', '', '',
                 round($totTotale, 2), round($totPagato, 2), round($totResiduo, 2),
-                '', '',
+                '', '', '',
             ]];
         }
 

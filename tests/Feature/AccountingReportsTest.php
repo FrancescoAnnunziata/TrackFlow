@@ -144,6 +144,35 @@ it('shows credit notes as negative rows that reduce the registro total', functio
     expect($total['cells'][7])->toBe(0.0);
 });
 
+it('references the giustificativo per origin in the registro acquisti', function () {
+    $supplier = Supplier::create(['name' => 'Anthropic']);
+    // Estera con PDF locale.
+    PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'INV-8', 'type' => 'expense', 'document_date' => '2026-06-05',
+        'amount_net' => 90, 'amount_vat' => 0, 'amount_gross' => 90, 'category' => 'Servizi',
+        'payment_status' => 'not_paid', 'attachment' => 'passive-attachments/inv-8.pdf',
+    ]);
+    // FiC (PDF su Fatture in Cloud).
+    PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'GCITD777', 'type' => 'expense', 'document_date' => '2026-06-06',
+        'amount_net' => 50, 'amount_vat' => 11, 'amount_gross' => 61, 'category' => 'Servizi',
+        'payment_status' => 'not_paid', 'fic_document_id' => 424242,
+    ]);
+
+    $data = collect(app(RegistroAcquistiBuilder::class)->build(
+        Carbon\Carbon::parse('2026-06-01')->startOfDay(),
+        Carbon\Carbon::parse('2026-06-30')->endOfDay(),
+    )['rows'])->where('kind', 'data')->keyBy(fn ($r) => $r['cells'][9]);
+
+    // Estera: Tipo marcato e giustificativo con link pubblico al PDF.
+    expect($data['INV-8']['cells'][0])->toBe('Fattura passiva estera');
+    expect($data['INV-8']['cells'][8])->toContain('passive-attachments/inv-8.pdf');
+
+    // FiC: Tipo normale, giustificativo rimanda a Fatture in Cloud.
+    expect($data['GCITD777']['cells'][0])->toBe('Fattura passiva');
+    expect($data['GCITD777']['cells'][8])->toBe('Vedere fattura GCITD777 su Fatture in Cloud');
+});
+
 it('builds the prima nota with a running balance and reconciled document labels', function () {
     $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 100]);
 

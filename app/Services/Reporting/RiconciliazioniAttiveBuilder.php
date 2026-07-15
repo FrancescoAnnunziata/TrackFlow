@@ -27,6 +27,7 @@ class RiconciliazioniAttiveBuilder
         'Stato',
         'Movimenti di incasso',
         'Note di credito',
+        'Documento',
     ];
 
     /** Colonne numeriche (allineate a destra e formattate in euro). */
@@ -67,6 +68,7 @@ class RiconciliazioniAttiveBuilder
                 $this->stato($daIncassare, $incassato),
                 $this->movimenti($invoice),
                 $this->noteDiCredito($invoice),
+                DocumentReference::linkCell($invoice),
             ]];
 
             $totTotale += $totale;
@@ -79,7 +81,7 @@ class RiconciliazioniAttiveBuilder
             $rows[] = ['kind' => 'total', 'cells' => [
                 'TOTALE', '', '',
                 round($totTotale, 2), round($totDaIncassare, 2), round($totIncassato, 2), round($totResiduo, 2),
-                '', '', '',
+                '', '', '', '',
             ]];
         }
 

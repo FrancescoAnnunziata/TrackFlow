@@ -98,3 +98,49 @@ it('lists passive invoices with bank payment or reimbursement label', function (
     expect($rows['FP-2']['cells'][6])->toBe('Pagata (rimborso)');
     expect($rows['FP-2']['cells'][7])->toContain('Rimborso spese');
 });
+
+it('marks the giustificativo per document origin in the passive export', function () {
+    $supplier = Supplier::create(['name' => 'Fornitore']);
+
+    // Estera: caricata a mano con PDF, niente FiC.
+    $estera = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'INV-9', 'type' => 'expense', 'document_date' => '2026-02-01',
+        'amount_net' => 100, 'amount_vat' => 0, 'amount_gross' => 100, 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
+        'attachment' => 'passive-attachments/inv-9.pdf',
+    ]);
+    // FiC: importata, PDF su Fatture in Cloud.
+    $fic = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'GCITD123', 'type' => 'expense', 'document_date' => '2026-02-02',
+        'amount_net' => 50, 'amount_vat' => 11, 'amount_gross' => 61, 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
+        'fic_document_id' => 999888,
+    ]);
+
+    [$from, $to] = periodo();
+    $rows = collect(app(RiconciliazioniPassiveBuilder::class)->build($from, $to)['rows'])
+        ->where('kind', 'data')->keyBy(fn ($r) => $r['cells'][0]);
+
+    // L'estera è marcata nel numero e ha il link pubblico al PDF.
+    expect($rows)->toHaveKey('INV-9 (estera)');
+    expect($rows['INV-9 (estera)']['cells'][8])->toContain('passive-attachments/inv-9.pdf');
+
+    // La FiC rimanda a Fatture in Cloud, senza link.
+    expect($rows['GCITD123']['cells'][8])->toBe('Vedere fattura GCITD123 su Fatture in Cloud');
+});
+
+it('references issued invoices on Fatture in Cloud in the active export', function () {
+    $user = User::factory()->admin()->create();
+    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id, 'number' => '7/2026',
+        'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',
+        'vat_rate' => 0, 'status' => 'sent', 'type' => Invoice::TYPE_INVOICE, 'fic_document_id' => 555111,
+    ]);
+    InvoiceItem::create(['invoice_id' => $invoice->id, 'name' => 'Servizi', 'qty' => 1, 'net_price' => 500, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
+
+    [$from, $to] = periodo();
+    $row = collect(app(RiconciliazioniAttiveBuilder::class)->build($from, $to)['rows'])
+        ->firstWhere('kind', 'data');
+
+    // Ultima colonna "Documento": rimando a Fatture in Cloud.
+    expect($row['cells'][10])->toBe('Vedere fattura 7/2026 su Fatture in Cloud');
+});
