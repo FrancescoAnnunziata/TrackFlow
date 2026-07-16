@@ -117,7 +117,8 @@ class DashboardFinanziaria extends Page
             default => $query->where('amount', '>=', 0),
         };
 
-        return $query->orderBy('booked_at')->get();
+        // Ordinati per importo (i più grandi in cima), a prescindere dal segno.
+        return $query->orderByRaw('ABS(amount) DESC')->get();
     }
 
     /**
@@ -168,9 +169,12 @@ class DashboardFinanziaria extends Page
     {
         $mese = ($mese >= 1 && $mese <= 12) ? $mese : null;
 
-        return $tipo === 'costi'
+        $documenti = $tipo === 'costi'
             ? $this->documentiCosti($mese, $anno)
             : $this->documentiRicavi($mese, $anno);
+
+        // Ordinati per importo (i più grandi in cima), a prescindere dal segno.
+        return $documenti->sortByDesc(fn (array $r) => abs((float) $r['importo']))->values();
     }
 
     /**
@@ -264,7 +268,7 @@ class DashboardFinanziaria extends Page
             ]);
         }
 
-        return $rows->sortBy(fn (array $r) => optional($r['data'])->timestamp ?? 0)->values();
+        return $rows;
     }
 
     public function mount(): void
