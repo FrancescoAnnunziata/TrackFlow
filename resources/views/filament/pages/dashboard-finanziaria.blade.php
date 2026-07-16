@@ -56,6 +56,17 @@
 
             return '<button type="button" class="fd-link" wire:click=\'mountAction("movimenti", ' . $args . ')\'>' . e($eur($value)) . '</button>';
         };
+
+        // Come sopra, ma per i documenti dietro Ricavi/Costi (fatture attive;
+        // fatture passive, costi e spese).
+        $docCell = function ($value, string $tipo, int $mese) use ($eur, $year) {
+            if ((float) $value == 0.0) {
+                return e($eur($value));
+            }
+            $args = json_encode(['tipo' => $tipo, 'mese' => $mese, 'anno' => $year]);
+
+            return '<button type="button" class="fd-link" wire:click=\'mountAction("documenti", ' . $args . ')\'>' . e($eur($value)) . '</button>';
+        };
     @endphp
 
     {{-- Selettore anno --}}
@@ -161,8 +172,8 @@
                         @php $vuoto = $row['ricavi'] == 0 && $row['costi'] == 0 && $row['entrate'] == 0 && $row['uscite'] == 0; @endphp
                         <tr class="{{ $vuoto ? 'fd-empty' : '' }}">
                             <td>{{ $row['label'] }}</td>
-                            <td>{{ $eur($row['ricavi']) }}</td>
-                            <td>{{ $eur($row['costi']) }}</td>
+                            <td>{!! $docCell($row['ricavi'], 'ricavi', $row['mese']) !!}</td>
+                            <td>{!! $docCell($row['costi'], 'costi', $row['mese']) !!}</td>
                             <td class="{{ $row['margine'] >= 0 ? 'fd-pos' : 'fd-neg' }}">{{ $eur($row['margine']) }}</td>
                             <td class="fd-pos">{!! $cell($row['entrate'], 'entrate', $row['mese']) !!}</td>
                             <td class="fd-neg">{!! $cell($row['uscite'], 'uscite', $row['mese']) !!}</td>
@@ -173,8 +184,8 @@
                 <tfoot>
                     <tr>
                         <td>Totale {{ $year }}</td>
-                        <td>{{ $eur($gt['ricavi']) }}</td>
-                        <td>{{ $eur($gt['costi']) }}</td>
+                        <td>{!! $docCell($gt['ricavi'], 'ricavi', 0) !!}</td>
+                        <td>{!! $docCell($gt['costi'], 'costi', 0) !!}</td>
                         <td class="{{ $gt['margine'] >= 0 ? 'fd-pos' : 'fd-neg' }}">{{ $eur($gt['margine']) }}</td>
                         <td>{!! $cell($gt['entrate'], 'entrate', 0) !!}</td>
                         <td>{!! $cell($gt['uscite'], 'uscite', 0) !!}</td>
