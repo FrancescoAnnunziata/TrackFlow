@@ -96,15 +96,20 @@
 <div class="wrap">
   <div class="eyebrow">Calcolatore interattivo · euro reali di oggi</div>
   <h1>Traiettoria verso la libertà finanziaria</h1>
-  <p class="sub">La <b>FI vera</b> è raggiunta quando il patrimonio, al tasso di prelievo sicuro (SWR), copre le <b>spese fisse + la rata del mutuo</b> finché c'è. Il target è dinamico: più alto mentre paghi il mutuo, poi scende quando la casa è saldata. Sposta i cursori: tutto si ricalcola dal vivo.</p>
+  <p class="sub">La <b>FI vera</b> è raggiunta quando il patrimonio, al tasso di prelievo sicuro (SWR), copre le <b>spese fisse + la rata del mutuo</b> finché c'è. Puoi impostare <b>due redditi</b>: uno "a cannone" fino al Coast FIRE e uno ridotto dopo (strategia sprint + cruise). Sposta i cursori: tutto si ricalcola dal vivo.</p>
 
   <div class="grid">
     <div class="panel controls">
       <h3>Reddito &amp; spese</h3>
       <div class="ctl">
-        <label>Reddito netto / mese <b id="oNet">10.000 €</b></label>
-        <input type="range" id="inNet" min="3000" max="20000" step="250" value="10000">
-        <div class="band">banda ±50%: 5.000 – 15.000 €</div>
+        <label>Reddito netto pre-Coast <b id="oNetPre">10.000 €</b></label>
+        <input type="range" id="inNetPre" min="3000" max="20000" step="250" value="10000">
+        <div class="band">a cannone finché non raggiungi il Coast FIRE</div>
+      </div>
+      <div class="ctl">
+        <label>Reddito netto post-Coast <b id="oNetPost">5.000 €</b></label>
+        <input type="range" id="inNetPost" min="2000" max="20000" step="250" value="5000">
+        <div class="band">rallenti dopo il Coast (metti = al pre per reddito costante)</div>
       </div>
       <div class="ctl">
         <label>Spese fisse / mese <span class="muted" style="font-size:11px">(escluso mutuo)</span> <b id="oLiving">3.000 €</b></label>
@@ -141,8 +146,8 @@
     <div>
       <div class="strip">
         <div class="kpi"><div class="lab">Rata mutuo</div><div class="val" id="kRata">–<small>/mese</small></div></div>
-        <div class="kpi"><div class="lab">Investibile</div><div class="val" id="kInv">–<small>/mese</small></div></div>
-        <div class="kpi"><div class="lab">Tasso di risparmio</div><div class="val" id="kRate">–</div></div>
+        <div class="kpi"><div class="lab">Investi pre-Coast</div><div class="val" id="kInvPre">–<small>/mese</small></div></div>
+        <div class="kpi"><div class="lab">Investi post-Coast</div><div class="val" id="kInvPost">–<small>/mese</small></div></div>
       </div>
 
       <div class="mile">
@@ -176,6 +181,7 @@
         <li><b>FI vera</b>: primo anno in cui <code>portafoglio × SWR ≥ spese fisse + rata mutuo (se ancora attivo)</code>. Il target scende automaticamente quando il mutuo è estinto (durata dall'età di acquisto).</li>
         <li><b>FI a casa saldata</b>: quando il portafoglio × SWR copre le sole spese fisse — dove arriva l'asticella una volta finito il mutuo. È la FI vera meno la rata.</li>
         <li><b>Coast FIRE</b>: quando puoi smettere di versare e il portafoglio, da solo, cresce fino a coprire il fabbisogno di rendita entro l'età scelta (se a quell'età il mutuo è finito, conta solo le spese fisse; se dura oltre, include anche la rata).</li>
+        <li><b>Sprint + cruise (due redditi):</b> fino al Coast investi al ritmo del reddito <i>pre-Coast</i>; una volta raggiunto il Coast passi al reddito <i>post-Coast</i>. Il Coast dipende solo dallo sprint; la data di FI vera dipende da quanto continui a versare dopo. Se il reddito post-Coast copre a malapena spese + rata, di fatto stai solo "coasting" e la FI vera slitta verso l'estinzione del mutuo.</li>
         <li><b>Investibile/mese</b> = reddito netto − spese fisse − rata mutuo. I contributi partono a fine anno dall'età di acquisto; il portafoglio riparte da (patrimonio oggi − anticipo). Tutto in euro reali di oggi.</li>
         <li><b>Leva del mutuo:</b> allungare la durata abbassa la rata e libera cash da investire (che rende più del tasso del mutuo), ma ti tiene indebitato più a lungo — la FI vera con la rata dentro cattura questo, mentre una "FI liquida" ingenua no.</li>
         <li><b>Reddito reale (dati TrackFlow):</b> forfettaria ~63k netti/anno a 7k/mese; compenso amministratore 1.500/mese e rimborsi ~1.230/mese reali; dividendo G8LABS solo se la SRL è in utile. Non incluse imposte di registro + notaio prima casa (~5–8k). La forfettaria non deve fatturare alla tua SRL (confermato).</li>
@@ -190,14 +196,14 @@
 const $=id=>document.getElementById(id);
 const eur=n=>Math.round(n).toLocaleString('it-IT')+' €';
 const kk=n=>Math.round(n/1000)+'k €';
-const DEFAULTS={inNet:10000,inLiving:3000,inReturn:5,inHouse:300000,inDown:40000,inRate:3,inYears:25,inAppr:0,inAge:32,inPort:40000,inBuy:33,inRetAge:60,inSwr:4};
+const DEFAULTS={inNetPre:10000,inNetPost:5000,inLiving:3000,inReturn:5,inHouse:300000,inDown:40000,inRate:3,inYears:25,inAppr:0,inAge:32,inPort:40000,inBuy:33,inRetAge:60,inSwr:4};
 
 function pmt(P,ratePct,years){const i=ratePct/100/12,n=years*12;if(P<=0||years<=0)return 0;if(i===0)return P/n;return P*i/(1-Math.pow(1+i,-n));}
 function residual(P,ratePct,years,months){const i=ratePct/100/12,n=years*12;if(months<=0)return P;if(months>=n)return 0;const r=pmt(P,ratePct,years);if(i===0)return Math.max(0,P-r*months);return P*Math.pow(1+i,months)-r*((Math.pow(1+i,months)-1)/i);}
 
 function readState(){
   const g=id=>parseFloat($(id).value)||0;
-  return {net:g('inNet'),living:g('inLiving'),r:g('inReturn')/100,house:g('inHouse'),down:g('inDown'),
+  return {netPre:g('inNetPre'),netPost:g('inNetPost'),living:g('inLiving'),r:g('inReturn')/100,house:g('inHouse'),down:g('inDown'),
     rate:g('inRate'),years:g('inYears'),appr:g('inAppr')/100,age0:Math.round(g('inAge')),port0:g('inPort'),
     buy:Math.round(g('inBuy')),retAge:Math.round(g('inRetAge')),swr:Math.max(0.5,g('inSwr'))/100};
 }
@@ -205,43 +211,45 @@ function readState(){
 function project(s){
   const financed=Math.max(0,s.house-s.down);
   const rata=pmt(financed,s.rate,s.years);
-  const inv=Math.max(0,s.net-s.living-rata);
-  const C=inv*12;
+  const invPre=Math.max(0,s.netPre-s.living-rata);   // sprint
+  const invPost=s.netPost-s.living-rata;             // cruise (può essere negativo)
+  const Cpre=invPre*12, Cpost=invPost*12;
   const livingA=s.living*12, mortA=rata*12;
   const payoff=s.buy+s.years;                    // età di estinzione mutuo
   const lightTgt=livingA/s.swr;                  // FI a casa saldata
   const fiTargetAt=age=>{const active=age>=s.buy&&age<payoff;return (livingA+(active?mortA:0))/s.swr;};
   const coastNeed=(livingA+(payoff>s.retAge?mortA:0))/s.swr;
   const maxAge=Math.max(s.retAge,s.age0+40);
-  const rows=[]; let P=s.port0;
+  const rows=[]; let P=s.port0; let coastAge=null,fiAge=null,lightAge=null;
   for(let age=s.age0; age<=maxAge; age++){
     if(age===s.buy) P=Math.max(0,P-s.down);
     let e=0;
     if(age>=s.buy){const yrs=age-s.buy;const val=s.house*Math.pow(1+s.appr,yrs);e=val-residual(financed,s.rate,s.years,yrs*12);}
     const coastTh=coastNeed/Math.pow(1+s.r,Math.max(0,s.retAge-age));
-    rows.push({age,p:P,e,t:P+e,tgt:fiTargetAt(age),coastTh});
-    if(age>=s.buy) P=P*(1+s.r)+C;
+    const tgt=fiTargetAt(age);
+    rows.push({age,p:P,e,t:P+e,tgt,coastTh});
+    if(coastAge===null && P>=coastTh) coastAge=age;
+    if(fiAge===null && P>=tgt) fiAge=age;
+    if(lightAge===null && P>=lightTgt) lightAge=age;
+    if(age>=s.buy){
+      const C=(coastAge!==null && age>=coastAge)?Cpost:Cpre;   // dopo il Coast si rallenta
+      P=P*(1+s.r)+C;
+    }
   }
-  let coastAge=null,fiAge=null,lightAge=null;
-  for(const r of rows){
-    if(coastAge===null && r.p>=r.coastTh) coastAge=r.age;
-    if(fiAge===null && r.p>=r.tgt) fiAge=r.age;
-    if(lightAge===null && r.p>=lightTgt) lightAge=r.age;
-  }
-  return {rows,rata,inv,C,financed,payoff,lightTgt,coastNeed,coastAge,fiAge,lightAge,
-    fiTarget: fiAge?rows.find(r=>r.age===fiAge).tgt:fiTargetAt(s.retAge),
-    savingsRate:s.net>0?inv/s.net:0};
+  return {rows,rata,invPre,invPost,Cpre,Cpost,financed,payoff,lightTgt,coastNeed,coastAge,fiAge,lightAge,
+    fiTarget: fiAge?rows.find(r=>r.age===fiAge).tgt:fiTargetAt(s.retAge)};
 }
 
 let R=null,S=null;
 function render(){
   S=readState(); R=project(S);
-  $('oNet').textContent=eur(S.net); $('oLiving').textContent=eur(S.living);
+  $('oNetPre').textContent=eur(S.netPre); $('oNetPost').textContent=eur(S.netPost);
+  $('oLiving').textContent=eur(S.living);
   $('oReturn').textContent=(S.r*100).toFixed(1).replace('.',',')+' %';
   $('oHouse').textContent=eur(S.house);
   $('kRata').innerHTML=eur(R.rata)+'<small>/mese</small>';
-  $('kInv').innerHTML=eur(R.inv)+'<small>/mese</small>';
-  $('kRate').textContent=(R.savingsRate*100).toFixed(0)+' %';
+  $('kInvPre').innerHTML=eur(R.invPre)+'<small>/mese</small>';
+  $('kInvPost').innerHTML=eur(R.invPost)+'<small>/mese</small>';
 
   const setCard=(id,age,tgt)=>{
     const el=$(id),a=el.querySelector('.age'),f=el.querySelector('.from'),t=el.querySelector('.tgt');

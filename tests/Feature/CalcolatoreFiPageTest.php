@@ -2,9 +2,12 @@
 
 use App\Filament\Pages\CalcolatoreFi;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 use function Pest\Laravel\actingAs;
+
+uses(RefreshDatabase::class);
 
 it('renders for the owner and embeds the calculator iframe', function () {
     $owner = User::factory()->create([
