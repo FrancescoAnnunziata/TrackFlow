@@ -46,7 +46,11 @@ class ClientsTable
                     ->label('Genera fattura')
                     ->icon(Heroicon::OutlinedDocumentPlus)
                     ->color('primary')
-                    ->visible(fn (Client $record): bool => auth()->user()->isAdmin() && $record->isBillableHere())
+                    // Visibile per tutti i clienti (solo admin): la bozza si genera
+                    // dal motore a prescindere dal provider. L'invio automatico a
+                    // Fatture in Cloud resta un'altra cosa (solo per i clienti FIC);
+                    // i clienti Fiscozen generano qui la bozza e la ricreano a mano.
+                    ->visible(fn (Client $record): bool => auth()->user()->isAdmin())
                     ->modalHeading('Genera fattura del periodo')
                     ->modalSubmitActionLabel('Genera')
                     ->schema([
@@ -64,7 +68,7 @@ class ClientsTable
                         Notification::make()
                             ->success()
                             ->title('Bozza fattura generata')
-                            ->body("Fattura {$invoice->number} creata. Controllala e poi inviala a Fatture in Cloud.")
+                            ->body('Bozza creata. Controllala, poi emettila (Fatture in Cloud per i clienti FIC, a mano su Fiscozen per gli altri).')
                             ->send();
 
                         return redirect(InvoiceResource::getUrl('edit', ['record' => $invoice]));

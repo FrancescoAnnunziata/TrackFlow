@@ -74,7 +74,7 @@ class ListInvoices extends ListRecords
                 Notification::make()
                     ->success()
                     ->title('Bozza fattura generata')
-                    ->body("Fattura {$invoice->number} creata. Controllala e poi inviala a Fatture in Cloud.")
+                    ->body('Bozza creata. Controllala, poi emettila (Fatture in Cloud per i clienti FIC, a mano su Fiscozen per gli altri).')
                     ->send();
 
                 return redirect(InvoiceResource::getUrl('edit', ['record' => $invoice]));
