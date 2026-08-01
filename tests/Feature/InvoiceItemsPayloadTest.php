@@ -105,3 +105,40 @@ it('keeps the legacy payload for invoices without explicit items', function () {
     expect($payload['subject'])->toContain('Periodo');
     expect($payload['visible_subject'])->toBe('');
 });
+
+it('always sends the SDI payment method on e-invoices, from client or config default', function () {
+    config(['services.fic.e_invoice' => true, 'services.fic.ei_payment_method' => 'MP05']);
+
+    $user = User::factory()->admin()->create();
+    $client = Client::create(['name' => 'Fioravanti', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id,
+        'issue_date' => '2026-08-01', 'period_from' => '2026-07-01', 'period_to' => '2026-07-31',
+        'vat_rate' => 22, 'status' => 'draft',
+    ]);
+    InvoiceItem::create(['invoice_id' => $invoice->id, 'name' => 'Consulenza', 'qty' => 1, 'net_price' => 6100, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
+
+    // Senza nulla sul cliente: vale il default di config.
+    expect($invoice->fresh(['items', 'client'])->toFicPayload()['data']['ei_data'])
+        ->toBe(['payment_method' => 'MP05']);
+
+    // Il cliente sovrascrive.
+    $client->update(['ei_payment_method' => 'MP12']);
+    expect($invoice->fresh(['items', 'client'])->toFicPayload()['data']['ei_data'])
+        ->toBe(['payment_method' => 'MP12']);
+});
+
+it('omits ei_data on paper documents', function () {
+    config(['services.fic.e_invoice' => false]);
+
+    $user = User::factory()->admin()->create();
+    $client = Client::create(['name' => 'Cartacea', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id,
+        'issue_date' => '2026-08-01', 'period_from' => '2026-07-01', 'period_to' => '2026-07-31',
+        'vat_rate' => 22, 'status' => 'draft',
+    ]);
+    InvoiceItem::create(['invoice_id' => $invoice->id, 'name' => 'Consulenza', 'qty' => 1, 'net_price' => 100, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
+
+    expect($invoice->fresh(['items', 'client'])->toFicPayload()['data'])->not->toHaveKey('ei_data');
+});

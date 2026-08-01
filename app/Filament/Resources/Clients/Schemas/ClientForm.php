@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Clients\Schemas;
 
 use App\Models\Client;
 use App\Models\User;
+use App\Services\Fic\PaymentMethods;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -194,10 +195,18 @@ class ClientForm
                             ->maxLength(255)
                             ->placeholder('Es. Consulenza digitale')
                             ->helperText('Titolo base delle righe consulenza in fattura.'),
-                        TextInput::make('payment_method_id')
-                            ->label('ID metodo di pagamento FIC')
-                            ->numeric()
-                            ->helperText('Vuoto = usa il metodo predefinito su Fatture in Cloud.'),
+                        Select::make('ei_payment_method')
+                            ->label('Modalità di pagamento (SDI)')
+                            ->options(PaymentMethods::sdiOptions())
+                            ->placeholder(fn (): string => 'Default: '.(PaymentMethods::sdiOptions()[config('services.fic.ei_payment_method')] ?? config('services.fic.ei_payment_method')))
+                            ->helperText('Finisce nell\'XML della fattura elettronica. Vuoto = usa il default.'),
+                        Select::make('payment_method_id')
+                            ->label('Metodo di pagamento FIC')
+                            ->options(fn (): array => PaymentMethods::ficOptions())
+                            ->placeholder('Predefinito su Fatture in Cloud')
+                            ->helperText(fn (): string => PaymentMethods::ficOptions() === []
+                                ? 'Elenco non disponibile: TrackFlow non riesce a leggerlo da Fatture in Cloud (connessione assente o scaduta).'
+                                : 'Stampa IBAN e istruzioni di pagamento sulla fattura. Vuoto = predefinito su FIC.'),
 
                         Repeater::make('userRates')
                             ->label('Tariffe per utente')

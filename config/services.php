@@ -57,6 +57,9 @@ return [
         // Crea documenti come fattura elettronica (trasmissibile al SDI). Con
         // false FIC fa un documento cartaceo (solo invio per email).
         'e_invoice' => (bool) env('FIC_E_INVOICE', true),
+        // ModalitaPagamento SDI di default per l'XML della fattura elettronica
+        // (MP05 = bonifico). Il singolo cliente può sovrascriverla.
+        'ei_payment_method' => env('FIC_EI_PAYMENT_METHOD', 'MP05'),
     ],
 
     // Anthropic (Claude): estrazione dati dalle fatture estere in PDF.

@@ -257,8 +257,15 @@
                     <li>Su questi clienti <strong>non</strong> c'è il pulsante «Invia a Fatture in Cloud»: TrackFlow non li spedisce.</li>
                     <li>Usa la fattura di TrackFlow come <strong>brutta copia</strong> (importi, righe, rimborsi).</li>
                     <li><strong>Ricrea la stessa fattura a mano su Fiscozen</strong>, con <strong>IVA 0%</strong> (regime forfettario).</li>
+                    <li><strong>Ricordati di INVIARLA su Fiscozen</strong> dopo averla creata: crearla e basta non basta — va spedita, altrimenti resta una bozza e non parte al cliente/allo SDI.</li>
                     <li>Torna in TrackFlow, scrivi a mano nel campo <strong>Numero</strong> quello dato da Fiscozen e porta lo <strong>Stato</strong> a <strong>Inviata</strong>, così i conti restano allineati.</li>
                 </ol>
+                <div class="mt-3 rounded-md bg-purple-100/70 p-3 text-sm leading-6 text-purple-900 ring-1 ring-purple-600/20 dark:bg-purple-400/10 dark:text-purple-200 dark:ring-purple-400/20">
+                    <strong>💡 Scorciatoia su Fiscozen:</strong> non ripartire da zero. Su Fiscozen apri la fattura del
+                    <strong>mese/periodo precedente</strong> dello stesso cliente e usa <strong>«Duplica»</strong>: ti
+                    ritrovi i dati già compilati (intestatario, voci, IVA 0%) e devi solo aggiornare importi, date e
+                    numero. Più veloce e meno soggetto a errori.
+                </div>
             </div>
 
             <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">

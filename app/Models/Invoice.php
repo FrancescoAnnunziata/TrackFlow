@@ -285,7 +285,26 @@ class Invoice extends Model
             $data['payment_method'] = ['id' => (int) $this->client->payment_method_id];
         }
 
+        // Fattura elettronica: l'XML per il SDI richiede la ModalitaPagamento.
+        // Senza, FIC rifiuta il documento.
+        if ($data['e_invoice']) {
+            $data['ei_data'] = ['payment_method' => $this->eiPaymentMethod()];
+        }
+
         return ['data' => $data];
+    }
+
+    /**
+     * ModalitaPagamento SDI da mettere nell'XML: quella del cliente, altrimenti
+     * il default di config (MP05, bonifico).
+     */
+    public function eiPaymentMethod(): string
+    {
+        $clientValue = trim((string) ($this->client?->ei_payment_method ?? ''));
+
+        return $clientValue !== ''
+            ? $clientValue
+            : (string) config('services.fic.ei_payment_method', 'MP05');
     }
 
     /**

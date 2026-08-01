@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\FicCredential;
+use App\Services\Fic\PaymentMethods;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -54,6 +55,7 @@ class FattureInCloud extends Page
                 ->modalDescription('Rimuove i token salvati. Dovrai riconnettere TrackFlow per creare nuove fatture su Fatture in Cloud.')
                 ->action(function (): void {
                     FicCredential::query()->delete();
+                    PaymentMethods::forget();
 
                     Notification::make()
                         ->success()

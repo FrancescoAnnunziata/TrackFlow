@@ -76,6 +76,10 @@ class FicClient
         // Una sola connessione attiva alla volta.
         FicCredential::query()->delete();
 
+        // L'azienda collegata può cambiare: i metodi di pagamento in cache sono
+        // di quella vecchia.
+        PaymentMethods::forget();
+
         $credential = FicCredential::create([
             'access_token' => $data['access_token'],
             'refresh_token' => $data['refresh_token'],

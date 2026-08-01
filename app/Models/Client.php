@@ -55,6 +55,7 @@ class Client extends Model
         'vat_rate',
         'consulting_label',
         'payment_method_id',
+        'ei_payment_method',
     ];
 
     protected $casts = [

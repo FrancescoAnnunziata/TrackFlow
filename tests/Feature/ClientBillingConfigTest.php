@@ -122,3 +122,15 @@ it('marks non-fatture-in-cloud clients as not billable here', function () {
 
     expect($client->isBillableHere())->toBeFalse();
 });
+
+it('offers the SDI and FIC payment methods, and degrades when FIC is unreachable', function () {
+    $client = billableClient();
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(EditClient::class, ['record' => $client->getRouteKey()])
+        ->assertSee('Modalità di pagamento (SDI)')
+        ->assertSee('MP05 — Bonifico')
+        ->assertSee('Metodo di pagamento FIC')
+        // Senza connessione a FIC la tendina resta vuota ma il form si apre.
+        ->assertSee('Elenco non disponibile');
+});
