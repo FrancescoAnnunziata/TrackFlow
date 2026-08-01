@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Assistant\ClaudeChatClient;
+use App\Assistant\Contracts\ChatClient;
 use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -22,7 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // L'assistente AI parla con Claude tramite questo contratto (fake nei test).
+        $this->app->bind(ChatClient::class, ClaudeChatClient::class);
     }
 
     /**
