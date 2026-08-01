@@ -266,6 +266,12 @@
                     ritrovi i dati già compilati (intestatario, voci, IVA 0%) e devi solo aggiornare importi, date e
                     numero. Più veloce e meno soggetto a errori.
                 </div>
+                <div class="mt-3 rounded-md bg-white p-3 text-sm leading-6 text-gray-800 ring-1 ring-purple-600/30 dark:bg-white/5 dark:text-gray-200 dark:ring-purple-400/30">
+                    <strong>📍 Solo per Calzedonia:</strong> quando crei la fattura su Fiscozen aggiungi <strong>a mano</strong>
+                    anche il <strong>rimborso forfait trasferta</strong> presso la loro sede: <strong>100 € a giornata</strong>.
+                    Il <strong>numero di giornate te lo dice Giorgio</strong> (es. 3 giornate → riga da 300 €). È una voce
+                    in più rispetto a quelle già presenti in fattura, e va sempre inserita per Calzedonia.
+                </div>
             </div>
 
             <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">

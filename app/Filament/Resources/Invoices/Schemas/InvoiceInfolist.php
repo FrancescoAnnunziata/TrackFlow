@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Invoices\Schemas;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceInfolist
 {
@@ -89,6 +90,20 @@ class InvoiceInfolist
                 Section::make('Note')
                     ->components([
                         TextEntry::make('notes')->label('')->placeholder('—'),
+                    ]),
+
+                // Fatture caricate da PDF (Fiscozen): il file originale è l'unico
+                // documento che resta, e vale da giustificativo.
+                Section::make('Documento originale')
+                    ->visible(fn ($record): bool => filled($record->attachment))
+                    ->components([
+                        TextEntry::make('attachment')
+                            ->label('')
+                            ->state(fn ($record): string => sprintf(
+                                '<a href="%s" target="_blank" rel="noopener" style="text-decoration:underline;">Apri il PDF della fattura</a>',
+                                e(Storage::disk('public')->url($record->attachment)),
+                            ))
+                            ->html(),
                     ]),
             ]);
     }

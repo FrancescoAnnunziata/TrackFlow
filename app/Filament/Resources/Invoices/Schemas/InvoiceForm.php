@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invoices\Schemas;
 
+use App\Models\Client;
 use App\Models\InvoiceItem;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -9,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class InvoiceForm
@@ -20,11 +22,18 @@ class InvoiceForm
                 Section::make('Intestazione')
                     ->columns(2)
                     ->components([
+                        // Il testo cambia col cliente: la numerazione non la
+                        // decide mai TrackFlow, ma chi emette davvero la fattura
+                        // (FIC via API, Fiscozen o altro gestionale a mano).
                         TextInput::make('number')
                             ->label('Numero')
                             ->maxLength(50)
-                            ->placeholder('Assegnato da Fatture in Cloud')
-                            ->helperText('Vuoto per i clienti FIC (lo assegna FIC all\'invio). Per Fiscozen/esterni scrivilo a mano.'),
+                            ->placeholder(fn (Get $get): string => self::billableHere($get)
+                                ? 'Assegnato da Fatture in Cloud'
+                                : 'Numero assegnato da '.self::providerLabel($get))
+                            ->helperText(fn (Get $get): string => self::billableHere($get)
+                                ? 'Lascialo vuoto: lo assegna Fatture in Cloud al momento dell\'invio.'
+                                : 'Lo assegna '.self::providerLabel($get).', dove emetti davvero la fattura: riportalo qui a mano, oppure caricane il PDF da "Fatture emesse da PDF".'),
                         DatePicker::make('issue_date')
                             ->label('Data emissione')
                             ->required()
@@ -34,7 +43,9 @@ class InvoiceForm
                             ->relationship('client', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            // Il testo del campo Numero dipende dal provider.
+                            ->live(),
                         Select::make('status')
                             ->label('Stato')
                             ->options([
@@ -123,5 +134,29 @@ class InvoiceForm
             // Sezioni impilate a piena larghezza: le righe fattura hanno tutto
             // lo spazio (altrimenti Prezzo/Q.tà si stringono in mezza colonna).
             ->columns(1);
+    }
+
+    /**
+     * Cliente selezionato nella form, se già scelto.
+     */
+    private static function selectedClient(Get $get): ?Client
+    {
+        $id = $get('client_id');
+
+        return filled($id) ? Client::find($id) : null;
+    }
+
+    /**
+     * True se la fattura si emette da TrackFlow (cliente Fatture in Cloud).
+     * Senza cliente scelto si assume di sì: è il caso più comune.
+     */
+    private static function billableHere(Get $get): bool
+    {
+        return self::selectedClient($get)?->isBillableHere() ?? true;
+    }
+
+    private static function providerLabel(Get $get): string
+    {
+        return self::selectedClient($get)?->invoicingProviderLabel() ?? 'il gestionale esterno';
     }
 }

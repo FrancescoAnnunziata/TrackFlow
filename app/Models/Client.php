@@ -81,6 +81,20 @@ class Client extends Model
     }
 
     /**
+     * Nome del sistema che emette le fatture di questo cliente e ne decide la
+     * numerazione. TrackFlow non assegna mai numeri da sé: per i clienti FIC
+     * arriva all'invio via API, per gli altri dal gestionale usato fuori.
+     */
+    public function invoicingProviderLabel(): string
+    {
+        return match ($this->invoicing_provider) {
+            self::PROVIDER_FIC => 'Fatture in Cloud',
+            self::PROVIDER_FISCOZEN => 'Fiscozen',
+            default => 'il gestionale esterno',
+        };
+    }
+
+    /**
      * Tariffa oraria applicabile a un utente su questo cliente: override
      * specifico se presente, altrimenti la tariffa di default.
      */

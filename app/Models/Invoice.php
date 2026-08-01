@@ -35,6 +35,7 @@ class Invoice extends Model
         'fic_document_token',
         'fic_sent_at',
         'imported',
+        'attachment',
     ];
 
     protected $casts = [
