@@ -1,508 +1,393 @@
 <x-filament-panels::page>
-    @php
-        // Piccole utility di stile per non ripetere le classi Tailwind lungo la pagina.
-        $card = 'rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10';
-        $stepNum = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white';
-        $kbd = 'inline-block rounded-md bg-gray-100 px-1.5 py-0.5 text-[0.8em] font-semibold text-gray-800 ring-1 ring-gray-950/10 dark:bg-white/10 dark:text-gray-100 dark:ring-white/10';
-    @endphp
+    {{--
+        La guida ha un CSS proprio (scoped sotto .guida): le utility Tailwind nei
+        blade custom non vengono compilate nel bundle del pannello Filament, quindi
+        qui lo stile è autoconsistente. Dark mode agganciato alla classe .dark che
+        Filament mette su <html> col suo toggle.
+    --}}
+    <style>
+        .guida { --g-fg:#374151; --g-heading:#0b1220; --g-muted:#6b7280; --g-card:#ffffff; --g-border:rgba(2,6,23,.08); --g-shadow:0 1px 2px rgba(2,6,23,.05); --g-soft:#f8fafc; }
+        .dark .guida { --g-fg:#cbd5e1; --g-heading:#f8fafc; --g-muted:#94a3b8; --g-card:rgba(255,255,255,.04); --g-border:rgba(255,255,255,.10); --g-shadow:none; --g-soft:rgba(255,255,255,.03); }
 
-    <div class="mx-auto flex max-w-3xl flex-col gap-8 text-gray-700 dark:text-gray-300">
+        .guida { max-width:52rem; margin:0 auto; display:flex; flex-direction:column; gap:1.5rem; color:var(--g-fg); font-size:.9rem; line-height:1.6; }
+        .guida p { margin:0; }
+        .guida strong { color:var(--g-heading); font-weight:650; }
+        .guida em { font-style:italic; }
+        .guida u { text-decoration:underline; text-underline-offset:2px; }
+
+        .g-card { background:var(--g-card); border:1px solid var(--g-border); border-radius:14px; padding:1.4rem 1.5rem; box-shadow:var(--g-shadow); }
+        .g-card > * + * { margin-top:.85rem; }
+
+        .g-title { font-size:1.35rem; font-weight:750; color:var(--g-heading); letter-spacing:-.01em; }
+        .g-h { font-size:1.1rem; font-weight:700; color:var(--g-heading); }
+        .g-sub { font-size:.95rem; font-weight:700; color:var(--g-heading); }
+        .g-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--g-muted); }
+
+        .g-head { display:flex; align-items:center; gap:.75rem; }
+        .g-num { flex:0 0 auto; width:2rem; height:2rem; border-radius:999px; background:#4f46e5; color:#fff; font-weight:700; font-size:.85rem; display:inline-flex; align-items:center; justify-content:center; }
+        .g-num.alt { background:#6366f1; font-size:.72rem; }
+        .g-num.gray { background:#64748b; }
+
+        .g-steps, .g-list { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:.55rem; }
+        .g-ol { margin:.4rem 0 0; padding-left:1.35rem; display:flex; flex-direction:column; gap:.5rem; }
+        .g-ol > li::marker { font-weight:700; color:#4f46e5; }
+        .g-overview li { display:flex; align-items:center; gap:.75rem; }
+        .g-list li { position:relative; padding-left:1.1rem; }
+        .g-list li::before { content:"•"; position:absolute; left:.15rem; color:#4f46e5; font-weight:700; }
+        .g-list.tight li + li { margin-top:0; }
+        .g-sublist { margin:.35rem 0 0 .6rem; padding-left:1rem; display:flex; flex-direction:column; gap:.25rem; }
+        .g-sublist li::before { content:"—"; margin-right:.35rem; color:var(--g-muted); }
+
+        .g-callout { border-radius:11px; padding:.9rem 1rem; font-size:.86rem; line-height:1.55; border:1px solid transparent; }
+        .g-info   { background:#eff6ff; color:#1e40af; border-color:rgba(37,99,235,.18); }
+        .g-warn   { background:#fffbeb; color:#92400e; border-color:rgba(217,119,6,.2); }
+        .g-danger { background:#fef2f2; color:#991b1b; border-color:rgba(220,38,38,.2); }
+        .g-ok     { background:#f0fdf4; color:#166534; border-color:rgba(22,163,74,.2); }
+        .g-note   { background:#faf5ff; color:#6b21a8; border-color:rgba(147,51,234,.2); }
+        .dark .g-info   { background:rgba(59,130,246,.12); color:#93c5fd; }
+        .dark .g-warn   { background:rgba(245,158,11,.12); color:#fcd34d; }
+        .dark .g-danger { background:rgba(239,68,68,.12); color:#fca5a5; }
+        .dark .g-ok     { background:rgba(34,197,94,.12); color:#86efac; }
+        .dark .g-note   { background:rgba(168,85,247,.12); color:#d8b4fe; }
+        .g-callout strong { color:inherit; }
+
+        .g-channels { display:grid; gap:.9rem; grid-template-columns:1fr; }
+        @media (min-width:640px){ .g-channels { grid-template-columns:1fr 1fr; } }
+        .g-channel { border-radius:11px; padding:.9rem 1rem; border:1px solid transparent; }
+        .g-channel .g-ct { font-weight:700; font-size:.9rem; margin-bottom:.25rem; }
+        .g-channel.green  { background:#f0fdf4; border-color:rgba(22,163,74,.22); color:#166534; }
+        .g-channel.purple { background:#faf5ff; border-color:rgba(147,51,234,.22); color:#6b21a8; }
+        .dark .g-channel.green  { background:rgba(34,197,94,.1); color:#86efac; }
+        .dark .g-channel.purple { background:rgba(168,85,247,.1); color:#d8b4fe; }
+        .g-channel .g-ct { color:inherit; }
+        .g-channel strong { color:inherit; }
+
+        .g-block { border-radius:11px; padding:.9rem 1rem; border:1px solid transparent; }
+        .g-block.green  { background:#f0fdf4; border-color:rgba(22,163,74,.22); }
+        .g-block.purple { background:#faf5ff; border-color:rgba(147,51,234,.22); }
+        .dark .g-block.green  { background:rgba(34,197,94,.08); }
+        .dark .g-block.purple { background:rgba(168,85,247,.08); }
+        .g-block .g-bt { font-weight:700; font-size:.88rem; margin-bottom:.4rem; }
+        .g-block.green  .g-bt, .g-block.green  .g-ol > li::marker  { color:#166534; }
+        .g-block.purple .g-bt, .g-block.purple .g-ol > li::marker  { color:#6b21a8; }
+        .dark .g-block.green .g-bt  { color:#86efac; }
+        .dark .g-block.purple .g-bt { color:#d8b4fe; }
+
+        .g-tablewrap { overflow-x:auto; margin-top:.25rem; }
+        .g-table { width:100%; border-collapse:collapse; font-size:.84rem; }
+        .g-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--g-muted); font-weight:600; padding:.4rem .6rem; border-bottom:1px solid var(--g-border); }
+        .g-table td { padding:.5rem .6rem; border-bottom:1px solid var(--g-border); vertical-align:top; }
+        .g-table tr:last-child td { border-bottom:none; }
+        .g-table td.name { color:var(--g-heading); font-weight:600; }
+
+        .g-badge { display:inline-flex; align-items:center; border-radius:6px; padding:.05rem .4rem; font-size:.72rem; font-weight:700; }
+        .g-badge.green  { background:#dcfce7; color:#15803d; }
+        .g-badge.purple { background:#f3e8ff; color:#7e22ce; }
+        .g-badge.amber  { background:#fef3c7; color:#b45309; }
+        .g-badge.gray   { background:#f1f5f9; color:#475569; }
+        .dark .g-badge.green  { background:rgba(34,197,94,.14); color:#86efac; }
+        .dark .g-badge.purple { background:rgba(168,85,247,.14); color:#d8b4fe; }
+        .dark .g-badge.amber  { background:rgba(245,158,11,.14); color:#fcd34d; }
+        .dark .g-badge.gray   { background:rgba(148,163,184,.16); color:#cbd5e1; }
+
+        .g-kbd { display:inline-block; border-radius:6px; background:var(--g-soft); border:1px solid var(--g-border); padding:.05rem .35rem; font-size:.8em; font-weight:600; color:var(--g-heading); white-space:nowrap; }
+        .g-muted { color:var(--g-muted); font-size:.8rem; }
+        .g-foot { text-align:center; color:var(--g-muted); font-size:.75rem; padding-bottom:1rem; }
+        .g-status { display:flex; align-items:center; gap:.6rem; }
+    </style>
+
+    <div class="guida">
 
         {{-- Intro --}}
-        <div class="{{ $card }}">
-            <h2 class="text-xl font-bold text-gray-950 dark:text-white">Guida alla fatturazione</h2>
-            <p class="mt-2 text-sm leading-6">
-                Questo è il manuale operativo per emettere le fatture ai clienti con TrackFlow, dall'inizio
-                alla fine: <strong>generare la fattura</strong>, <strong>aggiungere i rimborsi spese</strong>,
-                <strong>inviarla a Fatture in Cloud</strong>, <strong>registrare l'incasso</strong> ed
-                eventualmente <strong>emettere una nota di credito</strong>. Segui i passaggi nell'ordine.
-            </p>
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
-                <strong>Da tenere a mente:</strong> il <strong>numero</strong> della fattura e il <strong>PDF</strong>
-                non li fa TrackFlow — li assegna e genera <strong>Fatture in Cloud</strong> al momento dell'invio.
-                In TrackFlow prepari e controlli la fattura, poi la spedisci lì con un clic.
+        <div class="g-card">
+            <p class="g-title">Guida alla fatturazione</p>
+            <p>Manuale operativo per emettere le fatture ai clienti con TrackFlow, dall'inizio alla fine:
+                <strong>generare la fattura</strong>, <strong>aggiungere i rimborsi spese</strong>,
+                <strong>emetterla</strong>, <strong>importare i movimenti bancari</strong> e
+                <strong>riconciliare</strong>. Segui i passaggi nell'ordine.</p>
+            <div class="g-callout g-warn">
+                <strong>Da tenere a mente:</strong> per i clienti su Fatture in Cloud il <strong>numero</strong> e il
+                <strong>PDF</strong> non li fa TrackFlow — li assegna e genera Fatture in Cloud all'invio. In TrackFlow
+                prepari e controlli la fattura, poi la spedisci.
             </div>
+        </div>
+
+        {{-- Ciclo in 8 mosse --}}
+        <div class="g-card">
+            <p class="g-h">Il ciclo in 8 mosse</p>
+            <ol class="g-steps g-overview">
+                <li><span class="g-num">1</span> Controlla che il cliente sia configurato (menu <strong>Clienti</strong>)</li>
+                <li><span class="g-num">2</span> Genera la bozza (<strong>Fatture</strong> → <em>Genera fattura</em>)</li>
+                <li><span class="g-num">3</span> Controlla righe, rimborsi e note</li>
+                <li><span class="g-num">4</span> Emetti: <em>Invia a Fatture in Cloud</em> (G8Labs) o a mano su <em>Fiscozen</em> (G. Giotto)</li>
+                <li><span class="g-num">5</span> Importa i movimenti delle banche</li>
+                <li><span class="g-num">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
+                <li><span class="g-num">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti)</li>
+                <li><span class="g-num">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
+            </ol>
         </div>
 
         {{-- Processo di fine mese --}}
-        <div class="{{ $card }}">
-            <h3 class="text-lg font-bold text-gray-950 dark:text-white">📅 Il processo di fine mese</h3>
-            <p class="mt-2 text-sm leading-6">
-                A fine mese si emettono le fatture di tutti i clienti attivi. Ci sono <strong>due canali</strong>
-                a seconda dell'intestatario, e cambia il modo in cui la fattura «esce».
-            </p>
-
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <div class="rounded-lg bg-green-50 p-4 ring-1 ring-green-600/20 dark:bg-green-400/10 dark:ring-green-400/20">
-                    <p class="text-sm font-bold text-green-800 dark:text-green-300">G8Labs → Fatture in Cloud</p>
-                    <p class="mt-1 text-sm leading-6 text-green-800/90 dark:text-green-300/90">
-                        Le crei in TrackFlow e con <em>«Invia a Fatture in Cloud»</em> partono
-                        <strong>in automatico</strong> su FiC. <strong>IVA sempre 22%</strong>.
-                    </p>
+        <div class="g-card">
+            <p class="g-h">📅 Il processo di fine mese</p>
+            <p>A fine mese si emettono le fatture di tutti i clienti attivi. Ci sono <strong>due canali</strong> a
+                seconda dell'intestatario, e cambia il modo in cui la fattura «esce».</p>
+            <div class="g-channels">
+                <div class="g-channel green">
+                    <p class="g-ct">G8Labs → Fatture in Cloud</p>
+                    <p>Le crei in TrackFlow e con <em>«Invia a Fatture in Cloud»</em> partono <strong>in automatico</strong>. <strong>IVA sempre 22%</strong>.</p>
                 </div>
-                <div class="rounded-lg bg-purple-50 p-4 ring-1 ring-purple-600/20 dark:bg-purple-400/10 dark:ring-purple-400/20">
-                    <p class="text-sm font-bold text-purple-800 dark:text-purple-300">Giorgio Giotto → Fiscozen</p>
-                    <p class="mt-1 text-sm leading-6 text-purple-800/90 dark:text-purple-300/90">
-                        Le crei in TrackFlow ma <strong>NON</strong> escono da sole: vanno
-                        <strong>ricreate a mano anche su Fiscozen</strong>. <strong>IVA sempre 0%</strong>
-                        (regime forfettario).
-                    </p>
+                <div class="g-channel purple">
+                    <p class="g-ct">Giorgio Giotto → Fiscozen</p>
+                    <p>Le crei in TrackFlow ma <strong>NON</strong> escono da sole: vanno <strong>ricreate a mano su Fiscozen</strong>. <strong>IVA sempre 0%</strong> (forfettario).</p>
                 </div>
             </div>
-
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
+            <div class="g-callout g-warn">
                 <strong>⚠️ Passo obbligatorio prima di Fioravanti:</strong> importa le <strong>ore di Cattadori</strong>.
-                Lui non le registra da TrackFlow, ti passa un <strong>Excel</strong>. Vai nel menu <strong>Ore</strong> →
-                <span class="{{ $kbd }}">Importa Excel</span> e caricalo <em>prima</em> di generare la fattura Fioravanti,
-                altrimenti mancano ore e la fattura esce incompleta.
+                Lui non le registra da TrackFlow, ti passa un <strong>Excel</strong>. Menu <strong>Ore</strong> →
+                <span class="g-kbd">Importa Excel</span>, <em>prima</em> di generare la fattura Fioravanti.
             </div>
-
-            <h4 class="mt-6 text-sm font-semibold text-gray-950 dark:text-white">I clienti attivi da fatturare</h4>
-            <div class="mt-3 overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-white/10 dark:text-gray-400">
-                        <tr>
-                            <th class="py-2 pr-3 font-medium">Cliente</th>
-                            <th class="py-2 pr-3 font-medium">Canale</th>
-                            <th class="py-2 pr-3 font-medium">IVA</th>
-                            <th class="py-2 font-medium">Come paga</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                        @php
-                            $ivaGreen = 'inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-green-500/20 dark:bg-green-400/10 dark:text-green-300';
-                            $ivaPurple = 'inline-flex items-center rounded-md bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700 ring-1 ring-purple-500/20 dark:bg-purple-400/10 dark:text-purple-300';
-                            $fic = 'Fatture in Cloud';
-                            $fis = 'Fiscozen';
-                        @endphp
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Fioravanti</td>
-                            <td class="py-2 pr-3">{{ $fic }} <span class="text-gray-400">(G8Labs)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaGreen }}">22%</span></td>
-                            <td class="py-2">A ore · 90 €/h · mensile</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Fedespedi</td>
-                            <td class="py-2 pr-3">{{ $fic }} <span class="text-gray-400">(G8Labs)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaGreen }}">22%</span></td>
-                            <td class="py-2">Forfait · mensile</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Alsea</td>
-                            <td class="py-2 pr-3">{{ $fic }} <span class="text-gray-400">(G8Labs)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaGreen }}">22%</span></td>
-                            <td class="py-2">A ore · 50 €/h · <strong>trimestrale anticipato</strong></td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Quisto</td>
-                            <td class="py-2 pr-3">{{ $fis }} <span class="text-gray-400">(G. Giotto)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaPurple }}">0%</span></td>
-                            <td class="py-2">A ore · 50 €/h · mensile</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Dolcitalia</td>
-                            <td class="py-2 pr-3">{{ $fis }} <span class="text-gray-400">(G. Giotto)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaPurple }}">0%</span></td>
-                            <td class="py-2">A ore · 60 €/h · mensile</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 pr-3 font-medium text-gray-950 dark:text-white">Qode SRL / Calzedonia</td>
-                            <td class="py-2 pr-3">{{ $fis }} <span class="text-gray-400">(G. Giotto)</span></td>
-                            <td class="py-2 pr-3"><span class="{{ $ivaPurple }}">0%</span></td>
-                            <td class="py-2">A giornata · 290 €/gg · mensile</td>
-                        </tr>
+            <p class="g-sub">I clienti attivi da fatturare</p>
+            <div class="g-tablewrap">
+                <table class="g-table">
+                    <thead><tr><th>Cliente</th><th>Canale</th><th>IVA</th><th>Come paga</th></tr></thead>
+                    <tbody>
+                        <tr><td class="name">Fioravanti</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>A ore · 90 €/h · mensile</td></tr>
+                        <tr><td class="name">Fedespedi</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>Forfait · mensile</td></tr>
+                        <tr><td class="name">Alsea</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>A ore · 50 €/h · <strong>trimestrale anticipato</strong></td></tr>
+                        <tr><td class="name">Quisto</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A ore · 50 €/h · mensile</td></tr>
+                        <tr><td class="name">Dolcitalia</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A ore · 60 €/h · mensile</td></tr>
+                        <tr><td class="name">Qode SRL / Calzedonia</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A giornata · 290 €/gg · mensile</td></tr>
                     </tbody>
                 </table>
             </div>
-            <p class="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                Modello di pagamento (forfait / a ore / a giornata) e IVA sono già impostati sul profilo di ogni
-                cliente nel menu <strong>Clienti</strong>: TrackFlow li applica da solo quando generi la fattura.
-                Non devi ricordarli a memoria — questa tabella è solo un promemoria.
-            </p>
+            <p class="g-muted">Modello di pagamento e IVA sono già impostati sul profilo di ogni cliente (menu <strong>Clienti</strong>): TrackFlow li applica da solo. Questa tabella è solo un promemoria.</p>
         </div>
 
-        {{-- A colpo d'occhio --}}
-        <div class="{{ $card }}">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Il ciclo in 8 mosse</h3>
-            <ol class="mt-3 flex flex-col gap-2 text-sm">
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">1</span> Controlla che il cliente sia configurato (menu <strong>Clienti</strong>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">2</span> Genera la bozza (menu <strong>Fatture</strong> → <em>Genera fattura</em>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">3</span> Controlla righe, rimborsi e note</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">4</span> Emetti: <em>Invia a Fatture in Cloud</em> (G8Labs) o a mano su <em>Fiscozen</em> (G. Giotto)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">5</span> Importa i movimenti delle banche (<strong>Movimenti bancari</strong>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
+        {{-- STEP 1 --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">1</span><p class="g-h">Prima di iniziare: il cliente</p></div>
+            <p>Una fattura nasce dai dati del cliente. Menu <strong>Clienti</strong> → apri il cliente → sezione <strong>Fatturazione</strong>. Verifica:</p>
+            <ul class="g-list">
+                <li><strong>Provider fatturazione</strong> = <em>Fatture in Cloud</em> (solo questi sono fatturabili da TrackFlow; Fiscozen/Altro no).</li>
+                <li><strong>Modello</strong> (A ore / A giornata / Forfait), <strong>Periodicità</strong> e <strong>Timing</strong>: decidono come vengono calcolate le righe.</li>
+                <li>Le <strong>tariffe</strong> (oraria, giornaliera o forfait) e l'<strong>IVA (%)</strong>.</li>
+                <li>Nei <strong>Dati fiscali</strong>: almeno <strong>P.IVA</strong> <em>oppure</em> <strong>Codice Fiscale</strong>. Senza, l'invio a Fatture in Cloud si blocca.</li>
+            </ul>
+            <div class="g-callout g-info">Se il cliente è già a posto (fattura ricorrente), salta al passo 2.</div>
+        </div>
+
+        {{-- STEP 2 --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">2</span><p class="g-h">Genera la fattura</p></div>
+            <ol class="g-ol">
+                <li>Menu <strong>Fatture</strong>.</li>
+                <li>In alto a destra <span class="g-kbd">Genera fattura</span> (pulsante blu). Si apre <em>«Genera fattura da cliente e periodo»</em>.</li>
+                <li>Scegli il <strong>Cliente</strong> e l'<strong>Inizio periodo</strong> (il mese; la durata la decide la periodicità del cliente).</li>
+                <li><span class="g-kbd">Genera</span>. Compare <em>«Bozza fattura generata»</em> e ti ritrovi nella fattura, con le righe già calcolate.</li>
             </ol>
+            <div class="g-callout g-info">C'è anche <span class="g-kbd">Crea vuota</span> per partire da zero, ma nel 99% dei casi si usa <strong>Genera fattura</strong>: fa il lavoro partendo da ore e spese del periodo.</div>
         </div>
 
-        {{-- STEP 0: prerequisiti --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">1</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Prima di iniziare: il cliente</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Una fattura nasce dai dati del cliente. Vai nel menu <strong>Clienti</strong>, apri il cliente e
-                controlla la sezione <strong>Fatturazione</strong>. Devono essere corretti:
-            </p>
-            <ul class="mt-3 flex flex-col gap-2 text-sm leading-6">
-                <li>• <strong>Provider fatturazione</strong> = <em>Fatture in Cloud</em> (solo questi clienti sono fatturabili da TrackFlow; Fiscozen/Altro no).</li>
-                <li>• <strong>Modello</strong> (A ore / A giornata / Forfait), <strong>Periodicità</strong> e <strong>Timing</strong> (posticipato/anticipato): decidono come vengono calcolate le righe.</li>
-                <li>• Le <strong>tariffe</strong> (oraria, giornaliera o importo forfait) e l'<strong>IVA (%)</strong>.</li>
-                <li>• Nei <strong>Dati fiscali</strong>: almeno <strong>Partita IVA</strong> <em>oppure</em> <strong>Codice Fiscale</strong>. Senza, l'invio a Fatture in Cloud si blocca.</li>
+        {{-- STEP 3 --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">3</span><p class="g-h">Controlla e ritocca la bozza</p></div>
+            <p>Sei nella fattura in modifica. Verifica le sezioni:</p>
+            <ul class="g-list">
+                <li><strong>Intestazione</strong> — Data emissione, Cliente, Stato (resta <em>Bozza</em>). Il <strong>Numero</strong> va lasciato <strong>vuoto</strong> per i clienti Fatture in Cloud.</li>
+                <li><strong>Periodo</strong> — «dal / al» e <strong>IVA (%)</strong>.</li>
+                <li><strong>Righe fattura</strong> — ogni riga ha <em>Descrizione, Q.tà, U.m., Prezzo</em> e il campo <strong>IVA: Standard</strong> o <strong>Art. 15</strong>. Modificabili, riordinabili, con <span class="g-kbd">Aggiungi riga</span>.</li>
+                <li><strong>Note</strong> — testo che finisce in fondo alla fattura.</li>
             </ul>
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                Se il cliente è già a posto (fattura ricorrente), salta pure al passo 2.
-            </div>
+            <p>Quando è a posto, <strong>salva</strong>.</p>
+            <div class="g-callout g-info"><strong>Standard vs Art. 15:</strong> le righe <em>Standard</em> pagano l'IVA; le righe <em>Art. 15</em> (rimborsi spese) entrano nel totale ma <strong>non</strong> nell'IVA.</div>
         </div>
 
-        {{-- STEP 2: genera --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">2</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Genera la fattura</h3>
-            </div>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Vai nel menu <strong>Fatture</strong>.</li>
-                <li>In alto a destra clicca <span class="{{ $kbd }}">Genera fattura</span> (il pulsante blu). Si apre la finestra <em>«Genera fattura da cliente e periodo»</em>.</li>
-                <li>Scegli il <strong>Cliente</strong> e l'<strong>Inizio periodo</strong> (il mese: la durata la decide la periodicità del cliente).</li>
-                <li>Clicca <span class="{{ $kbd }}">Genera</span>. Compare la notifica <em>«Bozza fattura generata»</em> e ti ritrovi subito nella fattura appena creata, con le righe già calcolate.</li>
-            </ol>
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                Esiste anche <span class="{{ $kbd }}">Crea vuota</span> per partire da un foglio bianco, ma nel
-                99% dei casi si usa <strong>Genera fattura</strong>: fa il lavoro al posto tuo partendo dalle ore
-                e dalle spese del periodo.
-            </div>
-        </div>
-
-        {{-- STEP 3: controlla righe --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">3</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Controlla e ritocca la bozza</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Sei nella fattura in modifica. Scorri le sezioni e verifica:
-            </p>
-            <ul class="mt-3 flex flex-col gap-2 text-sm leading-6">
-                <li>• <strong>Intestazione</strong> — Data emissione, Cliente, Stato (resta <em>Bozza</em>). Il campo <strong>Numero</strong> va lasciato <strong>vuoto</strong> per i clienti Fatture in Cloud: lo assegna FIC all'invio.</li>
-                <li>• <strong>Periodo</strong> — «Periodo dal / al» e <strong>IVA (%)</strong>.</li>
-                <li>• <strong>Righe fattura</strong> — ogni riga ha <em>Descrizione, Q.tà, U.m., Prezzo</em> e il campo <strong>IVA: Standard</strong> o <strong>Art. 15</strong>. Puoi modificarle, riordinarle o aggiungerne con <span class="{{ $kbd }}">Aggiungi riga</span>.</li>
-                <li>• <strong>Note</strong> — testo che finisce in fondo alla fattura (es. il dettaglio ore o il riepilogo dei rimborsi).</li>
+        {{-- STEP 3b rimborsi --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num alt">3b</span><p class="g-h">I rimborsi spese (art. 15)</p></div>
+            <p>Non serve aggiungerli a mano: alla generazione TrackFlow raccoglie le <strong>Spese</strong> del cliente e periodo non ancora fatturate e le mette in un'unica riga <strong>«Rimborsi spese»</strong> in <strong>Art. 15</strong>. Il dettaglio finisce nelle <strong>Note</strong>.</p>
+            <p>Perché una spesa entri nel rimborso, nel menu <strong>Spese</strong> deve avere:</p>
+            <ul class="g-list">
+                <li>il <strong>Cliente</strong> valorizzato (a chi va riaddebitata),</li>
+                <li>e non essere già stata inclusa in una fattura precedente.</li>
             </ul>
-            <p class="mt-3 text-sm leading-6">Quando è a posto, <strong>salva</strong>.</p>
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                <strong>Standard vs Art. 15:</strong> le righe <em>Standard</em> pagano l'IVA; le righe <em>Art. 15</em>
-                (i rimborsi spese) entrano nel totale ma <strong>non</strong> nell'IVA. Il totale «Rimborsi art. 15»
-                lo vedi nella pagina di dettaglio della fattura.
-            </div>
-        </div>
-
-        {{-- STEP 3b: rimborsi --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600/80 text-xs font-bold text-white">3b</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">I rimborsi spese (art. 15)</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Non serve aggiungerli a mano: quando generi la fattura, TrackFlow raccoglie automaticamente le
-                <strong>Spese</strong> di quel cliente e periodo non ancora fatturate e le mette in un'unica riga
-                <strong>«Rimborsi spese»</strong> in <strong>Art. 15</strong> (descrizione «Vedi note»). Il dettaglio
-                (data, importo, giustificativo) finisce nelle <strong>Note</strong> della fattura.
-            </p>
-            <p class="mt-3 text-sm leading-6">Perché una spesa entri nel rimborso, nel menu <strong>Spese</strong> deve avere:</p>
-            <ul class="mt-3 flex flex-col gap-2 text-sm leading-6">
-                <li>• il <strong>Cliente</strong> valorizzato (a chi va riaddebitata),</li>
-                <li>• e non essere già stata inclusa in una fattura precedente.</li>
-            </ul>
-            <div class="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-600/20 dark:bg-red-400/10 dark:text-red-300 dark:ring-red-400/20">
+            <div class="g-callout g-danger">
                 <strong>✅ Controllo obbligatorio prima di emettere (per ogni cliente):</strong> verifica che ogni
-                rimborso spese sia stato <strong>segnato correttamente</strong>, cioè che l'<strong>importo in
-                TrackFlow sia identico a quello scritto sullo scontrino/foto del giustificativo</strong>. Apri la
-                spesa nel menu <strong>Spese</strong>, guarda l'allegato e confronta la cifra: se non coincide
-                (es. scontrino 45 € ma in TrackFlow 30 €), <strong>correggi l'importo prima di generare la
-                fattura</strong>. È l'errore più frequente e il più difficile da sistemare dopo l'invio.
+                rimborso sia <strong>segnato correttamente</strong>, cioè che l'<strong>importo in TrackFlow sia identico
+                a quello sullo scontrino/foto</strong>. Apri la spesa nel menu <strong>Spese</strong>, guarda l'allegato e
+                confronta: se non coincide (es. scontrino 45 € ma in TrackFlow 30 €), <strong>correggi prima di
+                generare</strong>. È l'errore più frequente e il più difficile da sistemare dopo l'invio.
             </div>
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
-                <strong>Attenzione a non confondere:</strong> il menu <strong>Rimborsi spese</strong> è un'altra cosa —
-                sono i soldi da <em>restituire a chi ha anticipato di tasca propria</em>, non finiscono nella
-                fattura al cliente. Per la fatturazione ti interessa il menu <strong>Spese</strong>.
+            <div class="g-callout g-warn">
+                <strong>Non confondere:</strong> il menu <strong>Rimborsi spese</strong> è un'altra cosa — sono i soldi da
+                <em>restituire a chi ha anticipato di tasca propria</em>, non finiscono nella fattura al cliente. Per la
+                fatturazione ti serve il menu <strong>Spese</strong>.
             </div>
         </div>
 
-        {{-- STEP 4: emissione (due canali) --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">4</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Emetti la fattura</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Qui il percorso cambia a seconda del canale del cliente (vedi la tabella «Processo di fine mese»).
-            </p>
-
-            {{-- Canale FiC --}}
-            <div class="mt-4 rounded-lg bg-green-50 p-4 ring-1 ring-green-600/20 dark:bg-green-400/10 dark:ring-green-400/20">
-                <p class="text-sm font-bold text-green-800 dark:text-green-300">Clienti G8Labs (Fatture in Cloud) — automatico</p>
-                <ol class="mt-2 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 text-green-900 marker:font-semibold dark:text-green-200">
-                    <li>Apri la fattura (clicca sulla riga o su <em>Visualizza</em>).</li>
-                    <li>In alto clicca <span class="{{ $kbd }}">Invia a Fatture in Cloud</span> e conferma.</li>
-                    <li>FiC <strong>assegna il numero</strong>, lo stato passa a <strong>Inviata</strong> e in elenco compare l'icona a <strong>nuvola</strong> (colonna «FIC»).</li>
-                    <li>Vai su <strong>Fatture in Cloud</strong> per scaricare il PDF e completare/verificare l'invio allo SDI.</li>
+        {{-- STEP 4 emetti --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">4</span><p class="g-h">Emetti la fattura</p></div>
+            <p>Qui il percorso cambia a seconda del canale del cliente (vedi tabella «Processo di fine mese»).</p>
+            <div class="g-block green">
+                <p class="g-bt">Clienti G8Labs (Fatture in Cloud) — automatico</p>
+                <ol class="g-ol">
+                    <li>Apri la fattura (<em>Visualizza</em>).</li>
+                    <li>In alto <span class="g-kbd">Invia a Fatture in Cloud</span> e conferma.</li>
+                    <li>FiC <strong>assegna il numero</strong>, lo stato passa a <strong>Inviata</strong>, compare l'icona a <strong>nuvola</strong> (colonna «FIC»).</li>
+                    <li>Su <strong>Fatture in Cloud</strong> scarichi il PDF e completi/verifichi l'invio allo SDI.</li>
                 </ol>
             </div>
-
-            {{-- Canale Fiscozen --}}
-            <div class="mt-4 rounded-lg bg-purple-50 p-4 ring-1 ring-purple-600/20 dark:bg-purple-400/10 dark:ring-purple-400/20">
-                <p class="text-sm font-bold text-purple-800 dark:text-purple-300">Clienti Giorgio Giotto (Fiscozen) — manuale</p>
-                <ol class="mt-2 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 text-purple-900 marker:font-semibold dark:text-purple-200">
-                    <li>Su questi clienti <strong>non</strong> c'è il pulsante «Invia a Fatture in Cloud»: TrackFlow non li spedisce.</li>
+            <div class="g-block purple">
+                <p class="g-bt">Clienti Giorgio Giotto (Fiscozen) — manuale</p>
+                <ol class="g-ol">
+                    <li>Su questi clienti <strong>non</strong> c'è il pulsante «Invia a Fatture in Cloud».</li>
                     <li>Usa la fattura di TrackFlow come <strong>brutta copia</strong> (importi, righe, rimborsi).</li>
-                    <li><strong>Ricrea la stessa fattura a mano su Fiscozen</strong>, con <strong>IVA 0%</strong> (regime forfettario).</li>
-                    <li><strong>Ricordati di INVIARLA su Fiscozen</strong> dopo averla creata: crearla e basta non basta — va spedita, altrimenti resta una bozza e non parte al cliente/allo SDI.</li>
-                    <li>Torna in TrackFlow, scrivi a mano nel campo <strong>Numero</strong> quello dato da Fiscozen e porta lo <strong>Stato</strong> a <strong>Inviata</strong>, così i conti restano allineati.</li>
+                    <li><strong>Ricrea la stessa fattura a mano su Fiscozen</strong>, con <strong>IVA 0%</strong>.</li>
+                    <li><strong>Ricordati di INVIARLA su Fiscozen</strong>: crearla e basta non basta — va spedita, altrimenti resta bozza e non parte.</li>
+                    <li>Torna in TrackFlow, scrivi a mano il <strong>Numero</strong> dato da Fiscozen e porta lo <strong>Stato</strong> a <strong>Inviata</strong>.</li>
                 </ol>
-                <div class="mt-3 rounded-md bg-purple-100/70 p-3 text-sm leading-6 text-purple-900 ring-1 ring-purple-600/20 dark:bg-purple-400/10 dark:text-purple-200 dark:ring-purple-400/20">
-                    <strong>💡 Scorciatoia su Fiscozen:</strong> non ripartire da zero. Su Fiscozen apri la fattura del
-                    <strong>mese/periodo precedente</strong> dello stesso cliente e usa <strong>«Duplica»</strong>: ti
-                    ritrovi i dati già compilati (intestatario, voci, IVA 0%) e devi solo aggiornare importi, date e
-                    numero. Più veloce e meno soggetto a errori.
+                <div class="g-callout g-note" style="margin-top:.7rem">
+                    <strong>💡 Scorciatoia:</strong> su Fiscozen apri la fattura del <strong>periodo precedente</strong> dello stesso cliente e usa <strong>«Duplica»</strong>: ritrovi i dati già compilati (intestatario, voci, IVA 0%), aggiorni solo importi, date e numero.
                 </div>
-                <div class="mt-3 rounded-md bg-white p-3 text-sm leading-6 text-gray-800 ring-1 ring-purple-600/30 dark:bg-white/5 dark:text-gray-200 dark:ring-purple-400/30">
-                    <strong>📍 Solo per Calzedonia:</strong> quando crei la fattura su Fiscozen aggiungi <strong>a mano</strong>
-                    anche il <strong>rimborso forfait trasferta</strong> presso la loro sede: <strong>100 € a giornata</strong>.
-                    Il <strong>numero di giornate te lo dice Giorgio</strong> (es. 3 giornate → riga da 300 €). È una voce
-                    in più rispetto a quelle già presenti in fattura, e va sempre inserita per Calzedonia.
+                <div class="g-callout g-note" style="margin-top:.6rem">
+                    <strong>📍 Solo per Calzedonia:</strong> aggiungi <strong>a mano</strong> anche il <strong>rimborso forfait trasferta</strong> presso la loro sede: <strong>100 € a giornata</strong>. Il numero di giornate <strong>te lo dice Giorgio</strong> (es. 3 giornate → 300 €). Va sempre inserito.
                 </div>
             </div>
-
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
+            <div class="g-callout g-warn">
                 Se su un cliente G8Labs il pulsante <strong>non compare</strong>: o Fatture in Cloud non è collegato
-                (si connette dalla pagina <strong>Fatture in Cloud</strong>, gruppo <em>Impostazioni</em>), oppure il
-                cliente non è impostato su FiC. Se dà errore <em>«Dati fiscali mancanti»</em>, aggiungi P.IVA o
-                Codice Fiscale al cliente e riprova.
+                (pagina <strong>Fatture in Cloud</strong>, gruppo <em>Impostazioni</em>), o il cliente non è su FiC. Se dà
+                <em>«Dati fiscali mancanti»</em>, aggiungi P.IVA o Codice Fiscale al cliente.
             </div>
         </div>
 
-        {{-- STEP 4c: import movimenti bancari --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">5</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Importa i movimenti delle banche</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Una volta emesse tutte le fatture, si caricano i movimenti bancari: servono al passo dopo per
-                collegare gli incassi. Si fa <strong>una volta per ogni banca</strong> (scarichi il CSV dal sito
-                della banca e lo importi qui). Le banche da caricare sono <strong>InBank</strong> e
-                <strong>Vivid Business</strong>.
-            </p>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
+        {{-- STEP 5 import movimenti --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">5</span><p class="g-h">Importa i movimenti delle banche</p></div>
+            <p>Emesse le fatture, carichi i movimenti bancari: servono dopo per collegare gli incassi. Una volta per banca (<strong>InBank</strong> e <strong>Vivid Business</strong>): scarichi il CSV dal sito della banca e lo importi qui.</p>
+            <ol class="g-ol">
                 <li>Menu <strong>Controllo Finanziario → Movimenti bancari</strong>.</li>
-                <li>In alto clicca <span class="{{ $kbd }}">Importa movimenti</span>: si apre il popup <em>«Importa movimenti da CSV/XLSX»</em>.</li>
-                <li>Compila i campi (sotto la spiegazione) e clicca <span class="{{ $kbd }}">Importa</span>.</li>
+                <li>In alto <span class="g-kbd">Importa movimenti</span> → popup <em>«Importa movimenti da CSV/XLSX»</em>.</li>
+                <li>Compila (sotto) e <span class="g-kbd">Importa</span>.</li>
             </ol>
-
-            <div class="mt-4 rounded-lg bg-green-50 p-4 text-sm text-green-800 ring-1 ring-green-600/20 dark:bg-green-400/10 dark:text-green-300 dark:ring-green-400/20">
-                <strong>Nel caso normale fai solo 3 cose:</strong> scegli il <strong>Conto</strong>, carica il
-                <strong>file</strong>, premi <strong>Importa</strong>. Appena scegli il conto, TrackFlow
-                <strong>compila da solo</strong> tutti gli altri campi (formato e colonne) con le impostazioni giuste
-                per quella banca. Gli altri campi servono solo se qualcosa non torna.
+            <div class="g-callout g-ok">
+                <strong>Nel caso normale fai solo 3 cose:</strong> scegli il <strong>Conto</strong>, carica il <strong>file</strong>, premi <strong>Importa</strong>. Appena scegli il conto, TrackFlow <strong>compila da solo</strong> formato e colonne con le impostazioni di quella banca. Gli altri campi servono solo se qualcosa non torna.
             </div>
-
-            <h4 class="mt-6 text-sm font-semibold text-gray-950 dark:text-white">I campi del popup, uno per uno</h4>
-
-            <div class="mt-3 flex flex-col gap-3 text-sm leading-6">
-                <p><strong>Conto</strong> — la banca del file (es. <em>InBank</em> o <em>Vivid Business</em>).
-                    <strong>Sceglilo per primo:</strong> è lui che precompila tutto il resto. Se sbagli conto,
-                    la mappatura è quella di un'altra banca e l'import fallisce.</p>
-                <p><strong>File CSV o XLSX</strong> — il file scaricato dalla banca (va bene CSV, Excel .xlsx o .ods).</p>
-            </div>
-
-            <p class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Riquadro «Formato file»</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Come sono scritti numeri e date nel file. Precompilati dal conto.</p>
-            <ul class="mt-2 flex flex-col gap-2 text-sm leading-6">
-                <li>• <strong>Separatore</strong> — il carattere che divide le colonne: di solito <code class="{{ $kbd }}">;</code> (InBank) o <code class="{{ $kbd }}">,</code> (Vivid).</li>
-                <li>• <strong>Decimale</strong> — separatore dei centesimi: <code class="{{ $kbd }}">,</code> (InBank) o <code class="{{ $kbd }}">.</code> (Vivid).</li>
-                <li>• <strong>Migliaia</strong> — separatore delle migliaia (es. il punto in 1.250,00). Può essere vuoto.</li>
-                <li>• <strong>Formato data</strong> — come è scritta la data: <code class="{{ $kbd }}">d/m/Y</code> = giorno/mese/anno (InBank), <code class="{{ $kbd }}">d-m-Y</code> = con i trattini (Vivid).</li>
-                <li>• <strong>Modalità importo</strong> — come sono indicate entrate e uscite:
-                    <ul class="mt-1 flex flex-col gap-1 pl-5">
-                        <li>— <strong>Colonna unica con segno</strong>: un solo importo, negativo per le uscite (è il caso di <em>Vivid</em>).</li>
-                        <li>— <strong>Colonne Dare/Avere</strong>: due colonne separate, <em>Avere</em> = entrate, <em>Dare</em> = uscite (è il caso di <em>InBank</em>).</li>
-                    </ul>
-                </li>
+            <p class="g-sub">I campi del popup</p>
+            <ul class="g-list">
+                <li><strong>Conto</strong> — la banca del file. <strong>Sceglilo per primo:</strong> precompila tutto il resto.</li>
+                <li><strong>File CSV o XLSX</strong> — il file scaricato dalla banca.</li>
             </ul>
-
-            <p class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Riquadro «Mappatura colonne»</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Il <strong>nome dell'intestazione</strong> di colonna nel file (non la lettera): deve essere scritto <em>identico</em> a com'è nel file. Vuoto = campo ignorato.</p>
-            <ul class="mt-2 flex flex-col gap-2 text-sm leading-6">
-                <li>• <strong>Data contabile</strong> — la data del movimento (<strong>obbligatoria</strong>).</li>
-                <li>• <strong>Data valuta</strong> — la data valuta, se presente (opzionale).</li>
-                <li>• <strong>Importo (modalità con segno)</strong> — la colonna dell'importo, <strong>solo</strong> se usi «Colonna unica con segno».</li>
-                <li>• <strong>Dare (uscite)</strong> e <strong>Avere (entrate)</strong> — le due colonne, <strong>solo</strong> se usi «Colonne Dare/Avere».</li>
-                <li>• <strong>Descrizione</strong> — la causale del movimento.</li>
-                <li>• <strong>Controparte</strong> — chi ha pagato/ricevuto (opzionale).</li>
-                <li>• <strong>Riferimento (ID movimento)</strong> — un codice identificativo, se c'è (opzionale).</li>
+            <p class="g-sub" style="margin-top:.3rem">Riquadro «Formato file» <span class="g-muted">(come sono scritti numeri e date; precompilato)</span></p>
+            <ul class="g-list">
+                <li><strong>Separatore</strong> — divide le colonne: <span class="g-kbd">;</span> (InBank) o <span class="g-kbd">,</span> (Vivid).</li>
+                <li><strong>Decimale</strong> — dei centesimi: <span class="g-kbd">,</span> (InBank) o <span class="g-kbd">.</span> (Vivid).</li>
+                <li><strong>Migliaia</strong> — separatore delle migliaia; può essere vuoto.</li>
+                <li><strong>Formato data</strong> — <span class="g-kbd">d/m/Y</span> (InBank) o <span class="g-kbd">d-m-Y</span> (Vivid).</li>
+                <li><strong>Modalità importo</strong> — <em>Colonna unica con segno</em> (Vivid: negativo = uscita) oppure <em>Colonne Dare/Avere</em> (InBank: Avere = entrate, Dare = uscite).</li>
             </ul>
-
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                <strong>Puoi ricaricare lo stesso file senza paura:</strong> i movimenti già presenti non vengono
-                duplicati. A fine import una notifica dice quanti ne ha <em>importati</em>, quanti <em>duplicati
-                saltati</em> e quanti <em>scartati</em> (righe non valide o di saldo). Se «importati» è 0 e ci sono
-                molti «scartati», quasi sempre hai scelto il conto sbagliato o il file non è quello giusto.
+            <p class="g-sub" style="margin-top:.3rem">Riquadro «Mappatura colonne» <span class="g-muted">(il nome dell'intestazione, scritto identico al file; vuoto = ignora)</span></p>
+            <ul class="g-list">
+                <li><strong>Data contabile</strong> — la data del movimento (obbligatoria).</li>
+                <li><strong>Data valuta</strong> — se presente (opzionale).</li>
+                <li><strong>Importo</strong> — solo con «Colonna unica con segno».</li>
+                <li><strong>Dare / Avere</strong> — solo con «Colonne Dare/Avere».</li>
+                <li><strong>Descrizione</strong>, <strong>Controparte</strong>, <strong>Riferimento</strong> — opzionali.</li>
+            </ul>
+            <div class="g-callout g-info">
+                <strong>Puoi ricaricare lo stesso file senza paura:</strong> i movimenti già presenti non vengono duplicati. La notifica finale dice <em>importati</em>, <em>duplicati saltati</em> e <em>scartati</em>. Se «importati» è 0 e ci sono molti «scartati», di solito hai scelto il conto sbagliato o il file non è quello giusto.
             </div>
         </div>
 
         {{-- Fase riconciliazione: intro --}}
-        <div class="{{ $card }}">
-            <h3 class="text-lg font-bold text-gray-950 dark:text-white">🔗 La fase di riconciliazione</h3>
-            <p class="mt-2 text-sm leading-6">
-                Quando hai <strong>emesso tutte le fatture attive</strong>, <strong>importato le fatture passive</strong>
-                da Fatture in Cloud e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»:
-                riconciliare vuol dire <strong>collegare ogni movimento in banca al documento che gli corrisponde</strong>
-                (una fattura emessa incassata, una fattura d'acquisto pagata), così i conti tornano.
-            </p>
-            <p class="mt-3 text-sm font-semibold text-gray-950 dark:text-white">L'ordine giusto — prima i documenti, poi i movimenti sciolti:</p>
-            <ol class="mt-2 flex flex-col gap-2 text-sm">
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> Fatture <strong>attive</strong> → incassi (movimenti in <strong>entrata</strong>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">7</span> Fatture <strong>passive</strong> → pagamenti (movimenti in <strong>uscita</strong>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">8</span> <strong>Movimenti rimasti</strong> senza fattura → costi diretti, giroconti, commissioni…</li>
+        <div class="g-card">
+            <p class="g-h">🔗 La fase di riconciliazione</p>
+            <p>Quando hai <strong>emesso tutte le attive</strong>, <strong>importato le passive</strong> da Fatture in Cloud e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»: riconciliare vuol dire <strong>collegare ogni movimento al documento che gli corrisponde</strong> (una fattura incassata, una fattura d'acquisto pagata).</p>
+            <p class="g-sub">L'ordine giusto — prima i documenti, poi i movimenti sciolti:</p>
+            <ol class="g-steps g-overview" style="margin-top:.3rem">
+                <li><span class="g-num">6</span> Fatture <strong>attive</strong> → incassi (movimenti in <strong>entrata</strong>)</li>
+                <li><span class="g-num">7</span> Fatture <strong>passive</strong> → pagamenti (movimenti in <strong>uscita</strong>)</li>
+                <li><span class="g-num">8</span> <strong>Movimenti rimasti</strong> senza fattura → costi diretti, giroconti, commissioni…</li>
             </ol>
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
-                <strong>Perché quest'ordine:</strong> ogni riconciliazione «consuma» il movimento (una volta agganciato a un
-                documento non è più disponibile per un altro). Se ripulisci troppo presto i movimenti a mano — es.
-                «Segna come costo» su un'uscita che in realtà pagava una fattura passiva — crei un <strong>doppione di
-                costo</strong> e la fattura resta «Non pagata». Quindi: <strong>prima le fatture, poi il residuo</strong>.
+            <div class="g-callout g-warn">
+                <strong>Perché quest'ordine:</strong> ogni riconciliazione «consuma» il movimento. Se ripulisci troppo presto i movimenti a mano — es. «Segna come costo» su un'uscita che pagava una fattura passiva — crei un <strong>doppione di costo</strong> e la fattura resta «Non pagata». Quindi: <strong>prima le fatture, poi il residuo</strong>.
             </div>
-            <div class="mt-3 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                ⚠️ <strong>Attenzione a un equivoco:</strong> le voci di menu <strong>«Riconc. fatture attive»</strong> e
-                <strong>«Riconc. fatture passive»</strong> <u>non</u> servono a riconciliare — sono solo <strong>report
-                di controllo</strong> (quadrature) da leggere ed esportare. Le riconciliazioni vere si fanno dalle
-                tabelle <strong>Fatture</strong>, <strong>Fatture passive</strong> e <strong>Movimenti bancari</strong>,
-                come qui sotto.
+            <div class="g-callout g-info">
+                ⚠️ <strong>Attenzione a un equivoco:</strong> le voci di menu <strong>«Riconc. fatture attive»</strong> e <strong>«Riconc. fatture passive»</strong> <u>non</u> servono a riconciliare — sono solo <strong>report di controllo</strong> da leggere ed esportare. Le riconciliazioni vere si fanno dalle tabelle <strong>Fatture</strong>, <strong>Fatture passive</strong> e <strong>Movimenti bancari</strong>.
             </div>
         </div>
 
-        {{-- STEP 6: riconcilia attive --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">6</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Riconcilia le fatture attive (incassi)</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Per ogni fattura emessa, quando è arrivato il bonifico la colleghi al movimento in entrata così diventa
-                <strong>Pagata</strong>.
-            </p>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Menu <strong>Fatture</strong>: guarda la colonna <strong>Incassata</strong>. Trova una fattura <em>Inviata</em> non ancora incassata e clicca <span class="{{ $kbd }}">Registra incasso</span> (icona banconote, verde).</li>
-                <li>La finestra propone i <strong>movimenti in entrata compatibili</strong> (già pre-filtrati: entrate entro ±45 giorni dalla data fattura e importo vicino). Spunta quello giusto — puoi selezionarne <strong>più di uno</strong> se l'incasso è a rate.</li>
-                <li>Clicca <span class="{{ $kbd }}">Registra incasso</span>. Se copre tutto → fattura <strong>Pagata</strong> ✅; se copre in parte resta Inviata con il residuo.</li>
+        {{-- STEP 6 attive --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">6</span><p class="g-h">Riconcilia le fatture attive (incassi)</p></div>
+            <p>Per ogni fattura emessa, quando è arrivato il bonifico la colleghi al movimento in entrata così diventa <strong>Pagata</strong>.</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Fatture</strong>: guarda la colonna <strong>Incassata</strong>. Trova una fattura <em>Inviata</em> non incassata e clicca <span class="g-kbd">Registra incasso</span> (icona banconote, verde).</li>
+                <li>La finestra propone i <strong>movimenti in entrata compatibili</strong> (pre-filtrati per data e importo). Spunta quello giusto — <strong>più di uno</strong> se l'incasso è a rate.</li>
+                <li><span class="g-kbd">Registra incasso</span>. Se copre tutto → <strong>Pagata</strong> ✅; se copre in parte resta Inviata con il residuo.</li>
             </ol>
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                Se il bonifico non compare tra i suggeriti (importo o data troppo diversi), apri la fattura
-                (<em>Visualizza</em>) e usa <span class="{{ $kbd }}">Riconcilia con movimento</span>: lì scegli il
-                movimento a mano tra tutti quelli liberi, con importo libero. Stesso risultato.
-            </div>
+            <div class="g-callout g-info">Se il bonifico non compare tra i suggeriti, apri la fattura (<em>Visualizza</em>) e usa <span class="g-kbd">Riconcilia con movimento</span>: scegli il movimento a mano tra tutti quelli liberi, con importo libero. Stesso risultato.</div>
         </div>
 
-        {{-- STEP 7: riconcilia passive --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">7</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Riconcilia le fatture passive (pagamenti)</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Stessa logica, ma sui <strong>pagamenti ai fornitori</strong>: colleghi ogni fattura d'acquisto al
-                movimento in <strong>uscita</strong> con cui l'hai pagata.
-            </p>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Menu <strong>Controllo Finanziario → Fatture passive</strong>: guarda le colonne <strong>Pagamento</strong> e <strong>Riconciliata</strong>. Trova una fattura «Non pagata» e clicca <span class="{{ $kbd }}">Segna pagata</span> (icona banconote).</li>
-                <li>La finestra propone i <strong>movimenti in uscita compatibili</strong> (±45 giorni, importo vicino). Spunta quello giusto — più di uno se pagata a rate.</li>
-                <li>Clicca <span class="{{ $kbd }}">Segna pagata</span> → la fattura passiva diventa <strong>Pagata</strong> ✅.</li>
+        {{-- STEP 7 passive --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">7</span><p class="g-h">Riconcilia le fatture passive (pagamenti)</p></div>
+            <p>Stessa logica sui <strong>pagamenti ai fornitori</strong>: colleghi ogni fattura d'acquisto al movimento in <strong>uscita</strong> con cui l'hai pagata.</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Controllo Finanziario → Fatture passive</strong>: colonne <strong>Pagamento</strong> e <strong>Riconciliata</strong>. Trova una «Non pagata» e clicca <span class="g-kbd">Segna pagata</span>.</li>
+                <li>La finestra propone i <strong>movimenti in uscita compatibili</strong>. Spunta quello giusto — più di uno se a rate.</li>
+                <li><span class="g-kbd">Segna pagata</span> → la fattura passiva diventa <strong>Pagata</strong> ✅.</li>
             </ol>
         </div>
 
-        {{-- STEP 8: movimenti rimasti --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="{{ $stepNum }}">8</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Sistema i movimenti bancari rimasti</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                Finite attive e passive, restano i movimenti <strong>senza una fattura dietro</strong>: commissioni,
-                imposte, F24, spostamenti tra i conti, piccoli costi senza fattura. Si chiudono qui.
-            </p>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Menu <strong>Controllo Finanziario → Movimenti bancari</strong>. Metti il filtro <strong>Riconciliato = No</strong> per vedere solo quelli ancora aperti.</li>
-                <li>Per ciascuno, scegli l'azione giusta:</li>
+        {{-- STEP 8 movimenti rimasti --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">8</span><p class="g-h">Sistema i movimenti bancari rimasti</p></div>
+            <p>Finite attive e passive, restano i movimenti <strong>senza una fattura dietro</strong>: commissioni, imposte, F24, spostamenti tra conti, piccoli costi senza fattura.</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Movimenti bancari</strong>. Filtro <strong>Riconciliato = No</strong> per vedere solo quelli aperti.</li>
+                <li>Per ciascuno scegli l'azione giusta:</li>
             </ol>
-            <ul class="mt-2 flex flex-col gap-2 pl-5 text-sm leading-6">
-                <li>• <span class="{{ $kbd }}">Riconcilia</span> — se corrisponde a un documento: la finestra mostra dei <strong>Suggerimenti</strong> con percentuale di affidabilità (es. «Fattura 123 — €1.000 (95%)»); scegli quello, oppure aggancia a mano scegliendo Tipo documento + Documento.</li>
-                <li>• <span class="{{ $kbd }}">Segna come costo</span> — <em>solo uscite</em>: crea al volo un <strong>costo</strong> dal movimento e lo chiude. È il caso di commissioni, bolli, imposte, piccoli acquisti senza fattura.</li>
-                <li>• <span class="{{ $kbd }}">Segna come giroconto</span> — se è uno <strong>spostamento tra due tuoi conti</strong>: lo colleghi al movimento gemello (importo opposto sull'altro conto). Non è né costo né ricavo.</li>
+            <ul class="g-list">
+                <li><span class="g-kbd">Riconcilia</span> — se corrisponde a un documento: mostra <strong>Suggerimenti</strong> con % di affidabilità (es. «Fattura 123 — €1.000 (95%)»); scegli quello, o aggancia a mano (Tipo documento + Documento).</li>
+                <li><span class="g-kbd">Segna come costo</span> — <em>solo uscite</em>: crea al volo un <strong>costo</strong> dal movimento e lo chiude. Per commissioni, bolli, imposte, piccoli acquisti senza fattura.</li>
+                <li><span class="g-kbd">Segna come giroconto</span> — <strong>spostamento tra due tuoi conti</strong>: lo colleghi al movimento gemello. Non è né costo né ricavo.</li>
             </ul>
-            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
-                Sbagliato? Su un movimento già riconciliato c'è <span class="{{ $kbd }}">Annulla riconciliazione</span> per
-                ripartire. E se hai tante uscite dello stesso tipo, puoi selezionarle e usare <strong>«Segna come costo»
-                in blocco</strong> dalla barra in alto.
-            </div>
-            <div class="mt-3 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
-                <strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi
-                verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.
-            </div>
+            <div class="g-callout g-warn">Sbagliato? Su un movimento già riconciliato c'è <span class="g-kbd">Annulla riconciliazione</span>. E per tante uscite dello stesso tipo puoi usare <strong>«Segna come costo» in blocco</strong> dalla barra in alto.</div>
+            <div class="g-callout g-info"><strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.</div>
         </div>
 
-        {{-- STEP 6: nota credito --}}
-        <div class="{{ $card }}">
-            <div class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-500 text-sm font-bold text-white">↩</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Se serve stornare: nota di credito</h3>
-            </div>
-            <p class="mt-3 text-sm leading-6">
-                La nota di credito <strong>non</strong> si crea da un pulsante in TrackFlow: si emette su
-                <strong>Fatture in Cloud</strong> e da lì viene importata in app. Il tuo compito qui è
-                <strong>collegarla</strong> alla fattura che storna:
-            </p>
-            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Nell'elenco <strong>Fatture</strong> trova la riga di tipo <strong>Nota di credito</strong>.</li>
-                <li>Clicca <span class="{{ $kbd }}">Collega a fattura</span> (icona catena).</li>
-                <li>Scegli la <strong>fattura stornata</strong> dello stesso cliente e salva. L'importo da incassare di quella fattura cala di conseguenza (vedrai «stornata di € …»).</li>
+        {{-- Nota di credito --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num gray">↩</span><p class="g-h">Se serve stornare: nota di credito</p></div>
+            <p>La nota di credito <strong>non</strong> si crea da un pulsante in TrackFlow: si emette su <strong>Fatture in Cloud</strong> e da lì viene importata. Il tuo compito è <strong>collegarla</strong> alla fattura che storna:</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Fatture</strong> → trova la riga di tipo <strong>Nota di credito</strong>.</li>
+                <li><span class="g-kbd">Collega a fattura</span> (icona catena).</li>
+                <li>Scegli la <strong>fattura stornata</strong> dello stesso cliente e salva. L'importo da incassare cala (vedrai «stornata di € …»).</li>
             </ol>
         </div>
 
         {{-- Glossario stati --}}
-        <div class="{{ $card }}">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Gli stati della fattura</h3>
-            <div class="mt-3 flex flex-col gap-2 text-sm leading-6">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-500/20 dark:bg-gray-400/10 dark:text-gray-300">Bozza</span>
-                    <span>appena generata, non ancora inviata. Modificabile liberamente.</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/20 dark:bg-amber-400/10 dark:text-amber-300">Inviata</span>
-                    <span>emessa su Fatture in Cloud, in attesa di incasso.</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-500/20 dark:bg-green-400/10 dark:text-green-300">Pagata</span>
-                    <span>incassata (movimento bancario collegato).</span>
-                </div>
-            </div>
+        <div class="g-card">
+            <p class="g-sub">Gli stati della fattura</p>
+            <div class="g-status"><span class="g-badge gray">Bozza</span><span>appena generata, non ancora inviata. Modificabile liberamente.</span></div>
+            <div class="g-status"><span class="g-badge amber">Inviata</span><span>emessa su Fatture in Cloud, in attesa di incasso.</span></div>
+            <div class="g-status"><span class="g-badge green">Pagata</span><span>incassata (movimento bancario collegato).</span></div>
         </div>
 
-        {{-- Cosa NON fa TrackFlow --}}
-        <div class="{{ $card }}">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Cosa <span class="underline">non</span> si fa in TrackFlow</h3>
-            <ul class="mt-3 flex flex-col gap-2 text-sm leading-6">
-                <li>• <strong>Numerare la fattura</strong> (clienti FIC): il numero lo dà Fatture in Cloud all'invio. Si scrive a mano solo per Fiscozen/esterni.</li>
-                <li>• <strong>Generare il PDF</strong>: si scarica da Fatture in Cloud.</li>
-                <li>• <strong>Trasmettere allo SDI</strong>: si gestisce nel pannello di Fatture in Cloud.</li>
-                <li>• <strong>Creare la nota di credito</strong>: si emette su Fatture in Cloud, in app si <em>collega</em> soltanto.</li>
+        {{-- Cosa non si fa --}}
+        <div class="g-card">
+            <p class="g-sub">Cosa <u>non</u> si fa in TrackFlow</p>
+            <ul class="g-list">
+                <li><strong>Numerare la fattura</strong> (clienti FiC): il numero lo dà Fatture in Cloud. A mano solo per Fiscozen/esterni.</li>
+                <li><strong>Generare il PDF</strong>: si scarica da Fatture in Cloud.</li>
+                <li><strong>Trasmettere allo SDI</strong>: dal pannello di Fatture in Cloud.</li>
+                <li><strong>Creare la nota di credito</strong>: si emette su Fatture in Cloud, in app si <em>collega</em> soltanto.</li>
             </ul>
         </div>
 
-        <p class="pb-4 text-center text-xs text-gray-400 dark:text-gray-500">
-            Dubbi su un caso particolare? Chiedi a Giorgio prima di inviare a Fatture in Cloud: una volta emessa,
-            la fattura è ufficiale.
-        </p>
+        <p class="g-foot">Dubbi su un caso particolare? Chiedi a Giorgio prima di inviare: una volta emessa, la fattura è ufficiale.</p>
     </div>
 </x-filament-panels::page>
