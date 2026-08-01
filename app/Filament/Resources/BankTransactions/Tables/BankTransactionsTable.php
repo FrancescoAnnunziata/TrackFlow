@@ -12,9 +12,6 @@ use App\Services\Reconciliation\MatchSuggestionService;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -27,6 +24,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
@@ -35,7 +33,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 class BankTransactionsTable
 {
@@ -54,19 +52,22 @@ class BankTransactionsTable
                     ->label('Descrizione')
                     ->searchable()
                     ->wrap()
-                    ->extraHeaderAttributes(['style' => 'min-width: 28rem;']),
+                    ->lineClamp(2)
+                    ->extraCellAttributes(['style' => 'max-width: 22rem;']),
                 TextColumn::make('amount')
                     ->label('Importo')
                     ->money('EUR')
                     ->color(fn ($record): string => $record->amount >= 0 ? 'success' : 'danger')
                     ->sortable(),
-                TextColumn::make('counterparty')
-                    ->label('Controparte')
-                    ->searchable()
-                    ->toggleable(),
                 IconColumn::make('reconciled')
                     ->label('Riconciliato')
                     ->boolean(),
+                // Controparte in fondo: è lunga e in mezzo appesantiva la tabella.
+                TextColumn::make('counterparty')
+                    ->label('Controparte')
+                    ->wrap()
+                    ->searchable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('bank_account_id')
@@ -146,66 +147,7 @@ class BankTransactionsTable
                 self::unreconcileAction(),
                 self::unmarkTransferAction(),
                 EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    self::markAsCostoBulkAction(),
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    /**
-     * Segna in blocco più uscite come costo: crea un Costo da ciascun movimento
-     * selezionato (con un conto comune, opzionale) e lo riconcilia. Salta i
-     * movimenti non idonei (entrate, giroconti, già riconciliati).
-     */
-    private static function markAsCostoBulkAction(): BulkAction
-    {
-        return BulkAction::make('segnaCostoBulk')
-            ->label('Segna come costo')
-            ->icon(Heroicon::OutlinedReceiptPercent)
-            ->color('warning')
-            ->modalHeading('Segna come costo i movimenti selezionati')
-            ->modalDescription('Crea un costo da ogni uscita non ancora riconciliata e lo riconcilia. Entrate, giroconti e movimenti già riconciliati vengono saltati.')
-            ->schema([
-                Select::make('category')
-                    ->label('Conto (applicato a tutti)')
-                    ->options(fn (): array => self::contoOptions())
-                    ->searchable(),
-            ])
-            ->action(function (array $data, Collection $records): void {
-                $service = app(ReconciliationService::class);
-                $created = 0;
-                $skipped = 0;
-
-                foreach ($records as $record) {
-                    if ($record->direction !== BankTransaction::DIRECTION_OUT
-                        || $record->isTransfer()
-                        || $record->unreconciledAmount() <= 0.01) {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    $amount = $record->unreconciledAmount();
-                    $costo = Costo::create([
-                        'date' => $record->booked_at,
-                        'description' => str($record->description ?: 'Costo')->limit(120)->value(),
-                        'category' => $data['category'] ?? null,
-                        'amount' => $amount,
-                        'vat_amount' => 0,
-                        'bank_transaction_id' => $record->id,
-                    ]);
-                    $service->attach($record, $costo, $amount);
-                    $created++;
-                }
-
-                Notification::make()->success()
-                    ->title("Costi creati e riconciliati: {$created}".($skipped > 0 ? " · saltati: {$skipped}" : ''))
-                    ->send();
-            })
-            ->deselectRecordsAfterCompletion();
+            ], position: RecordActionsPosition::BeforeColumns);
     }
 
     /**
@@ -396,7 +338,7 @@ class BankTransactionsTable
     private static function markAsCostoAction(): Action
     {
         return Action::make('segnaCosto')
-            ->label('Segna come costo')
+            ->label(new HtmlString('Segna come<br>costo'))
             ->icon(Heroicon::OutlinedReceiptPercent)
             ->color('warning')
             ->visible(fn (BankTransaction $record): bool => $record->direction === BankTransaction::DIRECTION_OUT
@@ -468,7 +410,7 @@ class BankTransactionsTable
     private static function markAsTransferAction(): Action
     {
         return Action::make('segnaGiroconto')
-            ->label('Segna come giroconto')
+            ->label(new HtmlString('Segna come<br>giroconto'))
             ->icon(Heroicon::OutlinedArrowsRightLeft)
             ->color('gray')
             // Non su un movimento già riconciliato a un documento né già giroconto.
@@ -505,7 +447,7 @@ class BankTransactionsTable
     private static function unmarkTransferAction(): Action
     {
         return Action::make('annullaGiroconto')
-            ->label('Annulla giroconto')
+            ->label(new HtmlString('Annulla<br>giroconto'))
             ->icon(Heroicon::OutlinedXMark)
             ->color('gray')
             ->requiresConfirmation()
@@ -556,7 +498,7 @@ class BankTransactionsTable
     private static function unreconcileAction(): Action
     {
         return Action::make('annullaRiconciliazione')
-            ->label('Annulla riconciliazione')
+            ->label(new HtmlString('Annulla<br>riconciliazione'))
             ->icon(Heroicon::OutlinedXMark)
             ->color('gray')
             ->requiresConfirmation()

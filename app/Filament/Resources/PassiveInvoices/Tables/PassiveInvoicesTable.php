@@ -7,22 +7,22 @@ use App\Models\PassiveInvoice;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Illuminate\Support\Collection;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Illuminate\Support\HtmlString;
 
 class PassiveInvoicesTable
 {
@@ -30,11 +30,13 @@ class PassiveInvoicesTable
     {
         return $table
             ->columns([
+                TextColumn::make('supplier.name')
+                    ->label('Fornitore')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('number')
                     ->label('Numero')
-                    ->searchable()
-                    ->wrap()
-                    ->grow(false),
+                    ->searchable(),
                 TextColumn::make('document_date')
                     ->label('Data')
                     ->date()
@@ -52,13 +54,6 @@ class PassiveInvoicesTable
                     ->label('Riconciliata')
                     ->state(fn ($record): bool => $record->reconciliations()->exists())
                     ->boolean(),
-                // Controparte in fondo: il nome fornitore è lungo, in testa allargava
-                // troppo la tabella.
-                TextColumn::make('supplier.name')
-                    ->label('Fornitore')
-                    ->wrap()
-                    ->searchable()
-                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('supplier')
@@ -102,7 +97,12 @@ class PassiveInvoicesTable
                 self::reconcileAction(),
                 ViewAction::make(),
                 EditAction::make(),
-            ], position: RecordActionsPosition::BeforeColumns);
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ]);
     }
 
     /**
@@ -113,8 +113,7 @@ class PassiveInvoicesTable
     private static function reconcileAction(): Action
     {
         return Action::make('riconcilia')
-            // Label su due righe per tenere stretta la colonna azioni.
-            ->label(new HtmlString('Segna<br>pagata'))
+            ->label('Segna pagata')
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
             ->visible(fn (PassiveInvoice $record): bool => ! $record->isPaid() && ! $record->isCreditNote())

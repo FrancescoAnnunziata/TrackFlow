@@ -363,7 +363,7 @@
                 <li><span class="g-kbd">Segna come costo</span> — <em>solo uscite</em>: crea al volo un <strong>costo</strong> dal movimento e lo chiude. Per commissioni, bolli, imposte, piccoli acquisti senza fattura.</li>
                 <li><span class="g-kbd">Segna come giroconto</span> — <strong>spostamento tra due tuoi conti</strong>: lo colleghi al movimento gemello. Non è né costo né ricavo.</li>
             </ul>
-            <div class="g-callout g-warn">Sbagliato? Su un movimento già riconciliato c'è <span class="g-kbd">Annulla riconciliazione</span>. E per tante uscite dello stesso tipo puoi usare <strong>«Segna come costo» in blocco</strong> dalla barra in alto.</div>
+            <div class="g-callout g-warn">Sbagliato? Su un movimento già riconciliato c'è <span class="g-kbd">Annulla riconciliazione</span> per ripartire.</div>
             <div class="g-callout g-info"><strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.</div>
         </div>
 
