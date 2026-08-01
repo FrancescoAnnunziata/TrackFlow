@@ -310,6 +310,15 @@
                 <li><span class="g-num">7</span> Fatture <strong>passive</strong> → pagamenti (movimenti in <strong>uscita</strong>)</li>
                 <li><span class="g-num">8</span> <strong>Movimenti rimasti</strong> senza fattura → costi diretti, giroconti, commissioni…</li>
             </ol>
+            <div class="g-callout g-ok">
+                <strong>🪄 Parti da qui: «Auto-riconcilia».</strong> Nella pagina <strong>Movimenti bancari</strong>, in alto,
+                clicca <span class="g-kbd">Auto-riconcilia</span> → <span class="g-kbd">Riconcilia</span>. TrackFlow aggancia
+                da solo i movimenti col match <strong>sicuro</strong> (importo esatto e unico, o miglior candidato sopra
+                soglia) — sia incassi sia pagamenti. Non crea abbinamenti dubbi: quello che non è certo lo lascia a te.
+                Così arrivi alla revisione manuale (passi 6-7-8) con molto meno da fare. Lascia il toggle
+                <em>«Includi valuta estera (fuzzy)»</em> attivo: sistema anche gli addebiti tipo AWS dove il cambio
+                sfasa i centesimi.
+            </div>
             <div class="g-callout g-warn">
                 <strong>Perché quest'ordine:</strong> ogni riconciliazione «consuma» il movimento. Se ripulisci troppo presto i movimenti a mano — es. «Segna come costo» su un'uscita che pagava una fattura passiva — crei un <strong>doppione di costo</strong> e la fattura resta «Non pagata». Quindi: <strong>prima le fatture, poi il residuo</strong>.
             </div>

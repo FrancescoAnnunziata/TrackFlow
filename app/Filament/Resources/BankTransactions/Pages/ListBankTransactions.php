@@ -9,12 +9,14 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -25,8 +27,56 @@ class ListBankTransactions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->autoReconcileAction(),
             $this->importCsvAction(),
         ];
+    }
+
+    /**
+     * Lancia una prima riconciliazione automatica massiva (finance:auto-reconcile):
+     * aggancia solo i match sicuri (importo unico, oppure miglior candidato sopra
+     * soglia), lasciando il resto alla revisione manuale. Prudente per costruzione.
+     */
+    private function autoReconcileAction(): Action
+    {
+        return Action::make('autoReconcile')
+            ->label('Auto-riconcilia')
+            ->icon(Heroicon::OutlinedSparkles)
+            ->color('gray')
+            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->modalHeading('Auto-riconciliazione movimenti')
+            ->modalDescription('Aggancia in automatico solo i movimenti con match sicuro (importo esatto e unico, o miglior candidato sopra soglia). Tutto il resto resta da riconciliare a mano. Non crea abbinamenti dubbi.')
+            ->modalSubmitActionLabel('Riconcilia')
+            ->schema([
+                TextInput::make('min_confidence')
+                    ->label('Confidenza minima (0-100)')
+                    ->helperText('Soglia per i casi con più candidati dello stesso importo. Più alta = più prudente.')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->default(90)
+                    ->required(),
+                Toggle::make('fuzzy')
+                    ->label('Includi valuta estera (fuzzy)')
+                    ->helperText('Aggancia le uscite in valuta estera (es. AWS) alla fattura passiva con importo ravvicinato + fornitore, quando il cambio sfasa i centesimi.')
+                    ->default(true),
+            ])
+            ->action(function (array $data): void {
+                $exitCode = Artisan::call('finance:auto-reconcile', [
+                    '--min-confidence' => (int) ($data['min_confidence'] ?? 90),
+                    '--fuzzy' => (bool) ($data['fuzzy'] ?? false),
+                ]);
+
+                $output = trim(Artisan::output());
+
+                if ($exitCode !== 0) {
+                    Notification::make()->danger()->title('Auto-riconciliazione non riuscita')->body($output)->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('Auto-riconciliazione completata')->body($output)->send();
+            });
     }
 
     /**
