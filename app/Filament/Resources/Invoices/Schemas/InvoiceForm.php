@@ -110,11 +110,14 @@ class InvoiceForm
                             ->collapsible(),
                     ]),
 
+                InvoiceExpensesDetail::section(),
+
                 Section::make('Note')
                     ->components([
                         Textarea::make('notes')
                             ->label('')
-                            ->rows(3),
+                            ->rows(3)
+                            ->helperText('Note aggiuntive tue. Il dettaglio delle spese non va scritto qui: viene composto da solo all\'invio, dalle spese agganciate qui sopra.'),
                     ]),
             ])
             // Sezioni impilate a piena larghezza: le righe fattura hanno tutto

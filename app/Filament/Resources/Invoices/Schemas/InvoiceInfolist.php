@@ -69,6 +69,8 @@ class InvoiceInfolist
                             ->weight('bold'),
                     ]),
 
+                InvoiceExpensesDetail::section(),
+
                 Section::make('Fatture in Cloud')
                     ->columns(2)
                     ->components([
