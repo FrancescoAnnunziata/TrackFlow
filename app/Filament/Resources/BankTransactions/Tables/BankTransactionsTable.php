@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Reconciliation\MatchSuggestionService;
+use App\Services\Reconciliation\MovementActions;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -88,7 +89,7 @@ class BankTransactionsTable
                     // devono comparire tra i "non riconciliati".
                     ->queries(
                         true: fn (Builder $query): Builder => $query->where('reconciled', true),
-                        false: fn (Builder $query): Builder => $query->where('reconciled', false)->whereNull('transfer_pair_id'),
+                        false: fn (Builder $query): Builder => $query->where('reconciled', false)->whereNull('transfer_group_id'),
                         blank: fn (Builder $query): Builder => $query,
                     ),
                 Filter::make('booked_at')
@@ -407,9 +408,10 @@ class BankTransactionsTable
      * Rimuove tutte le riconciliazioni del movimento.
      */
     /**
-     * Marca il movimento come giroconto verso un altro conto, scegliendo il
-     * movimento gemello (importo opposto su un conto diverso). Collega i due in
-     * modo reciproco (transfer_pair_id).
+     * Marca il movimento come giroconto / partita di giro, scegliendo uno o più
+     * movimenti collegati (segno opposto). Collega tutti i movimenti in un'unica
+     * partita di giro (transfer_group_id condiviso). Supporta l'uno-a-molti, es.
+     * un rimborso a fronte di più uscite.
      */
     private static function markAsTransferAction(): Action
     {
@@ -419,32 +421,33 @@ class BankTransactionsTable
             ->color('gray')
             // Non su un movimento già riconciliato a un documento né già giroconto.
             ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer() && ! $record->reconciled)
-            ->modalHeading('Segna come giroconto')
+            ->modalHeading('Segna come giroconto / partita di giro')
             ->modalDescription(fn (BankTransaction $record): string => sprintf(
-                'Movimento del %s — %s € %s. Scegli il movimento gemello (l\'altra metà del trasferimento).',
+                'Movimento del %s — %s € %s. Scegli uno o più movimenti collegati (le altre metà del trasferimento; '
+                .'per una partita di giro la somma deve tornare a zero).',
                 optional($record->booked_at)->format('d/m/Y') ?? '',
                 $record->bankAccount->name ?? '',
                 number_format((float) $record->amount, 2, ',', '.'),
             ))
             ->schema([
-                Select::make('pair_id')
-                    ->label('Movimento gemello')
+                Select::make('pair_ids')
+                    ->label('Movimenti collegati')
                     ->options(fn (BankTransaction $record): array => self::transferCandidates($record))
+                    ->multiple()
                     ->searchable()
                     ->required(),
             ])
             ->action(function (array $data, BankTransaction $record): void {
-                $pair = BankTransaction::find($data['pair_id']);
-                if ($pair === null) {
-                    Notification::make()->warning()->title('Movimento gemello non trovato')->send();
+                $pairs = BankTransaction::whereIn('id', $data['pair_ids'] ?? [])->get();
+                if ($pairs->isEmpty()) {
+                    Notification::make()->warning()->title('Nessun movimento collegato selezionato')->send();
 
                     return;
                 }
 
-                $record->update(['transfer_pair_id' => $pair->id]);
-                $pair->update(['transfer_pair_id' => $record->id]);
+                app(MovementActions::class)->markAsTransferGroup($pairs->push($record));
 
-                Notification::make()->success()->title('Segnato come giroconto')->send();
+                Notification::make()->success()->title('Segnato come giroconto / partita di giro')->send();
             });
     }
 
@@ -457,18 +460,16 @@ class BankTransactionsTable
             ->requiresConfirmation()
             ->visible(fn (BankTransaction $record): bool => $record->isTransfer())
             ->action(function (BankTransaction $record): void {
-                $pair = $record->transferPair;
-                $record->update(['transfer_pair_id' => null]);
-                $pair?->update(['transfer_pair_id' => null]);
+                app(MovementActions::class)->clearTransferGroup($record);
 
                 Notification::make()->success()->title('Giroconto annullato')->send();
             });
     }
 
     /**
-     * Candidati come gemello di un giroconto: movimenti di segno opposto su un
-     * conto diverso, non già marcati, entro ±30 giorni, con l'importo più vicino
-     * in cima. Etichetta con data, conto, importo e descrizione.
+     * Candidati collegabili in un giroconto / partita di giro: movimenti di segno
+     * opposto, non già in una partita di giro, entro ±30 giorni, con l'importo più
+     * vicino in cima. Etichetta con data, conto, importo e descrizione.
      *
      * @return array<int, string>
      */
@@ -480,8 +481,8 @@ class BankTransactionsTable
 
         return BankTransaction::query()
             ->with('bankAccount')
-            ->whereNull('transfer_pair_id')
-            ->where('bank_account_id', '!=', $record->bank_account_id)
+            ->whereNull('transfer_group_id')
+            ->where('id', '!=', $record->id)
             ->where('amount', $amount < 0 ? '>' : '<', 0)
             ->whereBetween('booked_at', [$from, $to])
             ->get()

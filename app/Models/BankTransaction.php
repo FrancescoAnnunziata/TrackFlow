@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 /**
  * Movimento bancario importato da CSV. amount è con segno: positivo=entrata,
@@ -28,7 +29,7 @@ class BankTransaction extends Model
         'bank_reference',
         'dedup_hash',
         'reconciled',
-        'transfer_pair_id',
+        'transfer_group_id',
         'raw',
         'notes',
     ];
@@ -63,19 +64,38 @@ class BankTransaction extends Model
     }
 
     /**
-     * Movimento gemello del giroconto (l'entrata per un'uscita e viceversa).
+     * Tutti i movimenti della stessa partita di giro (giroconto), questo incluso.
      */
-    public function transferPair(): BelongsTo
+    public function transferGroup(): HasMany
     {
-        return $this->belongsTo(self::class, 'transfer_pair_id');
+        return $this->hasMany(self::class, 'transfer_group_id', 'transfer_group_id');
     }
 
     /**
-     * True se il movimento è un giroconto tra conti propri (marcato).
+     * Gli altri movimenti della stessa partita di giro (questo escluso). Per un
+     * giroconto 1↔1 è un solo gemello; per una partita di giro uno-a-molti sono N.
+     *
+     * @return Collection<int, self>
+     */
+    public function transferCounterparts(): Collection
+    {
+        if ($this->transfer_group_id === null) {
+            return new Collection;
+        }
+
+        return self::query()
+            ->with('bankAccount')
+            ->where('transfer_group_id', $this->transfer_group_id)
+            ->where('id', '!=', $this->id)
+            ->get();
+    }
+
+    /**
+     * True se il movimento fa parte di una partita di giro / giroconto (marcato).
      */
     public function isTransfer(): bool
     {
-        return $this->transfer_pair_id !== null;
+        return $this->transfer_group_id !== null;
     }
 
     /**

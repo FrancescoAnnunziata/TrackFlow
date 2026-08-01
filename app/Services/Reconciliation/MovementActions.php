@@ -47,11 +47,45 @@ class MovementActions
     }
 
     /**
+     * Collega più movimenti in un'unica partita di giro: giroconto 1↔1 (2
+     * movimenti) o uno-a-molti (es. un rimborso a fronte di più uscite). Tutti i
+     * membri condividono lo stesso transfer_group_id (l'id più piccolo, come
+     * àncora). Servono almeno due movimenti.
+     *
+     * @param  iterable<BankTransaction>  $movements
+     */
+    public function markAsTransferGroup(iterable $movements): void
+    {
+        $members = collect($movements)->filter()->unique(fn (BankTransaction $m): int => $m->id)->values();
+        if ($members->count() < 2) {
+            return;
+        }
+
+        $groupId = (int) $members->min(fn (BankTransaction $m): int => $m->id);
+        foreach ($members as $m) {
+            $m->update(['transfer_group_id' => $groupId]);
+        }
+    }
+
+    /**
      * Marca due movimenti come giroconto reciproco (spostamento tra conti).
      */
     public function markAsTransfer(BankTransaction $tx, BankTransaction $pair): void
     {
-        $tx->update(['transfer_pair_id' => $pair->id]);
-        $pair->update(['transfer_pair_id' => $tx->id]);
+        $this->markAsTransferGroup([$tx, $pair]);
+    }
+
+    /**
+     * Scioglie l'intera partita di giro a cui appartiene il movimento.
+     */
+    public function clearTransferGroup(BankTransaction $tx): void
+    {
+        if ($tx->transfer_group_id === null) {
+            return;
+        }
+
+        BankTransaction::query()
+            ->where('transfer_group_id', $tx->transfer_group_id)
+            ->update(['transfer_group_id' => null]);
     }
 }

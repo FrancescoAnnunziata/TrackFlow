@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 /**
  * Trova e marca i giroconti tra conti propri: un'uscita con un'entrata gemella
  * di pari importo su un ALTRO conto, entro pochi giorni. Collega i due movimenti
- * (transfer_pair_id reciproco) così sono riconoscibili in prima nota e la
+ * (transfer_group_id condiviso) così sono riconoscibili in prima nota e la
  * dashboard può escluderli dal quadro operativo. Idempotente: salta i movimenti
  * già marcati. Eseguibile anche in produzione.
  */
@@ -24,9 +24,9 @@ class DetectTransfers extends Command
         $dry = (bool) $this->option('dry-run');
 
         // Solo movimenti non ancora marcati: idempotenza.
-        $out = BankTransaction::whereNull('transfer_pair_id')->where('amount', '<', 0)
+        $out = BankTransaction::whereNull('transfer_group_id')->where('amount', '<', 0)
             ->orderBy('booked_at')->orderBy('id')->get();
-        $in = BankTransaction::whereNull('transfer_pair_id')->where('amount', '>', 0)
+        $in = BankTransaction::whereNull('transfer_group_id')->where('amount', '>', 0)
             ->orderBy('booked_at')->orderBy('id')->get();
 
         $used = [];
@@ -54,8 +54,9 @@ class DetectTransfers extends Command
             ));
 
             if (! $dry) {
-                $o->update(['transfer_pair_id' => $match->id]);
-                $match->update(['transfer_pair_id' => $o->id]);
+                $groupId = min($o->id, $match->id);
+                $o->update(['transfer_group_id' => $groupId]);
+                $match->update(['transfer_group_id' => $groupId]);
             }
         }
 

@@ -171,7 +171,7 @@ trait InteractsWithDocumentReconciliation
             ->with('bankAccount')
             ->where('direction', $direction)
             ->where('reconciled', false)
-            ->whereNull('transfer_pair_id')
+            ->whereNull('transfer_group_id')
             ->get()
             ->sortBy(fn (BankTransaction $t): float => abs(abs((float) $t->amount) - abs($target)))
             ->take(100)

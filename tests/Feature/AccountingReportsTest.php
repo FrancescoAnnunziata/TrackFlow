@@ -271,10 +271,11 @@ it('links the giustificativo PDF when the reconciled document has one', function
 it('labels inter-account transfers as "Giroconto" in the prima nota', function () {
     $a = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
     $b = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid', 'opening_balance' => 0]);
-    $out = BankTransaction::create(['bank_account_id' => $a->id, 'booked_at' => '2026-06-10', 'amount' => -1000, 'description' => 'bonifico', 'dedup_hash' => 't1', 'transfer_pair_id' => null]);
-    $in = BankTransaction::create(['bank_account_id' => $b->id, 'booked_at' => '2026-06-10', 'amount' => 1000, 'description' => 'ricevuto', 'dedup_hash' => 't2', 'transfer_pair_id' => null]);
-    $out->update(['transfer_pair_id' => $in->id]);
-    $in->update(['transfer_pair_id' => $out->id]);
+    $out = BankTransaction::create(['bank_account_id' => $a->id, 'booked_at' => '2026-06-10', 'amount' => -1000, 'description' => 'bonifico', 'dedup_hash' => 't1']);
+    $in = BankTransaction::create(['bank_account_id' => $b->id, 'booked_at' => '2026-06-10', 'amount' => 1000, 'description' => 'ricevuto', 'dedup_hash' => 't2']);
+    $group = min($out->id, $in->id);
+    $out->update(['transfer_group_id' => $group]);
+    $in->update(['transfer_group_id' => $group]);
 
     $table = app(PrimaNotaBuilder::class)->build(
         Carbon\Carbon::parse('2026-06-01')->startOfDay(),

@@ -130,10 +130,18 @@
                                                 <div class="ptot"><span>Importo</span><span class="amt">€ {{ number_format((float) ($action['amount'] ?? 0), 2, ',', '.') }}</span></div>
                                             </div>
                                         @else
-                                            <div class="pt">Proposta: segna come giroconto</div>
+                                            @php $twins = $action['twins'] ?? []; @endphp
+                                            <div class="pt">Proposta: segna come {{ count($twins) > 1 ? 'partita di giro' : 'giroconto' }}</div>
                                             <div class="pl">
                                                 <div><span>{{ $action['movement_label'] ?? '' }}</span></div>
-                                                <div><span>{{ $action['twin_label'] ?? '' }}</span></div>
+                                                @forelse ($twins as $tw)
+                                                    <div><span>{{ is_array($tw) ? ($tw['label'] ?? '') : $tw }}</span></div>
+                                                @empty
+                                                    <div><span>{{ $action['twin_label'] ?? '' }}</span></div>
+                                                @endforelse
+                                                @if (! is_null($action['net'] ?? null) && abs((float) $action['net']) > 0.01)
+                                                    <div class="ptot"><span>⚠️ Sbilancio</span><span class="amt">€ {{ number_format((float) $action['net'], 2, ',', '.') }}</span></div>
+                                                @endif
                                             </div>
                                         @endif
 

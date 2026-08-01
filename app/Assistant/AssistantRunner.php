@@ -159,7 +159,11 @@ class AssistantRunner
         Inoltre puoi PROPORRE azioni sui movimenti (NON le esegui: prepari proposte che l'utente conferma):
         - riconciliare un movimento verso uno o più documenti;
         - segnare un'USCITA come COSTO diretto (con la categoria giusta), se non c'è una fattura passiva dietro;
-        - segnare un movimento come GIROCONTO, indicando il movimento gemello (altra metà del trasferimento tra conti).
+        - segnare dei movimenti come GIROCONTO / PARTITA DI GIRO: indica il movimento principale e uno o più movimenti
+          collegati (twin_ids). Usa più twin_ids per il caso UNO-A-MOLTI (es. un rimborso di +279 a fronte di tre
+          uscite −58, −58, −163). Una partita di giro NON è un costo né un ricavo: la somma di tutti i movimenti deve
+          tornare a ZERO. Serve sia per lo spostamento tra due conti propri (1↔1) sia per rimborsi/partite di giro che
+          si compensano su più movimenti.
 
         COS'È LA RICONCILIAZIONE: collegare ogni movimento bancario al documento che lo giustifica. Un'ENTRATA a una
         FATTURA ATTIVA incassata; un'USCITA a una FATTURA PASSIVA pagata (o costo/spesa). Un movimento può corrispondere

@@ -55,9 +55,10 @@ it('proposes a transfer, and confirming pairs the two movements', function () {
     $out = BankTransaction::create(['bank_account_id' => $inbank->id, 'booked_at' => '2026-07-06', 'amount' => -7000, 'direction' => 'out', 'description' => 'A Fav G8LABS', 'dedup_hash' => 't1']);
     $in = BankTransaction::create(['bank_account_id' => $vivid->id, 'booked_at' => '2026-07-06', 'amount' => 7000, 'direction' => 'in', 'description' => 'Trasferimento fondi', 'dedup_hash' => 't2']);
 
-    $res = app(ProposeTransferTool::class)->run(['movement_id' => $out->id, 'twin_id' => $in->id]);
+    $res = app(ProposeTransferTool::class)->run(['movement_id' => $out->id, 'twin_ids' => [$in->id]]);
     expect($res->isError)->toBeFalse();
     expect($res->action['type'])->toBe('transfer');
+    expect($res->action['net'])->toBe(0.0);
 
     $thread = AssistantThread::create(['user_id' => auth()->id()]);
     $msg = AssistantMessage::create([
@@ -67,9 +68,59 @@ it('proposes a transfer, and confirming pairs the two movements', function () {
 
     Livewire::test(AssistenteAi::class)->call('openThread', $thread->id)->call('confirmProposal', $msg->id, 'g1');
 
-    expect($out->fresh()->transfer_pair_id)->toBe($in->id);
-    expect($in->fresh()->transfer_pair_id)->toBe($out->id);
+    $group = min($out->id, $in->id);
+    expect($out->fresh()->transfer_group_id)->toBe($group);
+    expect($in->fresh()->transfer_group_id)->toBe($group);
     expect(AssistantMessage::find($msg->id)->actions[0]['status'])->toBe('applied');
+});
+
+it('proposes a one-to-many partita di giro (a reimbursement against several uscite)', function () {
+    $this->actingAs(owner());
+    $inbank = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $vivid = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
+    // Le tre uscite MEDBOOKS e il rimborso di +279 che le compensa.
+    $u1 = BankTransaction::create(['bank_account_id' => $inbank->id, 'booked_at' => '2026-06-29', 'amount' => -58, 'direction' => 'out', 'description' => 'POS MEDBOOKS', 'dedup_hash' => 'p1']);
+    $u2 = BankTransaction::create(['bank_account_id' => $inbank->id, 'booked_at' => '2026-06-29', 'amount' => -58, 'direction' => 'out', 'description' => 'POS MEDBOOKS', 'dedup_hash' => 'p2']);
+    $u3 = BankTransaction::create(['bank_account_id' => $inbank->id, 'booked_at' => '2026-06-29', 'amount' => -163, 'direction' => 'out', 'description' => 'POS MEDBOOKS', 'dedup_hash' => 'p3']);
+    $rimborso = BankTransaction::create(['bank_account_id' => $vivid->id, 'booked_at' => '2026-07-14', 'amount' => 279, 'direction' => 'in', 'description' => 'Restituzione a G8Labs', 'dedup_hash' => 'r1']);
+
+    $res = app(ProposeTransferTool::class)->run([
+        'movement_id' => $rimborso->id,
+        'twin_ids' => [$u1->id, $u2->id, $u3->id],
+    ]);
+    expect($res->isError)->toBeFalse();
+    expect($res->action['type'])->toBe('transfer');
+    expect($res->action['net'])->toBe(0.0);
+    expect($res->action['twin_ids'])->toHaveCount(3);
+
+    $thread = AssistantThread::create(['user_id' => auth()->id()]);
+    $msg = AssistantMessage::create([
+        'assistant_thread_id' => $thread->id, 'role' => 'assistant', 'content' => 'proposta', 'status' => 'done',
+        'actions' => [['id' => 'pg1', 'status' => 'pending'] + $res->action],
+    ]);
+
+    Livewire::test(AssistenteAi::class)->call('openThread', $thread->id)->call('confirmProposal', $msg->id, 'pg1');
+
+    // Tutti e quattro nello stesso gruppo (l'id più piccolo come àncora).
+    $group = collect([$u1, $u2, $u3, $rimborso])->min->id;
+    expect($rimborso->fresh()->transfer_group_id)->toBe($group);
+    expect($u1->fresh()->transfer_group_id)->toBe($group);
+    expect($u2->fresh()->transfer_group_id)->toBe($group);
+    expect($u3->fresh()->transfer_group_id)->toBe($group);
+    expect($rimborso->fresh()->isTransfer())->toBeTrue();
+});
+
+it('flags a partita di giro whose amounts do not net to zero', function () {
+    $this->actingAs(owner());
+    $inbank = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $vivid = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
+    $uscita = BankTransaction::create(['bank_account_id' => $inbank->id, 'booked_at' => '2026-06-29', 'amount' => -58, 'direction' => 'out', 'description' => 'POS', 'dedup_hash' => 'x1']);
+    $entrata = BankTransaction::create(['bank_account_id' => $vivid->id, 'booked_at' => '2026-07-14', 'amount' => 279, 'direction' => 'in', 'description' => 'rimborso', 'dedup_hash' => 'x2']);
+
+    // Manca il resto delle uscite: la somma non torna → proposta con sbilancio (non blocca ma segnala).
+    $res = app(ProposeTransferTool::class)->run(['movement_id' => $entrata->id, 'twin_ids' => [$uscita->id]]);
+    expect($res->isError)->toBeFalse();
+    expect($res->action['net'])->toBe(221.0);
 });
 
 it('refuses to propose a cost for an entrata or a transfer', function () {

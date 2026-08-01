@@ -105,7 +105,7 @@ class DashboardFinanziaria extends Page
             ->whereYear('booked_at', $anno)
             // I giroconti tra conti propri sono esclusi dal quadro operativo,
             // esattamente come nel FinancialOverviewBuilder.
-            ->whereNull('transfer_pair_id');
+            ->whereNull('transfer_group_id');
 
         if ($mese >= 1 && $mese <= 12) {
             $query->whereMonth('booked_at', $mese);

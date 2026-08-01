@@ -175,22 +175,28 @@ class AssistenteAi extends Page
         };
 
         try {
-            // Giroconto: collega i due movimenti gemelli.
+            // Giroconto / partita di giro: collega tutti i movimenti del gruppo.
             if (($action['type'] ?? '') === 'transfer') {
                 $tx = BankTransaction::find($action['movement_id'] ?? 0);
-                $twin = BankTransaction::find($action['twin_id'] ?? 0);
-                if ($tx === null || $twin === null) {
+                // Compatibile sia col nuovo twin_ids (array) sia col vecchio twin_id.
+                $twinIds = $action['twin_ids'] ?? array_filter([$action['twin_id'] ?? null]);
+                $twins = BankTransaction::whereIn('id', $twinIds)->get();
+
+                if ($tx === null || $twins->count() !== count($twinIds) || $twins->isEmpty()) {
                     Notification::make()->danger()->title('Movimento non trovato')->send();
 
                     return;
                 }
-                if ($tx->isTransfer() || $twin->isTransfer() || $tx->reconciled || $twin->reconciled) {
-                    $void('Non più applicabile', 'Uno dei due movimenti risulta già riconciliato o giroconto.');
+
+                $members = $twins->prepend($tx);
+                if ($members->contains(fn (BankTransaction $m): bool => $m->isTransfer() || $m->reconciled)) {
+                    $void('Non più applicabile', 'Uno dei movimenti risulta già riconciliato o in una partita di giro.');
 
                     return;
                 }
-                app(MovementActions::class)->markAsTransfer($tx, $twin);
-                $apply('Segnato come giroconto');
+
+                app(MovementActions::class)->markAsTransferGroup($members);
+                $apply($members->count() > 2 ? 'Segnato come partita di giro' : 'Segnato come giroconto');
 
                 return;
             }

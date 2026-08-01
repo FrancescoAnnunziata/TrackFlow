@@ -33,7 +33,7 @@ class FinancialOverviewBuilder
     private function transferIds(int $year): array
     {
         return BankTransaction::whereYear('booked_at', $year)
-            ->whereNotNull('transfer_pair_id')
+            ->whereNotNull('transfer_group_id')
             ->pluck('id')
             ->flip()
             ->map(fn () => true)

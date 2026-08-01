@@ -36,8 +36,9 @@ it('opens the movements modal for a month and filters by type', function () {
         'bank_account_id' => $account->id, 'booked_at' => '2026-01-20', 'amount' => 200,
         'direction' => 'in', 'description' => 'Giroconto', 'dedup_hash' => 'm5',
     ]);
-    $giroA->update(['transfer_pair_id' => $giroB->id]);
-    $giroB->update(['transfer_pair_id' => $giroA->id]);
+    $group = min($giroA->id, $giroB->id);
+    $giroA->update(['transfer_group_id' => $group]);
+    $giroB->update(['transfer_group_id' => $group]);
 
     $costo = Costo::create(['date' => '2026-01-12', 'description' => 'Costo', 'amount' => 80, 'vat_amount' => 0]);
     app(ReconciliationService::class)->attach($uscitaRiconciliata, $costo, 80);

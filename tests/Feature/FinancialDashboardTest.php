@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\Reconciliation\ReconciliationService;
 use App\Services\Reporting\FinancialOverviewBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -86,7 +87,7 @@ it('tracks real cash flow and flags unreconciled outflows as non attribuite', fu
     // Uscita riconciliata a un costo -> NON è "non attribuita".
     $txPaid = BankTransaction::create(['bank_account_id' => $account->id, 'booked_at' => '2026-07-10', 'amount' => -200, 'description' => 'pagata', 'dedup_hash' => 'c2']);
     $costo = Costo::create(['date' => '2026-07-10', 'description' => 'Servizio', 'amount' => 200, 'vat_amount' => 0]);
-    app(App\Services\Reconciliation\ReconciliationService::class)->attach($txPaid, $costo, 200);
+    app(ReconciliationService::class)->attach($txPaid, $costo, 200);
     // Uscita NON riconciliata -> "non attribuita".
     BankTransaction::create(['bank_account_id' => $account->id, 'booked_at' => '2026-07-15', 'amount' => -350, 'description' => 'sconosciuta', 'dedup_hash' => 'c3']);
 
@@ -110,7 +111,7 @@ it('detects inter-account transfers and excludes them from cash flow and non att
 
     // Il comando marca la coppia come giroconto (persistente).
     $this->artisan('finance:detect-transfers')->assertSuccessful();
-    expect(BankTransaction::whereNotNull('transfer_pair_id')->count())->toBe(2);
+    expect(BankTransaction::whereNotNull('transfer_group_id')->count())->toBe(2);
 
     $aprile = collect(app(FinancialOverviewBuilder::class)->g8labsMonthly(2026))->firstWhere('mese', 4);
 

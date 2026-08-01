@@ -49,7 +49,7 @@ class PrimaNotaBuilder
             $running = $this->openingBalance($account, $from);
 
             $transactions = $account->transactions()
-                ->with(['reconciliations.reconcilable', 'transferPair.bankAccount'])
+                ->with(['reconciliations.reconcilable', 'transferGroup.bankAccount'])
                 ->whereBetween('booked_at', [$from, $to])
                 ->orderBy('booked_at')
                 ->orderBy('id')
@@ -123,15 +123,27 @@ class PrimaNotaBuilder
     private function documentLabel(BankTransaction $tx): string
     {
         if ($tx->isTransfer()) {
-            $pair = $tx->transferPair;
-            $other = $pair?->bankAccount?->name;
+            // Usa la relazione già eager-loaded (transferGroup include se stesso).
+            $others = $tx->transferGroup->where('id', '!=', $tx->id)->values();
+
+            if ($others->isEmpty()) {
+                return 'Giroconto';
+            }
+
+            // Uno-a-molti: partita di giro (es. un rimborso a fronte di più uscite).
+            if ($others->count() > 1) {
+                return sprintf('Partita di giro (%d mov.)', $others->count() + 1);
+            }
+
+            // 1↔1: identifica il gemello con conto, direzione e data, così nel
+            // report è tracciabile a quale trasferimento corrisponde.
+            $pair = $others->first();
+            $other = $pair->bankAccount?->name;
 
             if ($other === null) {
                 return 'Giroconto';
             }
 
-            // Identifica il movimento gemello con conto, direzione e data, così
-            // nel report è tracciabile a quale trasferimento corrisponde.
             $data = optional($pair->booked_at)->format('d/m/Y');
 
             return sprintf(
