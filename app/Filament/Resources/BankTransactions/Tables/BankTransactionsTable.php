@@ -16,8 +16,9 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -32,6 +33,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 
@@ -227,27 +229,36 @@ class BankTransactionsTable
                 number_format($record->unreconciledAmount(), 2, ',', '.'),
             ))
             ->modalSubmitActionLabel('Riconcilia')
-            ->fillForm(fn (BankTransaction $record): array => ['amount' => $record->unreconciledAmount()])
             ->schema([
-                Radio::make('suggestion')
+                CheckboxList::make('documents')
                     ->label(fn (BankTransaction $record): string => $record->amount < 0
-                        ? 'Fatture passive / costi compatibili'
-                        : 'Fatture attive compatibili')
-                    ->helperText('Documenti con importo compatibile, ordinati per affidabilità. Se non c\'è quello giusto, usa la scelta manuale qui sotto.')
-                    ->options(fn (BankTransaction $record): array => app(MatchSuggestionService::class)
-                        ->suggestions($record)
-                        ->mapWithKeys(fn (array $s): array => [
-                            $s['model']->getMorphClass().':'.$s['model']->getKey() => $s['label'],
-                        ])
-                        ->all())
-                    ->descriptions(fn (BankTransaction $record): array => app(MatchSuggestionService::class)
-                        ->suggestions($record)
-                        ->mapWithKeys(fn (array $s): array => [
-                            $s['model']->getMorphClass().':'.$s['model']->getKey() => sprintf('€ %s · affidabilità %d%%', number_format($s['amount'], 2, ',', '.'), $s['confidence']),
-                        ])
-                        ->all())
+                        ? 'Fatture passive / costi da saldare con questo movimento'
+                        : 'Fatture attive incassate da questo movimento')
+                    ->helperText('Selezionane uno o più: puoi combinare più documenti la cui somma torna con l\'importo del movimento (es. due addebiti saldati insieme).')
+                    ->options(fn (BankTransaction $record): array => self::poolOptions($record))
+                    ->descriptions(fn (BankTransaction $record): array => self::poolDescriptions($record))
+                    ->searchable()
+                    ->bulkToggleable()
+                    ->noSearchResultsMessage('Nessun documento compatibile trovato.')
                     ->live(),
+                Placeholder::make('selected_total')
+                    ->label('Totale selezionato')
+                    ->content(function (Get $get, BankTransaction $record): string {
+                        $amounts = self::poolAmounts($record);
+                        $sum = collect($get('documents') ?? [])->sum(fn (string $k): float => (float) ($amounts[$k] ?? 0));
+                        $target = $record->unreconciledAmount();
+                        $ok = abs($sum - $target) <= 0.01;
+
+                        return sprintf(
+                            '€ %s di € %s%s',
+                            number_format($sum, 2, ',', '.'),
+                            number_format($target, 2, ',', '.'),
+                            $ok ? ' — torna ✓' : '',
+                        );
+                    }),
                 Section::make('Oppure scegli manualmente')
+                    ->description('Per un documento fuori dall\'elenco (es. molto lontano nel tempo).')
+                    ->collapsed()
                     ->columns(2)
                     ->components([
                         Select::make('manual_type')
@@ -264,43 +275,117 @@ class BankTransactionsTable
                             ->options(fn (Get $get): array => self::manualOptions($get('manual_type')))
                             ->searchable(),
                     ]),
-                TextInput::make('amount')
-                    ->label('Importo da allocare')
-                    ->numeric()
-                    ->prefix('EUR')
-                    ->step(0.01)
-                    ->required(),
             ])
             ->action(function (array $data, BankTransaction $record): void {
-                $key = $data['suggestion']
-                    ?: (filled($data['manual_type'] ?? null) && filled($data['manual_id'] ?? null)
-                        ? $data['manual_type'].':'.$data['manual_id']
-                        : null);
+                $keys = collect($data['documents'] ?? []);
+                if (filled($data['manual_type'] ?? null) && filled($data['manual_id'] ?? null)) {
+                    $keys->push($data['manual_type'].':'.$data['manual_id']);
+                }
+                $keys = $keys->unique()->values();
 
-                if ($key === null) {
+                if ($keys->isEmpty()) {
                     Notification::make()->danger()->title('Nessun documento selezionato')->send();
 
                     return;
                 }
 
-                [$alias, $id] = explode(':', $key, 2);
-                $class = Relation::getMorphedModel($alias) ?? $alias;
-                $document = $class::find($id);
+                $service = app(ReconciliationService::class);
+                $remaining = round($record->unreconciledAmount(), 2);
+                $attached = 0;
 
-                if ($document === null) {
-                    Notification::make()->danger()->title('Documento non trovato')->send();
+                // Alloca a ciascun documento il suo residuo, finché la quota del
+                // movimento non è esaurita: così una combinazione di documenti
+                // (es. 2,60 + 2,93 = 5,53) chiude il movimento in un colpo solo.
+                foreach ($keys as $key) {
+                    if ($remaining <= 0.01) {
+                        break;
+                    }
+
+                    [$alias, $id] = explode(':', $key, 2);
+                    $class = Relation::getMorphedModel($alias) ?? $alias;
+                    $document = $class::find($id);
+                    if ($document === null) {
+                        continue;
+                    }
+
+                    $alloc = round(min(self::documentResidual($document), $remaining), 2);
+                    if ($alloc <= 0.01) {
+                        continue;
+                    }
+
+                    $service->attach($record, $document, $alloc);
+                    $remaining = round($remaining - $alloc, 2);
+                    $attached++;
+                }
+
+                if ($attached === 0) {
+                    Notification::make()->danger()->title('Nessuna quota da allocare sui documenti scelti')->send();
 
                     return;
                 }
 
-                app(ReconciliationService::class)->attach(
-                    $record,
-                    $document,
-                    (float) $data['amount'],
-                );
-
-                Notification::make()->success()->title('Movimento riconciliato')->send();
+                Notification::make()->success()
+                    ->title($attached > 1 ? "Movimento riconciliato a {$attached} documenti" : 'Movimento riconciliato')
+                    ->body($remaining > 0.01 ? 'Residuo non allocato: € '.number_format($remaining, 2, ',', '.') : null)
+                    ->send();
             });
+    }
+
+    /**
+     * Documenti candidati (stessa direzione, non pagati, in finestra) come opzioni
+     * per la CheckboxList di riconciliazione, ordinati per data decrescente.
+     *
+     * @return array<string, string>
+     */
+    private static function poolOptions(BankTransaction $record): array
+    {
+        return app(MatchSuggestionService::class)->candidatePool($record)
+            ->sortByDesc(fn (array $c): string => optional($c['date'])->format('Y-m-d') ?? '')
+            ->mapWithKeys(fn (array $c): array => [$c['model']->getMorphClass().':'.$c['model']->getKey() => $c['label']])
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function poolDescriptions(BankTransaction $record): array
+    {
+        return app(MatchSuggestionService::class)->candidatePool($record)
+            ->mapWithKeys(fn (array $c): array => [
+                $c['model']->getMorphClass().':'.$c['model']->getKey() => sprintf(
+                    '€ %s · %s',
+                    number_format($c['amount'], 2, ',', '.'),
+                    optional($c['date'])->format('d/m/Y') ?? '',
+                ),
+            ])
+            ->all();
+    }
+
+    /**
+     * Mappa chiave-documento → importo, per il totale live.
+     *
+     * @return array<string, float>
+     */
+    private static function poolAmounts(BankTransaction $record): array
+    {
+        return app(MatchSuggestionService::class)->candidatePool($record)
+            ->mapWithKeys(fn (array $c): array => [$c['model']->getMorphClass().':'.$c['model']->getKey() => (float) $c['amount']])
+            ->all();
+    }
+
+    /**
+     * Residuo ancora scoperto di un documento (bersaglio meno già riconciliato).
+     */
+    private static function documentResidual(Model $document): float
+    {
+        if (! method_exists($document, 'total')) {
+            return 0.0;
+        }
+
+        $target = $document instanceof Invoice ? $document->amountToCollect() : $document->total();
+        $reconciled = method_exists($document, 'reconciledAmount') ? (float) $document->reconciledAmount() : 0.0;
+
+        return round(max(0, $target - $reconciled), 2);
     }
 
     /**

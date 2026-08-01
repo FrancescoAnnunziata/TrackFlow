@@ -47,6 +47,21 @@ class MatchSuggestionService
     }
 
     /**
+     * Pool grezzo dei documenti candidati (stessa direzione, non pagati, in
+     * finestra) SENZA il filtro sull'importo. Serve per riconciliare un movimento
+     * a una combinazione di documenti la cui somma torna (es. due addebiti
+     * Telepass distinti saldati con un unico SDD).
+     *
+     * @return Collection<int, array{model: Model, label: string, amount: float, date: ?Carbon, name: string}>
+     */
+    public function candidatePool(BankTransaction $transaction): Collection
+    {
+        return $transaction->amount >= 0
+            ? $this->activeInvoiceCandidates($transaction)
+            : $this->costCandidates($transaction);
+    }
+
+    /**
      * @return Collection<int, array{model: Model, label: string, amount: float, date: ?Carbon, name: string}>
      */
     private function activeInvoiceCandidates(BankTransaction $transaction): Collection

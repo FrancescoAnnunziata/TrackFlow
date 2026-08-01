@@ -73,14 +73,47 @@ it('reconciles a movement to a suggested passive invoice from the table riconcil
         'direction' => 'out', 'description' => 'Pagamento Fornitore Sugg', 'dedup_hash' => 'ts1',
     ]);
 
-    // Il campo del suggerimento (ora un Radio) usa la stessa chiave morphClass:id.
     Livewire::test(ListBankTransactions::class)
         ->callAction(TestAction::make('riconcilia')->table($tx), [
-            'suggestion' => $passive->getMorphClass().':'.$passive->id,
-            'amount' => 100,
+            'documents' => [$passive->getMorphClass().':'.$passive->id],
         ])
         ->assertHasNoActionErrors();
 
     expect($tx->fresh()->reconciled)->toBeTrue();
     expect($passive->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
+});
+
+it('reconciles one movement to a combination of documents that sum to its total', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $supplier = Supplier::create(['name' => 'Telepass SpA', 'vat_number' => 'IT09771701001']);
+    $a = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'T-A', 'type' => 'expense',
+        'document_date' => '2026-07-23', 'amount_net' => 2.60, 'amount_vat' => 0, 'amount_gross' => 2.60,
+        'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
+    ]);
+    $b = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'T-B', 'type' => 'expense',
+        'document_date' => '2026-07-23', 'amount_net' => 2.93, 'amount_vat' => 0, 'amount_gross' => 2.93,
+        'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
+    ]);
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-07-23', 'amount' => -5.53,
+        'direction' => 'out', 'description' => 'ADDEBITO SDD TELEPASS SPA', 'dedup_hash' => 'tp1',
+    ]);
+
+    Livewire::test(ListBankTransactions::class)
+        ->callAction(TestAction::make('riconcilia')->table($tx), [
+            'documents' => [
+                $a->getMorphClass().':'.$a->id,
+                $b->getMorphClass().':'.$b->id,
+            ],
+        ])
+        ->assertHasNoActionErrors();
+
+    // Il movimento è chiuso e ENTRAMBE le passive risultano pagate.
+    expect($tx->fresh()->reconciled)->toBeTrue();
+    expect($tx->fresh()->unreconciledAmount())->toBe(0.0);
+    expect($a->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
+    expect($b->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
 });
