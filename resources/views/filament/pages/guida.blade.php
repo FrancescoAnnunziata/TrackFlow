@@ -112,6 +112,22 @@
             </div>
         </div>
 
+        {{-- Contesto: cosa fai e perché conta --}}
+        <div class="g-card">
+            <p class="g-h">👋 Cosa fai qui e perché è importante</p>
+            <p>Ogni fine mese, con TrackFlow, si fa due cose: <strong>fatturare i clienti</strong> (farci pagare per il
+                lavoro fatto) e <strong>mettere in ordine i conti</strong> — far tornare ogni euro che entra o esce dalla
+                banca con un documento che lo giustifica (una fattura, un costo). Il tuo compito è portare a termine
+                questo giro completo, dalla fattura fino alla riconciliazione dei movimenti bancari.</p>
+            <p class="g-sub">Perché è importante farlo bene:</p>
+            <ul class="g-list">
+                <li><strong>I clienti pagano</strong> solo se le fatture escono corrette e complete (ore, rimborsi, importi giusti).</li>
+                <li><strong>La commercialista</strong> usa questi dati per l'IVA e le dichiarazioni: un rimborso o un importo sbagliato, dopo, è lungo e complicato da correggere.</li>
+                <li><strong>Sappiamo sempre come siamo messi</strong>: quali fatture restano da incassare, cosa abbiamo pagato, cosa manca.</li>
+            </ul>
+            <div class="g-callout g-info"><strong>Regola d'oro:</strong> nel dubbio <strong>non inventare</strong> — chiedi a Giorgio. Una fattura emessa o una riconciliazione sbagliata costano tempo a sistemare; una domanda in più no.</div>
+        </div>
+
         {{-- Ciclo in 8 mosse --}}
         <div class="g-card">
             <p class="g-h">Il ciclo in 8 mosse</p>
@@ -353,16 +369,36 @@
         {{-- STEP 8 movimenti rimasti --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num">8</span><p class="g-h">Sistema i movimenti bancari rimasti</p></div>
-            <p>Finite attive e passive, restano i movimenti <strong>senza una fattura dietro</strong>: commissioni, imposte, F24, spostamenti tra conti, piccoli costi senza fattura.</p>
-            <ol class="g-ol">
-                <li>Menu <strong>Movimenti bancari</strong>. Filtro <strong>Riconciliato = No</strong> per vedere solo quelli aperti.</li>
-                <li>Per ciascuno scegli l'azione giusta:</li>
-            </ol>
-            <ul class="g-list">
-                <li><span class="g-kbd">Riconcilia</span> — se corrisponde a un documento: mostra <strong>Suggerimenti</strong> con % di affidabilità (es. «Fattura 123 — €1.000 (95%)»); scegli quello, o aggancia a mano (Tipo documento + Documento).</li>
-                <li><span class="g-kbd">Segna come costo</span> — <em>solo uscite</em>: crea al volo un <strong>costo</strong> dal movimento e lo chiude. Per commissioni, bolli, imposte, piccoli acquisti senza fattura.</li>
-                <li><span class="g-kbd">Segna come giroconto</span> — <strong>spostamento tra due tuoi conti</strong>: lo colleghi al movimento gemello. Non è né costo né ricavo.</li>
-            </ul>
+            <p>Finite attive e passive, restano i movimenti in banca <strong>ancora senza un documento agganciato</strong>. Menu <strong>Movimenti bancari</strong>, filtro <strong>Riconciliato = No</strong>, e lavorali uno per uno.</p>
+            <p>Per prima cosa prova <span class="g-kbd">Riconcilia</span>: se il movimento corrisponde a uno o più documenti già in TrackFlow, li trovi nell'elenco (puoi anche <strong>spuntarne più d'uno</strong> la cui somma torna con l'importo) e li agganci.</p>
+            <p>Se invece <strong>non trovi nessuna fattura passiva</strong> che torni, non è un errore: quel movimento è probabilmente una delle cose qui sotto. Capisci quale, poi agisci.</p>
+
+            <p class="g-sub">Che cos'è quel movimento? Le possibilità, in ordine:</p>
+
+            <div class="g-callout g-note">
+                <strong>1) È un giroconto</strong> — uno spostamento di soldi tra due <em>nostri</em> conti (es. da InBank a Vivid). Non è né un costo né un ricavo, quindi <strong>non serve nessuna fattura</strong>.<br>
+                <strong>Come fare:</strong> <span class="g-kbd">Segna come giroconto</span> → scegli il <strong>movimento gemello</strong> (stesso importo, segno opposto, sull'altro conto).
+            </div>
+
+            <div class="g-callout g-info">
+                <strong>2) È il pagamento di una fattura passiva che TrackFlow non ha.</strong> Una <strong>fattura passiva</strong> è una fattura che <em>noi</em> abbiamo ricevuto e pagato a un fornitore (hosting, software, servizi, acquisti…). TrackFlow le importa in automatico <strong>solo da Fatture in Cloud</strong>: se una fattura non è mai arrivata lì, in TrackFlow non c'è — ecco perché il movimento non trova nulla da agganciare.
+                <br><strong>Come fare — recupera la fattura del fornitore:</strong>
+                <ul class="g-list">
+                    <li>guarda nella <strong>tua email</strong>: spesso Giorgio te l'ha già inoltrata;</li>
+                    <li>oppure <strong>chiedila a Giorgio</strong>.</li>
+                </ul>
+                Ottenuta la fattura, va <strong>registrata come fattura passiva</strong> e poi agganciata al movimento (se non sai come, chiedi a Giorgio). È importante recuperarla: così <strong>scarichiamo l'IVA</strong> e teniamo il dettaglio corretto.
+            </div>
+
+            <div class="g-callout g-info">
+                <strong>3) È una tassa o uno stipendio.</strong> Alcune uscite non hanno una fattura per loro natura: gli <strong>F24</strong> (tasse e contributi) e le <strong>buste paga</strong> dei collaboratori. Se il movimento è chiaramente uno di questi, non stare a cercare una fattura passiva: chiedi a Giorgio come vuole che siano registrati.
+            </div>
+
+            <div class="g-callout g-danger">
+                <strong>4) Ultima spiaggia — <span class="g-kbd">Segna come costo</span>.</strong> Solo per le <em>uscite</em> per cui davvero <strong>non esiste una fattura</strong> (piccole spese, commissioni, bolli). Crea al volo un costo dal movimento e lo chiude.
+                <br><strong>⚠️ È l'ultima scelta, non la prima:</strong> un costo «secco» <strong>non scarica l'IVA</strong> e non porta il dettaglio dell'importo come farebbe una fattura passiva. Quindi, se una fattura può esistere (punto 2), <strong>recuperala</strong> invece di segnare come costo. Usa «Segna come costo» solo quando la fattura proprio non c'è.
+            </div>
+
             <div class="g-callout g-warn">Sbagliato? Su un movimento già riconciliato c'è <span class="g-kbd">Annulla riconciliazione</span> per ripartire.</div>
             <div class="g-callout g-info"><strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.</div>
         </div>
