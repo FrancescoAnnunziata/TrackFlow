@@ -110,6 +110,30 @@ class BankTransactionsTable
 
                         return $indicators;
                     }),
+                Filter::make('amount')
+                    ->label('Importo')
+                    // Filtro sul valore assoluto: cercando "60" trova sia +60 (entrata)
+                    // sia -60 (uscita). Per distinguere la direzione c'è il filtro "Tipo".
+                    ->schema([
+                        TextInput::make('min')->label('Importo min (€)')->numeric()->inputMode('decimal'),
+                        TextInput::make('max')->label('Importo max (€)')->numeric()->inputMode('decimal'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(filled($data['min'] ?? null), fn (Builder $q) => $q->whereRaw('ABS(amount) >= ?', [$data['min']]))
+                            ->when(filled($data['max'] ?? null), fn (Builder $q) => $q->whereRaw('ABS(amount) <= ?', [$data['max']]));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if (filled($data['min'] ?? null)) {
+                            $indicators[] = Indicator::make('Importo ≥ € '.$data['min'])->removeField('min');
+                        }
+                        if (filled($data['max'] ?? null)) {
+                            $indicators[] = Indicator::make('Importo ≤ € '.$data['max'])->removeField('max');
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->defaultSort('booked_at', 'desc')
             ->recordActions([
