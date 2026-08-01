@@ -50,8 +50,12 @@ it('exposes the reconcile tool to admins but not to accountants', function () {
     $adminTools = toolNamesFor($admin);
     $accountantTools = toolNamesFor($accountant);
 
-    expect($adminTools)->toContain('propose_reconciliation');
-    expect($accountantTools)->not->toContain('propose_reconciliation');
+    expect($adminTools)->toContain('propose_reconciliation')
+        ->toContain('propose_mark_as_cost')
+        ->toContain('propose_mark_as_transfer');
+    expect($accountantTools)->not->toContain('propose_reconciliation')
+        ->not->toContain('propose_mark_as_cost')
+        ->not->toContain('propose_mark_as_transfer');
 
     // Entrambi hanno i tool di lettura, incluso il dettaglio rimborsi.
     expect($accountantTools)->toContain('read_bank_movements')

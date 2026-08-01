@@ -3,7 +3,9 @@
 namespace App\Assistant;
 
 use App\Assistant\Contracts\ChatClient;
+use App\Assistant\Tools\ProposeCostTool;
 use App\Assistant\Tools\ProposeReconciliationTool;
+use App\Assistant\Tools\ProposeTransferTool;
 use App\Assistant\Tools\ReadActiveInvoicesTool;
 use App\Assistant\Tools\ReadBankMovementsTool;
 use App\Assistant\Tools\ReadInvoiceExpensesTool;
@@ -99,9 +101,12 @@ class AssistantRunner
             app(ReadInvoiceExpensesTool::class),
         ];
 
-        // La riconciliazione è esposta al modello solo per chi può eseguirla.
+        // Le azioni (proposte da confermare) sono esposte al modello solo per chi
+        // può eseguirle: riconciliazione, segna come costo, segna come giroconto.
         if ($canReconcile) {
             $tools[] = app(ProposeReconciliationTool::class);
+            $tools[] = app(ProposeCostTool::class);
+            $tools[] = app(ProposeTransferTool::class);
         }
 
         return collect($tools)->keyBy(fn (AssistantTool $t): string => $t->name())->all();
@@ -151,8 +156,10 @@ class AssistantRunner
         }
 
         return $common."\n\n".<<<'PROMPT'
-        Inoltre puoi PROPORRE una riconciliazione di un movimento verso uno o più documenti (NON la esegui: prepari
-        una proposta che l'utente conferma dall'interfaccia).
+        Inoltre puoi PROPORRE azioni sui movimenti (NON le esegui: prepari proposte che l'utente conferma):
+        - riconciliare un movimento verso uno o più documenti;
+        - segnare un'USCITA come COSTO diretto (con la categoria giusta), se non c'è una fattura passiva dietro;
+        - segnare un movimento come GIROCONTO, indicando il movimento gemello (altra metà del trasferimento tra conti).
 
         COS'È LA RICONCILIAZIONE: collegare ogni movimento bancario al documento che lo giustifica. Un'ENTRATA a una
         FATTURA ATTIVA incassata; un'USCITA a una FATTURA PASSIVA pagata (o costo/spesa). Un movimento può corrispondere

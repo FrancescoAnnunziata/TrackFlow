@@ -7,6 +7,7 @@ use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\BankTransaction;
 use App\Services\Ai\AiUsageRecorder;
+use App\Services\Reconciliation\MovementActions;
 use App\Services\Reconciliation\MovementReconciler;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -158,50 +159,89 @@ class AssistenteAi extends Page
         }
 
         $action = $actions[$idx];
-        $tx = BankTransaction::find($action['movement_id'] ?? 0);
-        if ($tx === null) {
-            Notification::make()->danger()->title('Movimento non trovato')->send();
 
-            return;
-        }
-
-        // Non riconciliare ciò che nel frattempo è già stato riconciliato.
-        if ($tx->unreconciledAmount() <= 0.01) {
+        $apply = function (string $title, ?string $body = null) use (&$actions, $idx, $message): void {
+            $actions[$idx]['status'] = 'applied';
+            $actions[$idx]['applied_at'] = now()->toDateTimeString();
+            $message->actions = $actions;
+            $message->save();
+            Notification::make()->success()->title($title)->body($body)->send();
+        };
+        $void = function (string $title, string $body) use (&$actions, $idx, $message): void {
             $actions[$idx]['status'] = 'cancelled';
             $message->actions = $actions;
             $message->save();
-            Notification::make()->warning()->title('Movimento già riconciliato')->body('Nel frattempo il movimento risulta già riconciliato: proposta annullata.')->send();
-
-            return;
-        }
+            Notification::make()->warning()->title($title)->body($body)->send();
+        };
 
         try {
+            // Giroconto: collega i due movimenti gemelli.
+            if (($action['type'] ?? '') === 'transfer') {
+                $tx = BankTransaction::find($action['movement_id'] ?? 0);
+                $twin = BankTransaction::find($action['twin_id'] ?? 0);
+                if ($tx === null || $twin === null) {
+                    Notification::make()->danger()->title('Movimento non trovato')->send();
+
+                    return;
+                }
+                if ($tx->isTransfer() || $twin->isTransfer() || $tx->reconciled || $twin->reconciled) {
+                    $void('Non più applicabile', 'Uno dei due movimenti risulta già riconciliato o giroconto.');
+
+                    return;
+                }
+                app(MovementActions::class)->markAsTransfer($tx, $twin);
+                $apply('Segnato come giroconto');
+
+                return;
+            }
+
+            $tx = BankTransaction::find($action['movement_id'] ?? 0);
+            if ($tx === null) {
+                Notification::make()->danger()->title('Movimento non trovato')->send();
+
+                return;
+            }
+
+            // Costo: crea il costo dal movimento e lo riconcilia.
+            if (($action['type'] ?? '') === 'cost') {
+                if ($tx->direction !== BankTransaction::DIRECTION_OUT || $tx->isTransfer()) {
+                    $void('Non applicabile', 'Il movimento non è più un\'uscita valida per un costo.');
+
+                    return;
+                }
+                if ($tx->unreconciledAmount() <= 0.01) {
+                    $void('Già riconciliato', 'Nel frattempo il movimento risulta già riconciliato.');
+
+                    return;
+                }
+                app(MovementActions::class)->markAsCost(
+                    $tx,
+                    (string) ($action['description'] ?? ''),
+                    $action['category'] ?? null,
+                    null,
+                    (float) ($action['amount'] ?? $tx->unreconciledAmount()),
+                );
+                $apply('Costo creato e riconciliato', $action['category'] ? 'Categoria: '.$action['category'] : null);
+
+                return;
+            }
+
+            // Riconciliazione verso documenti (default).
+            if ($tx->unreconciledAmount() <= 0.01) {
+                $void('Movimento già riconciliato', 'Nel frattempo il movimento risulta già riconciliato: proposta annullata.');
+
+                return;
+            }
             $outcome = app(MovementReconciler::class)->reconcile($tx, $action['targets'] ?? []);
+            if ($outcome['attached'] === 0) {
+                $void('Niente da riconciliare', 'I documenti indicati risultano già riconciliati o pagati.');
+
+                return;
+            }
+            $apply('Riconciliazione applicata', "Agganciati {$outcome['attached']} documenti.".($outcome['remaining'] > 0.01 ? ' Residuo € '.number_format($outcome['remaining'], 2, ',', '.') : ''));
         } catch (Throwable $e) {
-            Notification::make()->danger()->title('Riconciliazione non riuscita')->body($e->getMessage())->send();
-
-            return;
+            Notification::make()->danger()->title('Azione non riuscita')->body($e->getMessage())->send();
         }
-
-        // Tutti i documenti erano già coperti: nulla da agganciare.
-        if ($outcome['attached'] === 0) {
-            $actions[$idx]['status'] = 'cancelled';
-            $message->actions = $actions;
-            $message->save();
-            Notification::make()->warning()->title('Niente da riconciliare')->body('I documenti indicati risultano già riconciliati o pagati.')->send();
-
-            return;
-        }
-
-        $actions[$idx]['status'] = 'applied';
-        $actions[$idx]['applied_at'] = now()->toDateTimeString();
-        $message->actions = $actions;
-        $message->save();
-
-        Notification::make()->success()
-            ->title('Riconciliazione applicata')
-            ->body("Agganciati {$outcome['attached']} documenti.".($outcome['remaining'] > 0.01 ? ' Residuo € '.number_format($outcome['remaining'], 2, ',', '.') : ''))
-            ->send();
     }
 
     public function cancelProposal(int $messageId, string $actionId): void

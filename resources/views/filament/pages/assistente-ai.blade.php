@@ -109,24 +109,41 @@
                             </div>
 
                             @foreach ($message->actions ?? [] as $action)
-                                @if (($action['type'] ?? '') === 'reconcile')
+                                @php $type = $action['type'] ?? ''; @endphp
+                                @if (in_array($type, ['reconcile', 'cost', 'transfer'], true))
                                     <div class="aia-prop">
-                                        <div class="pt">Proposta di riconciliazione</div>
-                                        <div>{{ $action['movement_label'] ?? ('Movimento '.$action['movement_id']) }}</div>
-                                        <div class="pl">
-                                            @foreach ($action['targets'] ?? [] as $tg)
-                                                <div><span>{{ $tg['label'] ?? '' }}</span><span class="amt">€ {{ number_format((float) ($tg['amount'] ?? 0), 2, ',', '.') }}</span></div>
-                                            @endforeach
-                                            <div class="ptot"><span>Totale</span><span class="amt">€ {{ number_format((float) ($action['total'] ?? 0), 2, ',', '.') }}</span></div>
-                                        </div>
+                                        @if ($type === 'reconcile')
+                                            <div class="pt">Proposta di riconciliazione</div>
+                                            <div>{{ $action['movement_label'] ?? ('Movimento '.$action['movement_id']) }}</div>
+                                            <div class="pl">
+                                                @foreach ($action['targets'] ?? [] as $tg)
+                                                    <div><span>{{ $tg['label'] ?? '' }}</span><span class="amt">€ {{ number_format((float) ($tg['amount'] ?? 0), 2, ',', '.') }}</span></div>
+                                                @endforeach
+                                                <div class="ptot"><span>Totale</span><span class="amt">€ {{ number_format((float) ($action['total'] ?? 0), 2, ',', '.') }}</span></div>
+                                            </div>
+                                        @elseif ($type === 'cost')
+                                            <div class="pt">Proposta: segna come costo</div>
+                                            <div>{{ $action['movement_label'] ?? ('Movimento '.$action['movement_id']) }}</div>
+                                            <div class="pl">
+                                                <div><span>Descrizione</span><span>{{ $action['description'] ?? '' }}</span></div>
+                                                <div><span>Categoria</span><span>{{ $action['category'] ?: '—' }}</span></div>
+                                                <div class="ptot"><span>Importo</span><span class="amt">€ {{ number_format((float) ($action['amount'] ?? 0), 2, ',', '.') }}</span></div>
+                                            </div>
+                                        @else
+                                            <div class="pt">Proposta: segna come giroconto</div>
+                                            <div class="pl">
+                                                <div><span>{{ $action['movement_label'] ?? '' }}</span></div>
+                                                <div><span>{{ $action['twin_label'] ?? '' }}</span></div>
+                                            </div>
+                                        @endif
 
                                         @if (($action['status'] ?? '') === 'pending')
                                             <div class="aia-btns">
-                                                <button type="button" class="aia-btn ok" wire:click="confirmProposal({{ $message->id }}, '{{ $action['id'] }}')" wire:loading.attr="disabled">Conferma e riconcilia</button>
+                                                <button type="button" class="aia-btn ok" wire:click="confirmProposal({{ $message->id }}, '{{ $action['id'] }}')" wire:loading.attr="disabled">Conferma</button>
                                                 <button type="button" class="aia-btn no" wire:click="cancelProposal({{ $message->id }}, '{{ $action['id'] }}')">Annulla</button>
                                             </div>
                                         @elseif (($action['status'] ?? '') === 'applied')
-                                            <div class="aia-btns"><span class="aia-badge applied">✓ Riconciliata</span></div>
+                                            <div class="aia-btns"><span class="aia-badge applied">✓ Applicata</span></div>
                                         @else
                                             <div class="aia-btns"><span class="aia-badge cancelled">Annullata</span></div>
                                         @endif
