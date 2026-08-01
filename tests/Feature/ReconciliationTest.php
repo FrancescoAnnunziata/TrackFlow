@@ -3,6 +3,7 @@
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Client;
+use App\Models\Costo;
 use App\Models\Invoice;
 use App\Models\Reconciliation;
 use App\Models\User;
@@ -97,4 +98,23 @@ it('never suggests or auto-reconciles active invoices of Fiscozen clients', func
     $this->artisan('finance:auto-reconcile', ['--min-confidence' => 90])->assertSuccessful();
     expect($tx->fresh()->reconciled)->toBeFalse();
     expect($invoice->fresh()->status)->toBe('sent');
+});
+
+it('does not suggest costs already fully reconciled to another movement', function () {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+    $account = BankAccount::create(['name' => 'Conto', 'bank_key' => 'generic', 'opening_balance' => 0]);
+
+    // Movimento A → costo creato e riconciliato (come "Segna come costo").
+    $txA = BankTransaction::create(['bank_account_id' => $account->id, 'booked_at' => '2026-06-10', 'amount' => -5.50, 'description' => 'POS SUGAR', 'dedup_hash' => 'ca']);
+    $costo = Costo::create(['date' => '2026-06-10', 'description' => 'SUGAR', 'amount' => 5.50, 'vat_amount' => 0, 'bank_transaction_id' => $txA->id]);
+    app(ReconciliationService::class)->attach($txA, $costo, 5.50);
+
+    // Movimento B non riconciliato, importo compatibile: il costo NON deve comparire.
+    $txB = BankTransaction::create(['bank_account_id' => $account->id, 'booked_at' => '2026-06-12', 'amount' => -5.50, 'description' => 'ADDEBITO X', 'dedup_hash' => 'cb']);
+
+    $suggested = app(MatchSuggestionService::class)->suggestions($txB)
+        ->contains(fn (array $c): bool => $c['model'] instanceof Costo && $c['model']->id === $costo->id);
+
+    expect($suggested)->toBeFalse();
 });

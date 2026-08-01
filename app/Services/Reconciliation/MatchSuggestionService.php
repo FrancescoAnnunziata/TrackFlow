@@ -95,10 +95,15 @@ class MatchSuggestionService
                 'name' => (string) ($p->supplier->name ?? ''),
             ]);
 
+        // Solo i costi non ancora coperti da riconciliazioni: un costo creato da un
+        // movimento ("Segna come costo") è già riconciliato a quel movimento e non
+        // deve riproporsi come candidato per un altro.
         $costi = Costo::with('supplier')
+            ->withSum('reconciliations', 'amount')
             ->whereBetween('date', [$from, $to])
             ->limit(200)
             ->get()
+            ->filter(fn (Costo $c): bool => (float) ($c->reconciliations_sum_amount ?? 0) + 0.01 < $c->total())
             ->map(fn (Costo $c): array => [
                 'model' => $c,
                 'label' => sprintf('Costo — %s', $c->description),
