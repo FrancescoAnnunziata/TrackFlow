@@ -37,12 +37,20 @@ class AssistenteAi extends Page
 
     public string $draft = '';
 
-    /** Per ora la chat è privata: visibile solo al titolare. */
+    /** La chat è privata al titolare; il commercialista (ruolo accountant) la usa in sola lettura. */
     private const OWNER_EMAIL = 'giorgio.giotto@g8labs.it';
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->email === self::OWNER_EMAIL;
+        $user = auth()->user();
+
+        return $user !== null && ($user->email === self::OWNER_EMAIL || $user->isAccountant());
+    }
+
+    /** Chi può eseguire azioni (confermare riconciliazioni): solo gli admin. */
+    private function canReconcile(): bool
+    {
+        return (bool) auth()->user()?->isAdmin();
     }
 
     public function mount(): void
@@ -134,6 +142,10 @@ class AssistenteAi extends Page
 
     public function confirmProposal(int $messageId, string $actionId): void
     {
+        if (! $this->canReconcile()) {
+            return;
+        }
+
         $message = AssistantMessage::find($messageId);
         if ($message === null || (int) $message->assistant_thread_id !== (int) $this->threadId) {
             return;

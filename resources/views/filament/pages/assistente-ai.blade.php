@@ -73,11 +73,13 @@
 
         {{-- Main --}}
         <div class="aia-main">
-            <div class="aia-head">
-                <span class="aia-cost" title="Costo di tutte le funzioni AI (assistente + estrazioni) nel mese corrente">
-                    Costo AI (mese): $ {{ number_format($this->monthlyCost, 4, ',', '.') }}
-                </span>
-            </div>
+            @if (auth()->user()?->isAdmin())
+                <div class="aia-head">
+                    <span class="aia-cost" title="Costo di tutte le funzioni AI (assistente + estrazioni) nel mese corrente">
+                        Costo AI (mese): $ {{ number_format($this->monthlyCost, 4, ',', '.') }}
+                    </span>
+                </div>
+            @endif
             <div class="aia-msgs">
                 @if ($this->messages->isEmpty())
                     <div class="aia-empty">

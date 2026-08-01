@@ -35,6 +35,7 @@ class UserForm
                         'admin' => 'Admin',
                         'member' => 'Membro',
                         'client' => 'Cliente',
+                        'accountant' => 'Commercialista (assistente AI in sola lettura)',
                     ])
                     ->default('member')
                     ->required()

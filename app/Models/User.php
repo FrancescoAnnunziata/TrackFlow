@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -65,12 +66,13 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
-    public function hours(): HasMany {
+    public function hours(): HasMany
+    {
         return $this->hasMany(Hour::class);
     }
 
-
-    public function expenses(): HasMany {
+    public function expenses(): HasMany
+    {
         return $this->hasMany(Expense::class);
     }
 
@@ -79,14 +81,16 @@ class User extends Authenticatable implements FilamentUser
      * record — vedi BelongsToClient). L'insieme completo delle associazioni e'
      * dato da clients()/allClientIds().
      */
-    public function client(): BelongsTo {
+    public function client(): BelongsTo
+    {
         return $this->belongsTo(Client::class);
     }
 
     /**
      * Tutti i clienti a cui l'utente e' associato (relazione molti-a-molti).
      */
-    public function clients(): BelongsToMany {
+    public function clients(): BelongsToMany
+    {
         return $this->belongsToMany(Client::class, 'client_user')->withTimestamps();
     }
 
@@ -97,7 +101,8 @@ class User extends Authenticatable implements FilamentUser
      *
      * @return array<int, int>
      */
-    public function allClientIds(): array {
+    public function allClientIds(): array
+    {
         return $this->cachedClientIds ??= $this->clients()
             ->pluck('clients.id')
             ->when($this->client_id, fn ($ids) => $ids->push($this->client_id))
@@ -110,24 +115,35 @@ class User extends Authenticatable implements FilamentUser
     /**
      * True se l'utente e' associato al cliente indicato.
      */
-    public function belongsToClientId(int|string|null $clientId): bool {
+    public function belongsToClientId(int|string|null $clientId): bool
+    {
         return $clientId !== null && in_array((int) $clientId, $this->allClientIds(), true);
     }
 
-    public function assignedDevices(): HasMany {
+    public function assignedDevices(): HasMany
+    {
         return $this->hasMany(Device::class, 'assigned_user_id');
     }
 
-    public function openedTickets(): HasMany {
+    public function openedTickets(): HasMany
+    {
         return $this->hasMany(SupportTicket::class, 'opened_by_user_id');
     }
 
-    public function isAdmin(): bool {
+    public function isAdmin(): bool
+    {
         return $this->role === 'admin';
     }
 
-    public function isClient(): bool {
+    public function isClient(): bool
+    {
         return $this->role === 'client';
+    }
+
+    /** Commercialista: accesso in sola lettura all'assistente AI (nessuna azione). */
+    public function isAccountant(): bool
+    {
+        return $this->role === 'accountant';
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -137,6 +153,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function getFullNameAttribute(): string
     {
-        return trim($this->name . ' ' . $this->surname);
+        return trim($this->name.' '.$this->surname);
     }
 }
