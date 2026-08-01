@@ -123,14 +123,16 @@
 
         {{-- A colpo d'occhio --}}
         <div class="{{ $card }}">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Il ciclo in 6 mosse</h3>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Il ciclo in 8 mosse</h3>
             <ol class="mt-3 flex flex-col gap-2 text-sm">
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">1</span> Controlla che il cliente sia configurato (menu <strong>Clienti</strong>)</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">2</span> Genera la bozza (menu <strong>Fatture</strong> → <em>Genera fattura</em>)</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">3</span> Controlla righe, rimborsi e note</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">4</span> Emetti: <em>Invia a Fatture in Cloud</em> (G8Labs) o a mano su <em>Fiscozen</em> (G. Giotto)</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">5</span> Importa i movimenti delle banche (<strong>Movimenti bancari</strong>)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> All'incasso → <em>Registra incasso</em></li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti)</li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
             </ol>
         </div>
 
@@ -351,21 +353,103 @@
             </div>
         </div>
 
-        {{-- STEP 6: incasso --}}
+        {{-- Fase riconciliazione: intro --}}
+        <div class="{{ $card }}">
+            <h3 class="text-lg font-bold text-gray-950 dark:text-white">🔗 La fase di riconciliazione</h3>
+            <p class="mt-2 text-sm leading-6">
+                Quando hai <strong>emesso tutte le fatture attive</strong>, <strong>importato le fatture passive</strong>
+                da Fatture in Cloud e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»:
+                riconciliare vuol dire <strong>collegare ogni movimento in banca al documento che gli corrisponde</strong>
+                (una fattura emessa incassata, una fattura d'acquisto pagata), così i conti tornano.
+            </p>
+            <p class="mt-3 text-sm font-semibold text-gray-950 dark:text-white">L'ordine giusto — prima i documenti, poi i movimenti sciolti:</p>
+            <ol class="mt-2 flex flex-col gap-2 text-sm">
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> Fatture <strong>attive</strong> → incassi (movimenti in <strong>entrata</strong>)</li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">7</span> Fatture <strong>passive</strong> → pagamenti (movimenti in <strong>uscita</strong>)</li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">8</span> <strong>Movimenti rimasti</strong> senza fattura → costi diretti, giroconti, commissioni…</li>
+            </ol>
+            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
+                <strong>Perché quest'ordine:</strong> ogni riconciliazione «consuma» il movimento (una volta agganciato a un
+                documento non è più disponibile per un altro). Se ripulisci troppo presto i movimenti a mano — es.
+                «Segna come costo» su un'uscita che in realtà pagava una fattura passiva — crei un <strong>doppione di
+                costo</strong> e la fattura resta «Non pagata». Quindi: <strong>prima le fatture, poi il residuo</strong>.
+            </div>
+            <div class="mt-3 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
+                ⚠️ <strong>Attenzione a un equivoco:</strong> le voci di menu <strong>«Riconc. fatture attive»</strong> e
+                <strong>«Riconc. fatture passive»</strong> <u>non</u> servono a riconciliare — sono solo <strong>report
+                di controllo</strong> (quadrature) da leggere ed esportare. Le riconciliazioni vere si fanno dalle
+                tabelle <strong>Fatture</strong>, <strong>Fatture passive</strong> e <strong>Movimenti bancari</strong>,
+                come qui sotto.
+            </div>
+        </div>
+
+        {{-- STEP 6: riconcilia attive --}}
         <div class="{{ $card }}">
             <div class="flex items-center gap-3">
                 <span class="{{ $stepNum }}">6</span>
-                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Registra l'incasso</h3>
+                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Riconcilia le fatture attive (incassi)</h3>
             </div>
             <p class="mt-3 text-sm leading-6">
-                Con i movimenti ormai importati, quando arriva il bonifico la fattura va segnata come pagata
-                collegandola al movimento bancario.
+                Per ogni fattura emessa, quando è arrivato il bonifico la colleghi al movimento in entrata così diventa
+                <strong>Pagata</strong>.
             </p>
             <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
-                <li>Nell'elenco <strong>Fatture</strong> (o dal dettaglio) trova la fattura <em>Inviata</em> e clicca <span class="{{ $kbd }}">Registra incasso</span> (icona banconote).</li>
-                <li>La finestra propone i <strong>movimenti in entrata compatibili</strong> (per data e importo). Spunta quello giusto — puoi selezionarne <strong>più di uno</strong> se l'incasso è a rate.</li>
-                <li>Clicca <span class="{{ $kbd }}">Registra incasso</span>. Se copre tutto, la fattura diventa <strong>Pagata</strong> ✅; se copre in parte, resta Inviata con il residuo da incassare.</li>
+                <li>Menu <strong>Fatture</strong>: guarda la colonna <strong>Incassata</strong>. Trova una fattura <em>Inviata</em> non ancora incassata e clicca <span class="{{ $kbd }}">Registra incasso</span> (icona banconote, verde).</li>
+                <li>La finestra propone i <strong>movimenti in entrata compatibili</strong> (già pre-filtrati: entrate entro ±45 giorni dalla data fattura e importo vicino). Spunta quello giusto — puoi selezionarne <strong>più di uno</strong> se l'incasso è a rate.</li>
+                <li>Clicca <span class="{{ $kbd }}">Registra incasso</span>. Se copre tutto → fattura <strong>Pagata</strong> ✅; se copre in parte resta Inviata con il residuo.</li>
             </ol>
+            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
+                Se il bonifico non compare tra i suggeriti (importo o data troppo diversi), apri la fattura
+                (<em>Visualizza</em>) e usa <span class="{{ $kbd }}">Riconcilia con movimento</span>: lì scegli il
+                movimento a mano tra tutti quelli liberi, con importo libero. Stesso risultato.
+            </div>
+        </div>
+
+        {{-- STEP 7: riconcilia passive --}}
+        <div class="{{ $card }}">
+            <div class="flex items-center gap-3">
+                <span class="{{ $stepNum }}">7</span>
+                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Riconcilia le fatture passive (pagamenti)</h3>
+            </div>
+            <p class="mt-3 text-sm leading-6">
+                Stessa logica, ma sui <strong>pagamenti ai fornitori</strong>: colleghi ogni fattura d'acquisto al
+                movimento in <strong>uscita</strong> con cui l'hai pagata.
+            </p>
+            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
+                <li>Menu <strong>Controllo Finanziario → Fatture passive</strong>: guarda le colonne <strong>Pagamento</strong> e <strong>Riconciliata</strong>. Trova una fattura «Non pagata» e clicca <span class="{{ $kbd }}">Segna pagata</span> (icona banconote).</li>
+                <li>La finestra propone i <strong>movimenti in uscita compatibili</strong> (±45 giorni, importo vicino). Spunta quello giusto — più di uno se pagata a rate.</li>
+                <li>Clicca <span class="{{ $kbd }}">Segna pagata</span> → la fattura passiva diventa <strong>Pagata</strong> ✅.</li>
+            </ol>
+        </div>
+
+        {{-- STEP 8: movimenti rimasti --}}
+        <div class="{{ $card }}">
+            <div class="flex items-center gap-3">
+                <span class="{{ $stepNum }}">8</span>
+                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Sistema i movimenti bancari rimasti</h3>
+            </div>
+            <p class="mt-3 text-sm leading-6">
+                Finite attive e passive, restano i movimenti <strong>senza una fattura dietro</strong>: commissioni,
+                imposte, F24, spostamenti tra i conti, piccoli costi senza fattura. Si chiudono qui.
+            </p>
+            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
+                <li>Menu <strong>Controllo Finanziario → Movimenti bancari</strong>. Metti il filtro <strong>Riconciliato = No</strong> per vedere solo quelli ancora aperti.</li>
+                <li>Per ciascuno, scegli l'azione giusta:</li>
+            </ol>
+            <ul class="mt-2 flex flex-col gap-2 pl-5 text-sm leading-6">
+                <li>• <span class="{{ $kbd }}">Riconcilia</span> — se corrisponde a un documento: la finestra mostra dei <strong>Suggerimenti</strong> con percentuale di affidabilità (es. «Fattura 123 — €1.000 (95%)»); scegli quello, oppure aggancia a mano scegliendo Tipo documento + Documento.</li>
+                <li>• <span class="{{ $kbd }}">Segna come costo</span> — <em>solo uscite</em>: crea al volo un <strong>costo</strong> dal movimento e lo chiude. È il caso di commissioni, bolli, imposte, piccoli acquisti senza fattura.</li>
+                <li>• <span class="{{ $kbd }}">Segna come giroconto</span> — se è uno <strong>spostamento tra due tuoi conti</strong>: lo colleghi al movimento gemello (importo opposto sull'altro conto). Non è né costo né ricavo.</li>
+            </ul>
+            <div class="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
+                Sbagliato? Su un movimento già riconciliato c'è <span class="{{ $kbd }}">Annulla riconciliazione</span> per
+                ripartire. E se hai tante uscite dello stesso tipo, puoi selezionarle e usare <strong>«Segna come costo»
+                in blocco</strong> dalla barra in alto.
+            </div>
+            <div class="mt-3 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
+                <strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi
+                verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.
+            </div>
         </div>
 
         {{-- STEP 6: nota credito --}}
