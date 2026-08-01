@@ -27,6 +27,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 class InvoicesTable
 {
@@ -53,6 +54,7 @@ class InvoicesTable
                     ->sortable(),
                 TextColumn::make('client.name')
                     ->label('Cliente')
+                    ->wrap()
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('type')
@@ -176,7 +178,8 @@ class InvoicesTable
     private static function reconcileAction(): Action
     {
         return Action::make('registra_incasso')
-            ->label('Registra incasso')
+            // Label su due righe per non allargare la colonna azioni.
+            ->label(new HtmlString('Registra<br>incasso'))
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
             // Niente riconciliazione incassi per i clienti Fiscozen (partita IVA
