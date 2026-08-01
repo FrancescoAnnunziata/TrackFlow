@@ -67,3 +67,34 @@ it('auto-reconciles only high-confidence exact matches', function () {
     expect($invoice->fresh()->status)->toBe('paid');
     expect(Reconciliation::where('matched_by', 'auto')->count())->toBe(1);
 });
+
+it('never suggests or auto-reconciles active invoices of Fiscozen clients', function () {
+    $user = User::factory()->admin()->create();
+    $client = Client::create([
+        'name' => 'Forfait Cli',
+        'invoicing_provider' => Client::PROVIDER_FISCOZEN,
+        'vat_rate' => 0,
+    ]);
+    $invoice = Invoice::create([
+        'user_id' => $user->id, 'client_id' => $client->id, 'number' => '5/2026',
+        'issue_date' => '2026-06-10', 'period_from' => '2026-06-01', 'period_to' => '2026-06-30',
+        'vat_rate' => 0, 'status' => 'sent',
+    ]);
+    $invoice->items()->create(['name' => 'Consulenza', 'qty' => 1, 'net_price' => 1000, 'vat_kind' => 'standard', 'line_kind' => 'consulting', 'sort' => 0]);
+    $invoice->refresh();
+
+    $account = BankAccount::create(['name' => 'Conto', 'bank_key' => 'generic', 'opening_balance' => 0]);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-15',
+        'amount' => $invoice->total(), 'description' => 'Bonifico Forfait Cli', 'dedup_hash' => 'fz1',
+    ]);
+
+    // Non deve comparire tra i suggerimenti...
+    $suggestions = app(MatchSuggestionService::class)->suggestions($tx);
+    expect($suggestions)->toHaveCount(0);
+
+    // ...né essere agganciata dall'auto-riconciliazione.
+    $this->artisan('finance:auto-reconcile', ['--min-confidence' => 90])->assertSuccessful();
+    expect($tx->fresh()->reconciled)->toBeFalse();
+    expect($invoice->fresh()->status)->toBe('sent');
+});

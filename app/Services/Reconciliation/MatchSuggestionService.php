@@ -3,6 +3,7 @@
 namespace App\Services\Reconciliation;
 
 use App\Models\BankTransaction;
+use App\Models\Client;
 use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -53,6 +54,10 @@ class MatchSuggestionService
         return Invoice::with('client', 'creditNotes.items')
             ->where('status', '!=', 'paid')
             ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
+            // Le fatture ai clienti Fiscozen (P.IVA forfettaria) non passano dai
+            // nostri conti: non sono mai un target di riconciliazione, né automatica
+            // né suggerita.
+            ->whereRelation('client', 'invoicing_provider', '!=', Client::PROVIDER_FISCOZEN)
             ->whereBetween('issue_date', [
                 $transaction->booked_at->copy()->subDays(self::WINDOW_DAYS),
                 $transaction->booked_at->copy()->addDays(self::WINDOW_DAYS),
