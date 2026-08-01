@@ -4,12 +4,14 @@ use App\Assistant\AssistantRunner;
 use App\Assistant\AssistantTurn;
 use App\Assistant\Contracts\ChatClient;
 use App\Assistant\Tools\ProposeReconciliationTool;
+use App\Assistant\Tools\ReadReimbursementsTool;
 use App\Filament\Pages\AssistenteAi;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Reconciliation\MovementReconciler;
@@ -90,6 +92,36 @@ it('proposes a reconciliation via the tool loop, then applies it on confirm', fu
     expect($tx->fresh()->reconciled)->toBeTrue();
     expect($a->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
     expect($b->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
+});
+
+it('reconciles a reimbursement bonifico to its Rimborso spese document', function () {
+    $user = User::factory()->admin()->create();
+    $reimbursement = Reimbursement::factory()->create([
+        'user_id' => $user->id, 'date' => '2026-06-30', 'amount' => 839.68,
+        'notes' => 'Rimborso spese Giugno 2026',
+    ]);
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-07-13', 'amount' => -839.68,
+        'direction' => 'out', 'description' => 'BONIFICO A GIORGIO GIOTTO', 'dedup_hash' => 'airb1',
+    ]);
+
+    // Il tool di lettura lo trova col residuo intero.
+    $read = app(ReadReimbursementsTool::class)->run(['only_open' => true]);
+    expect($read->content)->toContain('Rimborso spese Giugno 2026')->toContain('839,68');
+
+    // La proposta di riconciliazione accetta il tipo reimbursement.
+    $res = app(ProposeReconciliationTool::class)->run([
+        'movement_id' => $tx->id,
+        'targets' => [['type' => 'reimbursement', 'id' => $reimbursement->id]],
+    ]);
+    expect($res->isError)->toBeFalse();
+    expect($res->action['total'])->toBe(839.68);
+
+    // Applicata: il movimento è riconciliato e il rimborso è coperto.
+    app(MovementReconciler::class)->reconcile($tx->fresh(), $res->action['targets']);
+    expect($tx->fresh()->reconciled)->toBeTrue();
+    expect($reimbursement->fresh()->reconciledAmount())->toBe(839.68);
 });
 
 it('refuses to propose reconciling an already-reconciled movement', function () {

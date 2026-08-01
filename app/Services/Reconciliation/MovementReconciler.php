@@ -7,6 +7,7 @@ use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -25,6 +26,7 @@ class MovementReconciler
         'passive_invoice' => PassiveInvoice::class,
         'costo' => Costo::class,
         'expense' => Expense::class,
+        'reimbursement' => Reimbursement::class,
     ];
 
     public function resolve(string $type, int $id): ?Model
@@ -92,6 +94,7 @@ class MovementReconciler
             $document instanceof PassiveInvoice => 'Fattura passiva '.($document->number ?: '(s.n.)').' — '.($document->supplier->name ?? '—'),
             $document instanceof Costo => 'Costo — '.$document->description,
             $document instanceof Expense => 'Spesa — '.($document->supplier->name ?? optional($document->date)->format('d/m/Y') ?? ''),
+            $document instanceof Reimbursement => 'Rimborso spese '.(optional($document->date)->format('d/m/Y') ?? '').' — '.($document->notes ?? ''),
             default => class_basename($document),
         };
     }
