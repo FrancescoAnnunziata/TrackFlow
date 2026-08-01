@@ -7,6 +7,7 @@ use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
 use App\Models\Supplier;
 use App\Services\Reconciliation\MatchSuggestionService;
 use App\Services\Reconciliation\MovementActions;
@@ -215,6 +216,7 @@ class BankTransactionsTable
                                 'passive_invoice' => 'Fattura passiva',
                                 'costo' => 'Costo',
                                 'expense' => 'Spesa',
+                                'reimbursement' => 'Rimborso spese',
                             ])
                             ->live(),
                         Select::make('manual_id')
@@ -543,6 +545,16 @@ class BankTransactionsTable
                     optional($e->date)->format('d/m/Y') ?? '',
                     $e->supplier->name ?? $e->client->name ?? (string) ($e->notes ?? 'Spesa'),
                     number_format($e->total(), 2, ',', '.'),
+                )])
+                ->all(),
+            // Rimborsi spese ancora scoperti: il bonifico che li salda si aggancia qui.
+            'reimbursement' => Reimbursement::latest('date')->limit(100)->get()
+                ->filter(fn (Reimbursement $r): bool => round($r->total() - $r->reconciledAmount(), 2) > 0.01)
+                ->mapWithKeys(fn (Reimbursement $r): array => [$r->id => sprintf(
+                    '%s — %s (€%s)',
+                    optional($r->date)->format('d/m/Y') ?? '',
+                    str($r->notes ?: 'Rimborso spese')->limit(40)->value(),
+                    number_format($r->total(), 2, ',', '.'),
                 )])
                 ->all(),
             default => [],

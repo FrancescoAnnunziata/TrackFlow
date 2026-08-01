@@ -130,7 +130,7 @@
 
         {{-- Ciclo in 8 mosse --}}
         <div class="g-card">
-            <p class="g-h">Il ciclo in 8 mosse</p>
+            <p class="g-h">Il ciclo in 9 mosse</p>
             <ol class="g-steps g-overview">
                 <li><span class="g-num">1</span> Controlla che il cliente sia configurato (menu <strong>Clienti</strong>)</li>
                 <li><span class="g-num">2</span> Genera la bozza (<strong>Fatture</strong> → <em>Genera fattura</em>)</li>
@@ -140,6 +140,7 @@
                 <li><span class="g-num">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
                 <li><span class="g-num">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti)</li>
                 <li><span class="g-num">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
+                <li><span class="g-num">9</span> Invia la documentazione al <strong>commercialista</strong> (Anna Messa)</li>
             </ol>
         </div>
 
@@ -391,16 +392,66 @@
             </div>
 
             <div class="g-callout g-info">
-                <strong>3) È una tassa o uno stipendio.</strong> Alcune uscite non hanno una fattura per loro natura: gli <strong>F24</strong> (tasse e contributi) e le <strong>buste paga</strong> dei collaboratori. Se il movimento è chiaramente uno di questi, non stare a cercare una fattura passiva: chiedi a Giorgio come vuole che siano registrati.
+                <strong>3) È un F24 (tasse e contributi).</strong> Le uscite con causale <strong>«DELEGA F24»</strong> (o pagamenti all'Agenzia delle Entrate) non hanno una fattura. Si chiudono con <span class="g-kbd">Segna come costo</span>, importo del movimento, scegliendo il <strong>Conto</strong> giusto:
+                <ul class="g-list tight" style="margin-top:.4rem">
+                    <li><strong>«Imposte e tasse»</strong> → se sono ritenute, imposte o contributi (è un costo vero);</li>
+                    <li><strong>«IVA»</strong> → se è la <strong>liquidazione IVA</strong> (il versamento periodico dell'IVA).</li>
+                </ul>
+                Dalla sola causale spesso non si capisce di che F24 si tratti: nel dubbio <strong>chiedi a Giorgio</strong> se è IVA o imposte.
+            </div>
+
+            <div class="g-callout g-info">
+                <strong>4) È una busta paga / un compenso.</strong> Il bonifico ricorrente da <strong>1.500 €</strong> a <strong>Giorgio Giotto</strong> è il <strong>compenso amministratore</strong>; i pagamenti ai <strong>collaboratori esterni</strong> (prestazioni occasionali) sono la stessa famiglia. Si chiudono con <span class="g-kbd">Segna come costo</span>, Conto <strong>«Collaboratori»</strong>. Per il compenso di Giorgio metti come descrizione <strong>«Compenso amministratore [mese]»</strong> (es. <em>Compenso amministratore Giugno 2026</em>).
+            </div>
+
+            <div class="g-callout g-warn">
+                <strong>5) È un rimborso spese a chi ha anticipato di tasca propria.</strong> Sono i bonifici (di solito a <strong>Giorgio</strong>) che <strong>restituiscono</strong> spese anticipate personalmente. <strong>NON si chiudono come costo</strong>: quelle spese sono già registrate altrove, quindi lo faresti diventare un <strong>doppione</strong>. Vanno invece <strong>riconciliati al documento «Rimborso spese» del mese</strong>:
+                <ul class="g-list tight" style="margin-top:.4rem">
+                    <li>sul movimento premi <span class="g-kbd">Riconcilia</span>, apri <em>«Oppure scegli manualmente»</em>, Tipo documento <strong>«Rimborso spese»</strong>, scegli quello del periodo e conferma;</li>
+                    <li>la piccola <strong>commissione da −0,50 €</strong> abbinata al bonifico si chiude a parte con <span class="g-kbd">Segna come costo</span>, Conto <strong>«Commissioni bancarie»</strong>.</li>
+                </ul>
+                Se il <strong>documento «Rimborso spese» del mese non esiste ancora</strong>, va creato prima dal menu <strong>Rimborsi spese</strong> (se non sai come, chiedi a Giorgio).
             </div>
 
             <div class="g-callout g-danger">
-                <strong>4) Ultima spiaggia — <span class="g-kbd">Segna come costo</span>.</strong> Solo per le <em>uscite</em> per cui davvero <strong>non esiste una fattura</strong> (piccole spese, commissioni, bolli). Crea al volo un costo dal movimento e lo chiude.
+                <strong>6) Ultima spiaggia — <span class="g-kbd">Segna come costo</span>.</strong> Solo per le <em>uscite</em> per cui davvero <strong>non esiste una fattura</strong> (piccole spese, commissioni, bolli). Crea al volo un costo dal movimento e lo chiude.
                 <br><strong>⚠️ È l'ultima scelta, non la prima:</strong> un costo «secco» <strong>non scarica l'IVA</strong> e non porta il dettaglio dell'importo come farebbe una fattura passiva. Quindi, se una fattura può esistere (punto 2), <strong>recuperala</strong> invece di segnare come costo. Usa «Segna come costo» solo quando la fattura proprio non c'è.
             </div>
 
             <div class="g-callout g-warn">Sbagliato? Su un movimento già riconciliato c'è <span class="g-kbd">Annulla riconciliazione</span> per ripartire.</div>
             <div class="g-callout g-info"><strong>Controllo finale:</strong> quando la lista «Riconciliato = No» è vuota, il mese è chiuso. Puoi verificare il quadro dalle voci <strong>Riconc. fatture attive/passive</strong> (i report) ed esportarle.</div>
+        </div>
+
+        {{-- STEP 9 invio al commercialista --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num">9</span><p class="g-h">Invia la documentazione al commercialista (Anna Messa)</p></div>
+            <p>Quando <strong>hai riconciliato tutto il mese</strong> (la lista «Riconciliato = No» è vuota), l'ultimo passo è mandare i documenti ad <strong>Anna Messa</strong>. Sono <strong>due invii separati</strong>: i report del gestionale e, a parte, le fatture di Fiscozen.</p>
+
+            <div class="g-block green">
+                <p class="g-bt">📎 Mail 1 — i report del mese dal gestionale</p>
+                <p style="margin-bottom:.4rem">Da ciascuna di queste pagine seleziona <strong>lo stesso mese che hai riconciliato</strong> e premi <span class="g-kbd">Esporta</span>:</p>
+                <ol class="g-ol">
+                    <li><strong>Riconc. fatture attive</strong> → esporta.</li>
+                    <li><strong>Riconc. fatture passive</strong> → esporta.</li>
+                    <li><strong>Registro acquisti</strong> → esporta.</li>
+                    <li><strong>Prima nota</strong> → esporta.</li>
+                </ol>
+                <p style="margin-top:.5rem">Allega <strong>tutti e quattro</strong> i file a una mail e inviala ad <strong>Anna Messa</strong>.</p>
+            </div>
+
+            <div class="g-block purple">
+                <p class="g-bt">🧾 Mail 2 — le fatture di Fiscozen (mail SEPARATA)</p>
+                <ol class="g-ol">
+                    <li>Vai su <strong>Fiscozen</strong> e scarica i <strong>PDF delle fatture emesse</strong> nel mese.</li>
+                    <li>Scarica anche i PDF delle <strong>eventuali note di credito</strong> emesse.</li>
+                    <li>Invia questi PDF ad <strong>Anna Messa</strong> in una <strong>mail separata</strong> dalla prima.</li>
+                </ol>
+                <div class="g-callout g-note" style="margin-top:.6rem">
+                    <strong>Perché serve:</strong> Anna <strong>non ha accesso a Fiscozen</strong>. Quindi <strong>tutto ciò che facciamo su Fiscozen</strong> (fatture emesse e note di credito) deve arrivarle da noi, altrimenti lei non lo vede.
+                </div>
+            </div>
+
+            <div class="g-callout g-warn"><strong>Usa sempre lo stesso mese</strong> in tutti gli export e per le fatture Fiscozen: il mese che hai appena riconciliato.</div>
         </div>
 
         {{-- Nota di credito --}}
