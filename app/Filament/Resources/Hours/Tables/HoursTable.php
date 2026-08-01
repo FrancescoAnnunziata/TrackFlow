@@ -93,12 +93,19 @@ class HoursTable
                     ->visible(fn (): bool => ! auth()->user()->isClient()),
                 SelectFilter::make('invoice')
                     ->label('Fattura')
+                    // Solo fatture con un numero: le bozze non ancora inviate (numero
+                    // assegnato da Fatture in Cloud) darebbero una label null e farebbero
+                    // fallire il Select, oltre a non avere senso come opzione di filtro.
                     ->relationship(
                         'invoices',
                         'number',
-                        fn (Builder $query): Builder => auth()->user()->isClient()
-                            ? $query->whereIn('client_id', auth()->user()->allClientIds())
-                            : $query
+                        fn (Builder $query): Builder => $query
+                            ->whereNotNull('number')
+                            ->where('number', '!=', '')
+                            ->when(
+                                auth()->user()->isClient(),
+                                fn (Builder $q): Builder => $q->whereIn('client_id', auth()->user()->allClientIds())
+                            )
                     )
                     ->searchable()
                     ->preload(),
