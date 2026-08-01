@@ -177,3 +177,48 @@ it('deduplicates on re-import', function () {
     expect($second['duplicates'])->toBe(1);
     expect($account->transactions()->count())->toBe(1);
 });
+
+it('accepts either Vivid header for the date column, from the same preset', function () {
+    $preset = config('banks.presets.vivid');
+    $options = [
+        'decimal' => $preset['decimal'], 'thousands' => $preset['thousands'],
+        'date_format' => $preset['date_format'], 'amount_mode' => $preset['amount_mode'],
+        'columns' => $preset['columns'],
+    ];
+
+    // Estratto del conto IBAN: "Completed date", date con il punto.
+    $iban = BankAccount::create(['name' => 'Vivid IBAN', 'bank_key' => 'vivid']);
+    $result = app(BankCsvImporter::class)->importRows([
+        ['Completed date', 'Counterparty name', 'Reference', 'Payment amount', 'Payment currency'],
+        ['02.06.2026', 'BAR PASTICCERIA G, AGNADELLO, IT', 'BAR PASTICCERIA G, AGNADELLO, IT', '-21.8', 'EUR'],
+        ['10.06.2026', 'G8LABS S.R.L. UNIPERSONALE', 'Trasferimento fondi', '3000', 'EUR'],
+    ], $iban->id, $options);
+
+    expect($result['imported'])->toBe(2);
+    expect($result['skipped'])->toBe(0);
+    expect($iban->transactions()->min('booked_at'))->toBe('2026-06-02');
+    expect($iban->transactions()->uscite()->sum('amount'))->toBe('-21.80');
+
+    // Export carta: "Transaction date", date col trattino. Stesso preset.
+    $card = BankAccount::create(['name' => 'Vivid carta', 'bank_key' => 'vivid']);
+    $result = app(BankCsvImporter::class)->importRows([
+        ['Transaction date', 'Counterparty name', 'Reference', 'Payment amount', 'Internal operation id'],
+        ['02-06-2026', 'MC DONALD S, VOGHERA, IT', 'MC DONALD S, VOGHERA, IT', '-51.1', 'op-1'],
+    ], $card->id, $options);
+
+    expect($result['imported'])->toBe(1);
+    expect($card->transactions()->first()->booked_at->toDateString())->toBe('2026-06-02');
+    expect($card->transactions()->first()->bank_reference)->toBe('op-1');
+});
+
+it('reports a clear error when no mapped header matches the date column', function () {
+    $account = BankAccount::create(['name' => 'Vivid', 'bank_key' => 'vivid']);
+
+    expect(fn () => app(BankCsvImporter::class)->importRows([
+        ['Data strana', 'Payment amount'],
+        ['02.06.2026', '-10'],
+    ], $account->id, [
+        'date_format' => 'd-m-Y', 'amount_mode' => 'signed',
+        'columns' => ['booked_at' => 'Completed date|Transaction date', 'amount' => 'Payment amount'],
+    ]))->toThrow(RuntimeException::class, 'Colonna Data non trovata');
+});

@@ -27,8 +27,10 @@ return [
             'thousands' => ',',
             'date_format' => 'd-m-Y',
             'amount_mode' => 'signed',
+            // Vivid cambia intestazioni fra i tipi di estratto: si elencano le
+            // alternative separate da "|", vince la prima presente nel file.
             'columns' => [
-                'booked_at' => 'Transaction date',
+                'booked_at' => 'Completed date|Transaction date',
                 'value_date' => '',
                 'amount' => 'Payment amount',
                 'description' => 'Reference',

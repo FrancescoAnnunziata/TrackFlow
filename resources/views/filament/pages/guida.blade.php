@@ -123,13 +123,14 @@
 
         {{-- A colpo d'occhio --}}
         <div class="{{ $card }}">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Il ciclo in 5 mosse</h3>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Il ciclo in 6 mosse</h3>
             <ol class="mt-3 flex flex-col gap-2 text-sm">
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">1</span> Controlla che il cliente sia configurato (menu <strong>Clienti</strong>)</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">2</span> Genera la bozza (menu <strong>Fatture</strong> → <em>Genera fattura</em>)</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">3</span> Controlla righe, rimborsi e note</li>
                 <li class="flex items-center gap-3"><span class="{{ $stepNum }}">4</span> Emetti: <em>Invia a Fatture in Cloud</em> (G8Labs) o a mano su <em>Fiscozen</em> (G. Giotto)</li>
-                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">5</span> All'incasso → <em>Registra incasso</em></li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">5</span> Importa i movimenti delle banche (<strong>Movimenti bancari</strong>)</li>
+                <li class="flex items-center gap-3"><span class="{{ $stepNum }}">6</span> All'incasso → <em>Registra incasso</em></li>
             </ol>
         </div>
 
@@ -268,14 +269,84 @@
             </div>
         </div>
 
-        {{-- STEP 5: incasso --}}
+        {{-- STEP 4c: import movimenti bancari --}}
         <div class="{{ $card }}">
             <div class="flex items-center gap-3">
                 <span class="{{ $stepNum }}">5</span>
+                <h3 class="text-lg font-bold text-gray-950 dark:text-white">Importa i movimenti delle banche</h3>
+            </div>
+            <p class="mt-3 text-sm leading-6">
+                Una volta emesse tutte le fatture, si caricano i movimenti bancari: servono al passo dopo per
+                collegare gli incassi. Si fa <strong>una volta per ogni banca</strong> (scarichi il CSV dal sito
+                della banca e lo importi qui). Le banche da caricare sono <strong>InBank</strong> e
+                <strong>Vivid Business</strong>.
+            </p>
+            <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
+                <li>Menu <strong>Controllo Finanziario → Movimenti bancari</strong>.</li>
+                <li>In alto clicca <span class="{{ $kbd }}">Importa movimenti</span>: si apre il popup <em>«Importa movimenti da CSV/XLSX»</em>.</li>
+                <li>Compila i campi (sotto la spiegazione) e clicca <span class="{{ $kbd }}">Importa</span>.</li>
+            </ol>
+
+            <div class="mt-4 rounded-lg bg-green-50 p-4 text-sm text-green-800 ring-1 ring-green-600/20 dark:bg-green-400/10 dark:text-green-300 dark:ring-green-400/20">
+                <strong>Nel caso normale fai solo 3 cose:</strong> scegli il <strong>Conto</strong>, carica il
+                <strong>file</strong>, premi <strong>Importa</strong>. Appena scegli il conto, TrackFlow
+                <strong>compila da solo</strong> tutti gli altri campi (formato e colonne) con le impostazioni giuste
+                per quella banca. Gli altri campi servono solo se qualcosa non torna.
+            </div>
+
+            <h4 class="mt-6 text-sm font-semibold text-gray-950 dark:text-white">I campi del popup, uno per uno</h4>
+
+            <div class="mt-3 flex flex-col gap-3 text-sm leading-6">
+                <p><strong>Conto</strong> — la banca del file (es. <em>InBank</em> o <em>Vivid Business</em>).
+                    <strong>Sceglilo per primo:</strong> è lui che precompila tutto il resto. Se sbagli conto,
+                    la mappatura è quella di un'altra banca e l'import fallisce.</p>
+                <p><strong>File CSV o XLSX</strong> — il file scaricato dalla banca (va bene CSV, Excel .xlsx o .ods).</p>
+            </div>
+
+            <p class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Riquadro «Formato file»</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Come sono scritti numeri e date nel file. Precompilati dal conto.</p>
+            <ul class="mt-2 flex flex-col gap-2 text-sm leading-6">
+                <li>• <strong>Separatore</strong> — il carattere che divide le colonne: di solito <code class="{{ $kbd }}">;</code> (InBank) o <code class="{{ $kbd }}">,</code> (Vivid).</li>
+                <li>• <strong>Decimale</strong> — separatore dei centesimi: <code class="{{ $kbd }}">,</code> (InBank) o <code class="{{ $kbd }}">.</code> (Vivid).</li>
+                <li>• <strong>Migliaia</strong> — separatore delle migliaia (es. il punto in 1.250,00). Può essere vuoto.</li>
+                <li>• <strong>Formato data</strong> — come è scritta la data: <code class="{{ $kbd }}">d/m/Y</code> = giorno/mese/anno (InBank), <code class="{{ $kbd }}">d-m-Y</code> = con i trattini (Vivid).</li>
+                <li>• <strong>Modalità importo</strong> — come sono indicate entrate e uscite:
+                    <ul class="mt-1 flex flex-col gap-1 pl-5">
+                        <li>— <strong>Colonna unica con segno</strong>: un solo importo, negativo per le uscite (è il caso di <em>Vivid</em>).</li>
+                        <li>— <strong>Colonne Dare/Avere</strong>: due colonne separate, <em>Avere</em> = entrate, <em>Dare</em> = uscite (è il caso di <em>InBank</em>).</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <p class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Riquadro «Mappatura colonne»</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Il <strong>nome dell'intestazione</strong> di colonna nel file (non la lettera): deve essere scritto <em>identico</em> a com'è nel file. Vuoto = campo ignorato.</p>
+            <ul class="mt-2 flex flex-col gap-2 text-sm leading-6">
+                <li>• <strong>Data contabile</strong> — la data del movimento (<strong>obbligatoria</strong>).</li>
+                <li>• <strong>Data valuta</strong> — la data valuta, se presente (opzionale).</li>
+                <li>• <strong>Importo (modalità con segno)</strong> — la colonna dell'importo, <strong>solo</strong> se usi «Colonna unica con segno».</li>
+                <li>• <strong>Dare (uscite)</strong> e <strong>Avere (entrate)</strong> — le due colonne, <strong>solo</strong> se usi «Colonne Dare/Avere».</li>
+                <li>• <strong>Descrizione</strong> — la causale del movimento.</li>
+                <li>• <strong>Controparte</strong> — chi ha pagato/ricevuto (opzionale).</li>
+                <li>• <strong>Riferimento (ID movimento)</strong> — un codice identificativo, se c'è (opzionale).</li>
+            </ul>
+
+            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 ring-1 ring-blue-600/20 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/20">
+                <strong>Puoi ricaricare lo stesso file senza paura:</strong> i movimenti già presenti non vengono
+                duplicati. A fine import una notifica dice quanti ne ha <em>importati</em>, quanti <em>duplicati
+                saltati</em> e quanti <em>scartati</em> (righe non valide o di saldo). Se «importati» è 0 e ci sono
+                molti «scartati», quasi sempre hai scelto il conto sbagliato o il file non è quello giusto.
+            </div>
+        </div>
+
+        {{-- STEP 6: incasso --}}
+        <div class="{{ $card }}">
+            <div class="flex items-center gap-3">
+                <span class="{{ $stepNum }}">6</span>
                 <h3 class="text-lg font-bold text-gray-950 dark:text-white">Registra l'incasso</h3>
             </div>
             <p class="mt-3 text-sm leading-6">
-                Quando arriva il bonifico, la fattura va segnata come pagata collegandola al movimento bancario.
+                Con i movimenti ormai importati, quando arriva il bonifico la fattura va segnata come pagata
+                collegandola al movimento bancario.
             </p>
             <ol class="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 marker:font-semibold marker:text-primary-600">
                 <li>Nell'elenco <strong>Fatture</strong> (o dal dettaglio) trova la fattura <em>Inviata</em> e clicca <span class="{{ $kbd }}">Registra incasso</span> (icona banconote).</li>

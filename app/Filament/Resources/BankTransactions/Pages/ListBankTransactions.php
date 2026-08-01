@@ -93,7 +93,7 @@ class ListBankTransactions extends ListRecords
                             ->required(),
                     ]),
                 Section::make('Mappatura colonne')
-                    ->description('Nome dell\'intestazione nel file per ciascun campo (vuoto = ignora).')
+                    ->description('Nome dell\'intestazione nel file per ciascun campo (vuoto = ignora). Più alternative separate da "|": vince la prima presente nel file.')
                     ->columns(2)
                     ->components([
                         TextInput::make('col_booked_at')->label('Data contabile')->default('Data')->required(),

@@ -315,13 +315,18 @@ class BankCsvImporter
             return null;
         }
 
-        try {
-            $date = Carbon::createFromFormat($format, $s);
-            if ($date !== false) {
-                return $date->startOfDay();
+        // Il formato configurato, poi lo stesso con gli altri separatori: Vivid
+        // esporta 02.06.2026 o 02-06-2026 a seconda del tipo di estratto, e non
+        // vogliamo costringere a ritoccare il preset ogni volta.
+        foreach ($this->dateFormatVariants($format) as $candidate) {
+            try {
+                $date = Carbon::createFromFormat($candidate, $s);
+                if ($date !== false) {
+                    return $date->startOfDay();
+                }
+            } catch (Throwable) {
+                // prova la variante successiva
             }
-        } catch (Throwable) {
-            // cade nel parse generico sotto
         }
 
         try {
@@ -329,6 +334,36 @@ class BankCsvImporter
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Il formato dato più le sue varianti con separatore diverso (/, -, .), in
+     * ordine: prima quello configurato, poi gli altri.
+     *
+     * @return array<int, string>
+     */
+    private function dateFormatVariants(string $format): array
+    {
+        $separators = ['/', '-', '.'];
+        $used = null;
+
+        foreach ($separators as $separator) {
+            if (str_contains($format, $separator)) {
+                $used = $separator;
+
+                break;
+            }
+        }
+
+        if ($used === null) {
+            return [$format];
+        }
+
+        return collect([$used, ...$separators])
+            ->unique()
+            ->map(fn (string $separator): string => str_replace($used, $separator, $format))
+            ->values()
+            ->all();
     }
 
     /**
@@ -410,14 +445,14 @@ class BankCsvImporter
      */
     private function stripPreamble(array $rows, string $bookedAtHeader): array
     {
-        $needle = mb_strtolower(trim($bookedAtHeader));
-        if ($needle === '') {
+        $needles = $this->headerAliases($bookedAtHeader);
+        if ($needles === []) {
             return $rows;
         }
 
         foreach ($rows as $i => $row) {
             foreach ($row as $cell) {
-                if (mb_strtolower(trim((string) $cell)) === $needle) {
+                if (in_array(mb_strtolower(trim((string) $cell)), $needles, true)) {
                     return array_values(array_slice($rows, $i));
                 }
             }
@@ -456,18 +491,36 @@ class BankCsvImporter
 
     /**
      * Trova l'indice di colonna la cui intestazione combacia (case-insensitive).
+     * Il nome può elencare più alternative separate da "|": serve alle banche che
+     * cambiano intestazione fra un tipo di export e l'altro (es. Vivid, che usa
+     * "Transaction date" o "Completed date"). Vince la prima che esiste nel file.
      *
      * @param  array<int, string>  $header
      */
     private function findColumn(array $header, string $name): ?int
     {
-        $name = mb_strtolower(trim($name));
-        foreach ($header as $i => $text) {
-            if (mb_strtolower(trim((string) $text)) === $name) {
-                return $i;
+        foreach ($this->headerAliases($name) as $alias) {
+            foreach ($header as $i => $text) {
+                if (mb_strtolower(trim((string) $text)) === $alias) {
+                    return $i;
+                }
             }
         }
 
         return null;
+    }
+
+    /**
+     * Nomi di intestazione accettati per un campo, normalizzati.
+     *
+     * @return array<int, string>
+     */
+    private function headerAliases(string $name): array
+    {
+        return collect(explode('|', $name))
+            ->map(fn (string $alias): string => mb_strtolower(trim($alias)))
+            ->filter(fn (string $alias): bool => $alias !== '')
+            ->values()
+            ->all();
     }
 }
