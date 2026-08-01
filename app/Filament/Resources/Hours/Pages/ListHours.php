@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Hours\Pages;
 
 use App\Filament\Resources\Hours\HourResource;
 use App\Models\Client;
+use App\Models\Hour;
 use App\Models\User;
 use App\Services\Import\HoursExcelImporter;
+use App\Services\Reporting\SpreadsheetExporter;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -18,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class ListHours extends ListRecords
@@ -38,9 +41,53 @@ class ListHours extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->exportAction(),
             $this->importAction(),
             CreateAction::make(),
         ];
+    }
+
+    /**
+     * Esporta in Excel le ore attualmente filtrate (cliente, operatore, periodo…),
+     * in ordine di data. Utile per girare al cliente il riepilogo ore: filtra per
+     * cliente e periodo, poi esporta.
+     */
+    private function exportAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Esporta Excel')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('gray')
+            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->action(function (): ?BinaryFileResponse {
+                $hours = $this->getFilteredTableQuery()
+                    ?->with(['clients', 'user'])
+                    ->orderBy('date')
+                    ->get() ?? collect();
+
+                if ($hours->isEmpty()) {
+                    Notification::make()
+                        ->warning()
+                        ->title('Nessuna ora da esportare')
+                        ->body('Con i filtri attuali non ci sono ore. Modifica i filtri e riprova.')
+                        ->send();
+
+                    return null;
+                }
+
+                $headings = ['Data', 'Cliente', 'Operatore', 'Ore', 'Fatturabile', 'Attività / Note'];
+
+                $rows = $hours->map(fn (Hour $h): array => [
+                    optional($h->date)->format('d/m/Y'),
+                    $h->clients->pluck('name')->implode(', '),
+                    $h->user?->name ?? $h->user?->email ?? '—',
+                    (float) $h->hours,
+                    $h->billable ? 'Sì' : 'No',
+                    (string) ($h->notes ?? ''),
+                ]);
+
+                return SpreadsheetExporter::download('ore-'.now()->format('Y-m-d'), $headings, $rows);
+            });
     }
 
     /**
