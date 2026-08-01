@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\BankTransactions\Pages\EditBankTransaction;
+use App\Filament\Resources\BankTransactions\Pages\ListBankTransactions;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Costo;
@@ -56,4 +57,30 @@ it('creates a cost and reconciles from the edit page (with-PDF action, no file)'
     expect($costo)->not->toBeNull();
     expect($costo->category)->toBe('Trasferte');
     expect($tx->fresh()->reconciled)->toBeTrue();
+});
+
+it('reconciles a movement to a suggested passive invoice from the table riconcilia action', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $supplier = Supplier::create(['name' => 'Fornitore Sugg', 'vat_number' => 'IT12345678901']);
+    $passive = PassiveInvoice::create([
+        'supplier_id' => $supplier->id, 'number' => 'S-1', 'type' => 'expense',
+        'document_date' => '2026-03-01', 'amount_net' => 100, 'amount_vat' => 0, 'amount_gross' => 100,
+        'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
+    ]);
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-03-02', 'amount' => -100.00,
+        'direction' => 'out', 'description' => 'Pagamento Fornitore Sugg', 'dedup_hash' => 'ts1',
+    ]);
+
+    // Il campo del suggerimento (ora un Radio) usa la stessa chiave morphClass:id.
+    Livewire::test(ListBankTransactions::class)
+        ->callAction(TestAction::make('riconcilia')->table($tx), [
+            'suggestion' => $passive->getMorphClass().':'.$passive->id,
+            'amount' => 100,
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($tx->fresh()->reconciled)->toBeTrue();
+    expect($passive->fresh()->payment_status)->toBe(PassiveInvoice::STATUS_PAID);
 });

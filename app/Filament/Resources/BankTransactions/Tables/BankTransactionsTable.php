@@ -17,6 +17,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -217,18 +218,35 @@ class BankTransactionsTable
             ->icon(Heroicon::OutlinedLink)
             // Non su un giroconto (non è un costo/ricavo, solo spostamento).
             ->visible(fn (BankTransaction $record): bool => ! $record->isTransfer() && $record->unreconciledAmount() > 0.01)
+            ->modalHeading('Riconcilia movimento')
+            ->modalDescription(fn (BankTransaction $record): string => sprintf(
+                '%s — € %s — %s — da riconciliare € %s',
+                trim($record->description ?: ($record->counterparty ?: 'Movimento')),
+                number_format(abs((float) $record->amount), 2, ',', '.'),
+                optional($record->booked_at)->format('d/m/Y') ?? '',
+                number_format($record->unreconciledAmount(), 2, ',', '.'),
+            ))
+            ->modalSubmitActionLabel('Riconcilia')
             ->fillForm(fn (BankTransaction $record): array => ['amount' => $record->unreconciledAmount()])
             ->schema([
-                Select::make('suggestion')
-                    ->label('Suggerimenti')
-                    ->helperText('Candidati con importo compatibile, ordinati per confidenza.')
+                Radio::make('suggestion')
+                    ->label(fn (BankTransaction $record): string => $record->amount < 0
+                        ? 'Fatture passive / costi compatibili'
+                        : 'Fatture attive compatibili')
+                    ->helperText('Documenti con importo compatibile, ordinati per affidabilità. Se non c\'è quello giusto, usa la scelta manuale qui sotto.')
                     ->options(fn (BankTransaction $record): array => app(MatchSuggestionService::class)
                         ->suggestions($record)
                         ->mapWithKeys(fn (array $s): array => [
-                            $s['model']->getMorphClass().':'.$s['model']->getKey() => sprintf('%s — €%s (%d%%)', $s['label'], number_format($s['amount'], 2, ',', '.'), $s['confidence']),
+                            $s['model']->getMorphClass().':'.$s['model']->getKey() => $s['label'],
                         ])
                         ->all())
-                    ->searchable(),
+                    ->descriptions(fn (BankTransaction $record): array => app(MatchSuggestionService::class)
+                        ->suggestions($record)
+                        ->mapWithKeys(fn (array $s): array => [
+                            $s['model']->getMorphClass().':'.$s['model']->getKey() => sprintf('€ %s · affidabilità %d%%', number_format($s['amount'], 2, ',', '.'), $s['confidence']),
+                        ])
+                        ->all())
+                    ->live(),
                 Section::make('Oppure scegli manualmente')
                     ->columns(2)
                     ->components([
