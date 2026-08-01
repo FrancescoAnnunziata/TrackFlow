@@ -4,6 +4,7 @@ namespace App\Assistant;
 
 use Anthropic\Client;
 use App\Assistant\Contracts\ChatClient;
+use App\Services\Ai\AiUsageRecorder;
 use RuntimeException;
 
 /**
@@ -36,6 +37,8 @@ class ClaudeChatClient implements ChatClient
             system: $system,
             tools: $tools,
         );
+
+        app(AiUsageRecorder::class)->record('assistant', $model, $message->usage);
 
         $assistantContent = [];
         $toolUses = [];

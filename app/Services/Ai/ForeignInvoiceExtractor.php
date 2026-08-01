@@ -52,10 +52,11 @@ class ForeignInvoiceExtractor
         }
 
         $client = new Client(apiKey: (string) config('services.anthropic.api_key'));
+        $model = (string) config('services.anthropic.model', 'claude-opus-4-8');
 
         $message = $client->messages->create(
             maxTokens: 1024,
-            model: (string) config('services.anthropic.model', 'claude-opus-4-8'),
+            model: $model,
             system: $this->systemPrompt(),
             messages: [[
                 'role' => 'user',
@@ -72,6 +73,8 @@ class ForeignInvoiceExtractor
                 ],
             ]],
         );
+
+        app(AiUsageRecorder::class)->record('foreign_invoice', $model, $message->usage);
 
         return $this->parse($this->firstText($message));
     }

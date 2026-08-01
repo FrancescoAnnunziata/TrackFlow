@@ -17,6 +17,8 @@
         .aia-thread.active { background:var(--soft); border-color:var(--border); color:var(--heading); font-weight:600; }
 
         .aia-main { display:flex; flex-direction:column; border:1px solid var(--border); border-radius:14px; background:var(--card); overflow:hidden; }
+        .aia-head { display:flex; justify-content:flex-end; padding:.5rem .9rem; border-bottom:1px solid var(--border); }
+        .aia-cost { font-size:.72rem; color:var(--muted); background:var(--soft); border:1px solid var(--border); border-radius:999px; padding:.15rem .55rem; }
         .aia-msgs { flex:1; overflow-y:auto; padding:1.1rem; display:flex; flex-direction:column; gap:1rem; }
         .aia-empty { margin:auto; text-align:center; color:var(--muted); max-width:26rem; font-size:.9rem; line-height:1.6; }
 
@@ -71,6 +73,11 @@
 
         {{-- Main --}}
         <div class="aia-main">
+            <div class="aia-head">
+                <span class="aia-cost" title="Costo di tutte le funzioni AI (assistente + estrazioni) nel mese corrente">
+                    Costo AI (mese): $ {{ number_format($this->monthlyCost, 4, ',', '.') }}
+                </span>
+            </div>
             <div class="aia-msgs">
                 @if ($this->messages->isEmpty())
                     <div class="aia-empty">

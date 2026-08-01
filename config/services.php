@@ -62,10 +62,23 @@ return [
         'ei_payment_method' => env('FIC_EI_PAYMENT_METHOD', 'MP05'),
     ],
 
-    // Anthropic (Claude): estrazione dati dalle fatture estere in PDF.
+    // Anthropic (Claude): estrazione dati dalle fatture estere e assistente AI.
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-4-8'),
+
+        // Prezzi in USD per 1.000.000 di token, per calcolare il costo di ogni
+        // chiamata AI. I moltiplicatori sono i fattori Anthropic sui token in
+        // cache (~0.1x lettura, ~1.25x scrittura). Da tenere allineati ai listini.
+        'pricing' => [
+            'claude-opus-4-8' => ['input' => 5.00, 'output' => 25.00],
+            'claude-opus-5' => ['input' => 5.00, 'output' => 25.00],
+            'claude-sonnet-5' => ['input' => 3.00, 'output' => 15.00],
+            'claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00],
+            'claude-haiku-4-5' => ['input' => 1.00, 'output' => 5.00],
+        ],
+        'cache_read_multiplier' => 0.1,
+        'cache_write_multiplier' => 1.25,
     ],
 
 ];

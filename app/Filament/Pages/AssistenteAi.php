@@ -6,6 +6,7 @@ use App\Assistant\AssistantRunner;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\BankTransaction;
+use App\Services\Ai\AiUsageRecorder;
 use App\Services\Reconciliation\MovementReconciler;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -53,6 +54,12 @@ class AssistenteAi extends Page
     public function getThreadsProperty(): Collection
     {
         return AssistantThread::where('user_id', auth()->id())->latest('id')->limit(30)->get();
+    }
+
+    /** Costo AI totale del mese (USD), tutte le funzioni AI incluse. */
+    public function getMonthlyCostProperty(): float
+    {
+        return app(AiUsageRecorder::class)->monthlyCost();
     }
 
     /** @return Collection<int, AssistantMessage> */
