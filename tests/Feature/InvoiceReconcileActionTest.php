@@ -45,6 +45,30 @@ it('marks an active invoice as collected from the Registra incasso table action'
     expect($tx->fresh()->unreconciledAmount())->toBe(0.0);
 });
 
+it('hides Registra incasso for Fiscozen client invoices but shows it for FIC ones', function () {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+
+    $make = function (string $provider, string $number) use ($user): Invoice {
+        $client = Client::create(['name' => 'Cli '.$provider, 'invoicing_provider' => $provider]);
+        $invoice = Invoice::create([
+            'user_id' => $user->id, 'client_id' => $client->id, 'number' => $number,
+            'issue_date' => '2026-06-10', 'period_from' => '2026-06-01', 'period_to' => '2026-06-30',
+            'vat_rate' => 0, 'status' => 'sent',
+        ]);
+        InvoiceItem::create(['invoice_id' => $invoice->id, 'name' => 'S', 'qty' => 1, 'net_price' => 500, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
+
+        return $invoice;
+    };
+
+    $fic = $make(Client::PROVIDER_FIC, '10/2026');
+    $fiscozen = $make(Client::PROVIDER_FISCOZEN, '11/2026');
+
+    Livewire::test(ListInvoices::class)
+        ->assertActionVisible(TestAction::make('registra_incasso')->table($fic))
+        ->assertActionHidden(TestAction::make('registra_incasso')->table($fiscozen));
+});
+
 it('suggests only incoming movements within the date/amount window', function () {
     $invoice = sentInvoice(1000);
     $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);

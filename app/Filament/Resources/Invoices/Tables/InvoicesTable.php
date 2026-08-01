@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Filament\Resources\Hours\HourResource;
 use App\Models\BankTransaction;
+use App\Models\Client;
 use App\Models\Invoice;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
@@ -19,6 +20,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
@@ -61,7 +63,7 @@ class InvoicesTable
                     ->description(fn (Invoice $record): ?string => $record->isCreditNote() && $record->relatedInvoice
                         ? 'storna '.$record->relatedInvoice->number
                         : null)
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('total')
                     ->label('Totale')
                     ->state(fn (Invoice $record): float => $record->total())
@@ -101,7 +103,7 @@ class InvoicesTable
                     ->color(fn (Invoice $record): string => $record->isSentToFic() ? 'success' : 'gray'),
                 TextColumn::make('user.name')
                     ->label('Creata da')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -153,11 +155,11 @@ class InvoicesTable
                     }),
             ])
             ->recordActions([
-                self::linkCreditNoteAction(),
                 self::reconcileAction(),
+                self::linkCreditNoteAction(),
                 ViewAction::make(),
                 EditAction::make(),
-            ])
+            ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
@@ -177,7 +179,13 @@ class InvoicesTable
             ->label('Registra incasso')
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
-            ->visible(fn (Invoice $record): bool => $record->status === 'sent' && ! $record->isCreditNote() && $record->amountToCollect() > 0.01)
+            // Niente riconciliazione incassi per i clienti Fiscozen (partita IVA
+            // forfettaria): quelle fatture non passano dai nostri conti, non ci sono
+            // movimenti bancari da agganciare.
+            ->visible(fn (Invoice $record): bool => $record->status === 'sent'
+                && ! $record->isCreditNote()
+                && $record->amountToCollect() > 0.01
+                && $record->client?->invoicing_provider !== Client::PROVIDER_FISCOZEN)
             ->modalHeading('Registra incasso')
             ->modalDescription(fn (Invoice $record): string => sprintf(
                 'Fattura %s — %s — da incassare € %s — %s',
