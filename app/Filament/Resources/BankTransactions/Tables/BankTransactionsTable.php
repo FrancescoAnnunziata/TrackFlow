@@ -12,6 +12,7 @@ use App\Services\Reconciliation\MatchSuggestionService;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -147,6 +148,9 @@ class BankTransactionsTable
                 self::unreconcileAction(),
                 self::unmarkTransferAction(),
                 EditAction::make(),
+                // Elimina il singolo movimento (con conferma): utile per doppioni o
+                // righe di saldo entrate per sbaglio dall'import.
+                DeleteAction::make()->requiresConfirmation(),
             ], position: RecordActionsPosition::BeforeColumns);
     }
 

@@ -222,3 +222,24 @@ it('reports a clear error when no mapped header matches the date column', functi
         'columns' => ['booked_at' => 'Completed date|Transaction date', 'amount' => 'Payment amount'],
     ]))->toThrow(RuntimeException::class, 'Colonna Data non trovata');
 });
+
+it('skips InBank opening/closing balance rows', function () {
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+
+    $rows = [
+        ['Data contabile', 'Dare', 'Avere', 'Descrizione'],
+        ['01/06/2026', '', '801,39', 'Saldo iniziale'],
+        ['06/07/2026', '7000,00', '', 'BONIFICO SCT INSTANT INBANK A Fav G8LABS'],
+        ['31/07/2026', '', '1234,00', 'Saldo finale'],
+    ];
+    $options = [
+        'decimal' => ',', 'thousands' => '.', 'date_format' => 'd/m/Y', 'amount_mode' => 'dare_avere',
+        'columns' => ['booked_at' => 'Data contabile', 'dare' => 'Dare', 'avere' => 'Avere', 'description' => 'Descrizione'],
+    ];
+
+    $result = app(BankCsvImporter::class)->importRows($rows, $account->id, $options);
+
+    // Solo il bonifico entra; le due righe di saldo sono scartate.
+    expect($result['imported'])->toBe(1);
+    expect($account->transactions()->where('description', 'like', 'Saldo%')->count())->toBe(0);
+});

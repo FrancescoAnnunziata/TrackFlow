@@ -37,6 +37,8 @@ class BankCsvImporter
         'saldo contabile',
         'saldo liquido',
         'saldo sbf',
+        'saldo iniziale',
+        'saldo finale',
         'disponibilità al',
         'disponibilita al',
     ];
