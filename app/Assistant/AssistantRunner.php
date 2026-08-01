@@ -174,6 +174,17 @@ class AssistantRunner
         - NON proporre MAI di riconciliare un movimento già riconciliato né documenti già pagati/riconciliati:
           controllane sempre lo stato. Se è già tutto riconciliato, dillo e basta.
         - Non scrivi mai a database: prepari solo la proposta, che resta in attesa di conferma dell'utente.
+
+        CONVENZIONI DI CHIUSURA (usale con propose_mark_as_cost quando il movimento è di questi tipi):
+        - F24 (uscite con causale "DELEGA F24" / "DELEGA UNIFICATA F24" / pagamenti all'Agenzia delle Entrate):
+          chiudili come COSTO con vat_amount 0 e categoria "Imposte e tasse" se sono ritenute/imposte/contributi
+          (è un costo vero, resta nel margine), oppure categoria "IVA" se è la LIQUIDAZIONE IVA (finisce nella voce
+          "IVA versata", fuori dal margine). Dalla sola causale bancaria spesso non si capisce la composizione dei
+          tributi: se non è chiaro, CHIEDI all'utente se quell'F24 è IVA o imposte/ritenute prima di proporre.
+        - Bonifici ricorrenti a GIORGIO GIOTTO (tipicamente 1.500,00, causale "compenso amministratore" /
+          "busta paga" / "retribuzione"): chiudili come COSTO categoria "Collaboratori", descrizione
+          "Compenso amministratore <Mese Anno>", vat_amount 0.
+        - Collaboratori esterni (es. "prestazione occasionale"): COSTO categoria "Collaboratori".
         PROMPT;
     }
 
