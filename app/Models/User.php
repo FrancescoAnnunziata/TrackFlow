@@ -3,18 +3,20 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -38,6 +40,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'must_change_password',
         'hours_reminder_opt_in',
+        'vehicle_plate',
+        'vehicle_model',
+        'km_rate',
     ];
 
     /**
@@ -62,16 +67,42 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'hours_reminder_opt_in' => 'boolean',
+            'km_rate' => 'decimal:4',
         ];
     }
 
-    public function hours(): HasMany {
+    public function hours(): HasMany
+    {
         return $this->hasMany(Hour::class);
     }
 
-
-    public function expenses(): HasMany {
+    public function expenses(): HasMany
+    {
         return $this->hasMany(Expense::class);
+    }
+
+    /**
+     * Tabella "Mapping" delle trasferte dell'utente (chiave -> tragitto/km).
+     */
+    public function travelRates(): HasMany
+    {
+        return $this->hasMany(TravelRate::class);
+    }
+
+    /**
+     * Credenziale OAuth di Google Calendar dell'utente (se collegato).
+     */
+    public function googleCredential(): HasOne
+    {
+        return $this->hasOne(GoogleCredential::class);
+    }
+
+    /**
+     * True se l'utente ha collegato il proprio Google Calendar.
+     */
+    public function hasGoogleCalendar(): bool
+    {
+        return $this->googleCredential()->exists();
     }
 
     /**
@@ -79,14 +110,16 @@ class User extends Authenticatable implements FilamentUser
      * record — vedi BelongsToClient). L'insieme completo delle associazioni e'
      * dato da clients()/allClientIds().
      */
-    public function client(): BelongsTo {
+    public function client(): BelongsTo
+    {
         return $this->belongsTo(Client::class);
     }
 
     /**
      * Tutti i clienti a cui l'utente e' associato (relazione molti-a-molti).
      */
-    public function clients(): BelongsToMany {
+    public function clients(): BelongsToMany
+    {
         return $this->belongsToMany(Client::class, 'client_user')->withTimestamps();
     }
 
@@ -97,7 +130,8 @@ class User extends Authenticatable implements FilamentUser
      *
      * @return array<int, int>
      */
-    public function allClientIds(): array {
+    public function allClientIds(): array
+    {
         return $this->cachedClientIds ??= $this->clients()
             ->pluck('clients.id')
             ->when($this->client_id, fn ($ids) => $ids->push($this->client_id))
@@ -110,23 +144,28 @@ class User extends Authenticatable implements FilamentUser
     /**
      * True se l'utente e' associato al cliente indicato.
      */
-    public function belongsToClientId(int|string|null $clientId): bool {
+    public function belongsToClientId(int|string|null $clientId): bool
+    {
         return $clientId !== null && in_array((int) $clientId, $this->allClientIds(), true);
     }
 
-    public function assignedDevices(): HasMany {
+    public function assignedDevices(): HasMany
+    {
         return $this->hasMany(Device::class, 'assigned_user_id');
     }
 
-    public function openedTickets(): HasMany {
+    public function openedTickets(): HasMany
+    {
         return $this->hasMany(SupportTicket::class, 'opened_by_user_id');
     }
 
-    public function isAdmin(): bool {
+    public function isAdmin(): bool
+    {
         return $this->role === 'admin';
     }
 
-    public function isClient(): bool {
+    public function isClient(): bool
+    {
         return $this->role === 'client';
     }
 
@@ -137,6 +176,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function getFullNameAttribute(): string
     {
-        return trim($this->name . ' ' . $this->surname);
+        return trim($this->name.' '.$this->surname);
     }
 }

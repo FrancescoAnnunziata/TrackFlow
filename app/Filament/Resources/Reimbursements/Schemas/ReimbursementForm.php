@@ -11,6 +11,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ReimbursementForm
@@ -36,6 +37,7 @@ class ReimbursementForm
                     ->label('Tipologia')
                     ->options(ReimbursementType::class)
                     ->default(ReimbursementType::Travel)
+                    ->live()
                     ->disabled($fromExpense)
                     ->required(),
                 DatePicker::make('date')
@@ -64,6 +66,31 @@ class ReimbursementForm
                     ->searchable()
                     ->preload()
                     ->disabled($fromExpense),
+                // Dettaglio tragitto: rilevante solo per le trasferte. Confluisce
+                // nella nota spese chilometrica (colonne DA/A/OGGETTO/KM).
+                TextInput::make('travel_type')
+                    ->label('Tipo trasferta')
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => $get('type') === ReimbursementType::Travel->value),
+                TextInput::make('km')
+                    ->label('KM')
+                    ->numeric()
+                    ->minValue(0)
+                    ->step(0.01)
+                    ->visible(fn (Get $get): bool => $get('type') === ReimbursementType::Travel->value),
+                TextInput::make('from_location')
+                    ->label('Da')
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => $get('type') === ReimbursementType::Travel->value),
+                TextInput::make('to_location')
+                    ->label('A')
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => $get('type') === ReimbursementType::Travel->value),
+                TextInput::make('purpose')
+                    ->label('Oggetto')
+                    ->maxLength(255)
+                    ->columnSpanFull()
+                    ->visible(fn (Get $get): bool => $get('type') === ReimbursementType::Travel->value),
                 FileUpload::make('attachments')
                     ->label('Allegati (ricevute/scontrini)')
                     ->helperText('Foto o PDF di giustificativi.')

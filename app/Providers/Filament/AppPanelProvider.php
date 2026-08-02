@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\ChangePassword;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\NotificationPreferences;
+use App\Filament\Pages\Auth\TravelSettings;
 use App\Http\Middleware\MustChangePassword;
 use App\Support\Impersonation;
 use Filament\Actions\Action;
@@ -54,6 +55,11 @@ class AppPanelProvider extends PanelProvider
                     ->icon('heroicon-o-bell')
                     ->visible(fn (): bool => ! auth()->user()?->isClient())
                     ->url(fn (): string => NotificationPreferences::getUrl()),
+                Action::make('travelSettings')
+                    ->label('Impostazioni trasferte')
+                    ->icon('heroicon-o-truck')
+                    ->visible(fn (): bool => ! auth()->user()?->isClient())
+                    ->url(fn (): string => TravelSettings::getUrl()),
             ])
             ->colors([
                 'primary' => Color::Amber,

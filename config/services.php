@@ -59,4 +59,17 @@ return [
         'e_invoice' => (bool) env('FIC_E_INVOICE', true),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // Deve combaciare ESATTAMENTE con il redirect registrato nella console
+        // Google Cloud (OAuth client). Es. https://trackflow.test/google/callback
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        // Sola lettura del calendario (Luoghi di lavoro) + email per etichettare
+        // l'account collegato.
+        'scopes' => env('GOOGLE_SCOPES', 'openid email https://www.googleapis.com/auth/calendar.readonly'),
+        // Limita il consenso al dominio Workspace (opzionale ma consigliato).
+        'hosted_domain' => env('GOOGLE_HOSTED_DOMAIN', 'g8labs.it'),
+    ],
+
 ];

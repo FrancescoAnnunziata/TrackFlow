@@ -1,14 +1,18 @@
 <?php
 
+use App\Filament\Pages\Auth\TravelSettings;
 use App\Filament\Pages\FattureInCloud;
 use App\Filament\Resources\Quotes\QuoteResource;
 use App\Http\Controllers\AssetLabelController;
 use App\Http\Controllers\AssetLookupController;
 use App\Http\Controllers\DeviceExportController;
+use App\Http\Controllers\ReimbursementExportController;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\Fic\FicClient;
 use App\Services\Fic\FicException;
+use App\Services\Google\GoogleCalendarClient;
+use App\Services\Google\GoogleException;
 use App\Support\Impersonation;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Http\Request;
@@ -56,6 +60,7 @@ Route::get('/assets/lookup/{qrToken}', AssetLookupController::class)->name('asse
 // Etichette stampabili (tipo Dymo). Richiedono autenticazione.
 Route::middleware('auth')->group(function () {
     Route::get('/assets/export', [DeviceExportController::class, 'export'])->name('assets.export');
+    Route::get('/rimborsi/export', [ReimbursementExportController::class, 'export'])->name('reimbursements.export');
     Route::get('/assets/labels', [AssetLabelController::class, 'bulk'])->name('assets.labels');
     Route::get('/assets/{device}/label', [AssetLabelController::class, 'show'])->name('assets.label');
 });
@@ -108,4 +113,54 @@ Route::middleware('auth')->group(function () {
 
         return redirect(FattureInCloud::getUrl());
     })->name('fic.callback');
+});
+
+// Google Calendar — OAuth2 Authorization Code flow, PER-UTENTE.
+// /google/connect: avvia il consenso; /google/callback: scambia il code.
+// Ogni utente interno (non cliente) collega il proprio account.
+Route::middleware('auth')->group(function () {
+    Route::get('/google/connect', function (Request $request) {
+        abort_if($request->user()->isClient(), 403);
+
+        $state = Str::random(40);
+        session()->put('google_oauth_state', $state);
+
+        return redirect()->away(GoogleCalendarClient::fromConfig()->authorizeUrl($state));
+    })->name('google.connect');
+
+    Route::get('/google/callback', function (Request $request) {
+        abort_if($request->user()->isClient(), 403);
+
+        $expectedState = session()->pull('google_oauth_state');
+
+        $fail = function (string $message) {
+            FilamentNotification::make()->danger()->title('Connessione fallita')->body($message)->send();
+
+            return redirect(TravelSettings::getUrl());
+        };
+
+        if ($request->filled('error')) {
+            return $fail('Autorizzazione negata su Google.');
+        }
+
+        if (! $request->filled('code') || ! $request->filled('state') || $request->query('state') !== $expectedState) {
+            return $fail('Richiesta OAuth non valida o scaduta. Riprova la connessione.');
+        }
+
+        try {
+            $credential = GoogleCalendarClient::fromConfig()->exchangeCode($request->query('code'), $request->user());
+        } catch (GoogleException $e) {
+            return $fail($e->getMessage());
+        }
+
+        FilamentNotification::make()
+            ->success()
+            ->title('Google Calendar collegato')
+            ->body($credential->google_email
+                ? 'Account collegato: '.$credential->google_email.'.'
+                : 'Connessione completata.')
+            ->send();
+
+        return redirect(TravelSettings::getUrl());
+    })->name('google.callback');
 });

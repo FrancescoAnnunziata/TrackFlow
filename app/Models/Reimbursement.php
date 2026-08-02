@@ -23,6 +23,11 @@ class Reimbursement extends Model
         'amount',
         'notes',
         'attachments',
+        'travel_type',
+        'from_location',
+        'to_location',
+        'purpose',
+        'km',
     ];
 
     protected $casts = [
@@ -31,6 +36,7 @@ class Reimbursement extends Model
         'date' => 'date',
         'amount' => 'decimal:2',
         'attachments' => 'array',
+        'km' => 'decimal:2',
     ];
 
     public function user(): BelongsTo
