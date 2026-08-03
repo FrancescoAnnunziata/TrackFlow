@@ -6,7 +6,6 @@ use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Quotes\QuoteResource;
 use App\Models\Invoice;
 use App\Models\Quote;
-use App\Notifications\QuoteDecidedNotification;
 use App\Notifications\QuoteSubmittedNotification;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -23,10 +22,11 @@ class ViewQuote extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->signAction(),
+            $this->openDocumentAction(),
+            $this->downloadPdfAction(),
             $this->sendAction(),
             $this->resendAction(),
-            $this->acceptAction(),
-            $this->rejectAction(),
             $this->generateInvoiceAction(),
             EditAction::make()
                 ->visible(fn (Quote $record): bool => auth()->user()->isAdmin()),
@@ -100,58 +100,39 @@ class ViewQuote extends ViewRecord
     }
 
     /**
-     * Cliente: accetta il preventivo.
+     * Cliente: l'accettazione avviene sul documento, firmandolo a mano — non
+     * più con un bottone da qui.
      */
-    private function acceptAction(): Action
+    private function signAction(): Action
     {
-        return Action::make('accept')
-            ->label('Accetta')
-            ->icon(Heroicon::OutlinedCheckCircle)
+        return Action::make('sign')
+            ->label('Leggi e firma')
+            ->icon(Heroicon::OutlinedPencilSquare)
             ->color('success')
             ->visible(fn (Quote $record): bool => auth()->user()->isClient() && $record->status === Quote::STATUS_SENT)
-            ->requiresConfirmation()
-            ->modalDescription('Confermi di accettare questo preventivo?')
-            ->action(fn (Quote $record) => $this->decide($record, Quote::STATUS_ACCEPTED));
+            ->url(fn (Quote $record): string => $record->documentUrl());
     }
 
     /**
-     * Cliente: rifiuta il preventivo.
+     * Apre il documento come lo vede il cliente.
      */
-    private function rejectAction(): Action
+    private function openDocumentAction(): Action
     {
-        return Action::make('reject')
-            ->label('Rifiuta')
-            ->icon(Heroicon::OutlinedXCircle)
-            ->color('danger')
-            ->visible(fn (Quote $record): bool => auth()->user()->isClient() && $record->status === Quote::STATUS_SENT)
-            ->requiresConfirmation()
-            ->modalDescription('Confermi di rifiutare questo preventivo?')
-            ->action(fn (Quote $record) => $this->decide($record, Quote::STATUS_REJECTED));
+        return Action::make('openDocument')
+            ->label('Apri il documento')
+            ->icon(Heroicon::OutlinedDocumentMagnifyingGlass)
+            ->color('gray')
+            ->visible(fn (Quote $record): bool => ! (auth()->user()->isClient() && $record->status === Quote::STATUS_SENT))
+            ->url(fn (Quote $record): string => $record->documentUrl());
     }
 
-    /**
-     * Applica la decisione del cliente e notifica admin + cliente.
-     */
-    private function decide(Quote $record, string $status): void
+    private function downloadPdfAction(): Action
     {
-        $accepted = $status === Quote::STATUS_ACCEPTED;
-
-        $record->update([
-            'status' => $status,
-            'accepted_at' => $accepted ? now() : null,
-            'accepted_by' => $accepted ? auth()->id() : null,
-        ]);
-
-        $decidedBy = auth()->user();
-
-        // All'emittente (admin, link al pannello) e ai referenti (magic link).
-        Notification::send($record->user, new QuoteDecidedNotification($record, $decidedBy));
-        Notification::send($record->client->contacts, new QuoteDecidedNotification($record, $decidedBy));
-
-        FilamentNotification::make()
-            ->color($accepted ? 'success' : 'danger')
-            ->title($accepted ? 'Preventivo accettato' : 'Preventivo rifiutato')
-            ->send();
+        return Action::make('downloadPdf')
+            ->label('Scarica il PDF')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('gray')
+            ->url(fn (Quote $record): string => route('quote.pdf', $record));
     }
 
     /**

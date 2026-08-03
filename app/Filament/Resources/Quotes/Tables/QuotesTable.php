@@ -53,6 +53,10 @@ class QuotesTable
                 TextColumn::make('user.name')
                     ->label('Emesso da')
                     ->toggleable(),
+                TextColumn::make('issuer_key')
+                    ->label('Intestazione')
+                    ->state(fn (Quote $record): string => $record->emittente()->nome())
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('issue_date', 'desc')
             ->filters([
@@ -78,11 +82,11 @@ class QuotesTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['from'] ?? null) {
-                            $indicators[] = Indicator::make('Dal ' . Carbon::parse($data['from'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Dal '.Carbon::parse($data['from'])->toFormattedDateString())
                                 ->removeField('from');
                         }
                         if ($data['until'] ?? null) {
-                            $indicators[] = Indicator::make('Al ' . Carbon::parse($data['until'])->toFormattedDateString())
+                            $indicators[] = Indicator::make('Al '.Carbon::parse($data['until'])->toFormattedDateString())
                                 ->removeField('until');
                         }
 

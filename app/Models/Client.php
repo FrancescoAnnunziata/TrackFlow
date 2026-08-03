@@ -72,6 +72,23 @@ class Client extends Model
     ];
 
     /**
+     * Indirizzo su una riga (via, CAP città (PROV)), saltando i pezzi mancanti.
+     * Usato nell'intestazione dei documenti.
+     */
+    public function fullAddress(): ?string
+    {
+        $citta = trim(implode(' ', array_filter([
+            $this->address_postal_code,
+            $this->address_city,
+            $this->address_province ? "({$this->address_province})" : null,
+        ])));
+
+        $parti = array_filter([$this->address_street, $citta ?: null]);
+
+        return $parti ? implode(' — ', $parti) : null;
+    }
+
+    /**
      * True se il cliente è fatturabile da TrackFlow (provider Fatture in Cloud).
      * Gli altri (es. Fiscozen, no API) si fatturano fuori.
      */

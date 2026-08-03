@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Quotes\Schemas;
 
-use App\Filament\Resources\Quotes\Schemas\QuoteForm;
 use App\Models\Quote;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -20,6 +20,9 @@ class QuoteInfolist
                         TextEntry::make('number')->label('Numero'),
                         TextEntry::make('issue_date')->label('Data')->date(),
                         TextEntry::make('client.name')->label('Cliente'),
+                        TextEntry::make('issuer_key')
+                            ->label('Intestazione')
+                            ->state(fn (Quote $record): string => $record->emittente()->nome()),
                         TextEntry::make('status')
                             ->label('Stato')
                             ->formatStateUsing(fn (string $state): string => QuoteForm::statusOptions()[$state] ?? $state)
@@ -58,13 +61,46 @@ class QuoteInfolist
                     ]),
 
                 Section::make('Invio')
-                    ->columns(2)
+                    ->columns(3)
                     ->visible(fn (Quote $record): bool => $record->sent_at !== null)
                     ->components([
                         TextEntry::make('sent_at')->label('Inviato il')->dateTime()->placeholder('—'),
                         TextEntry::make('reminders_sent')
                             ->label('Solleciti inviati')
-                            ->state(fn (Quote $record): string => $record->reminders_sent . ' / 2'),
+                            ->state(fn (Quote $record): string => $record->reminders_sent.' / 2'),
+                        TextEntry::make('document_viewed_at')
+                            ->label('Documento aperto il')
+                            ->dateTime()
+                            ->placeholder('mai aperto'),
+                    ]),
+
+                Section::make('Firma di accettazione')
+                    ->columns(2)
+                    ->visible(fn (Quote $record): bool => $record->isSigned())
+                    ->components([
+                        TextEntry::make('signer_name')
+                            ->label('Firmato da')
+                            ->formatStateUsing(fn (?string $state, Quote $record): string => trim(
+                                (string) $state.($record->signer_role ? " — {$record->signer_role}" : '')
+                            ))
+                            ->placeholder('—'),
+                        TextEntry::make('accepted_at')->label('Firmato il')->dateTime()->placeholder('—'),
+                        // La firma è un PNG su disco privato: la mostriamo inline
+                        // come data URI, senza esporre il file.
+                        ImageEntry::make('signature_path')
+                            ->label('Firma')
+                            ->state(fn (Quote $record): ?string => $record->signatureDataUri())
+                            ->extraImgAttributes(['style' => 'max-height: 90px; background: #fff;'])
+                            ->columnSpanFull(),
+                        TextEntry::make('signature_ip')
+                            ->label('Tracciatura')
+                            ->state(fn (Quote $record): string => trim(
+                                'IP '.($record->signature_ip ?: 'n/d')
+                                .($record->signature_user_agent ? ' — '.$record->signature_user_agent : '')
+                            ))
+                            ->columnSpanFull()
+                            ->size('xs')
+                            ->color('gray'),
                     ]),
 
                 Section::make('Approvazione')
@@ -76,6 +112,17 @@ class QuoteInfolist
                         TextEntry::make('invoice.number')
                             ->label('Fattura generata')
                             ->placeholder('—'),
+                    ]),
+
+                Section::make('Rifiuto')
+                    ->columns(2)
+                    ->visible(fn (Quote $record): bool => $record->status === Quote::STATUS_REJECTED)
+                    ->components([
+                        TextEntry::make('rejected_at')->label('Rifiutato il')->dateTime()->placeholder('—'),
+                        TextEntry::make('rejection_reason')
+                            ->label('Motivo')
+                            ->placeholder('nessun motivo indicato')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Note')

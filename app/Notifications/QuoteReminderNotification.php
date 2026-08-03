@@ -10,9 +10,7 @@ use Illuminate\Notifications\Notification;
 
 class QuoteReminderNotification extends Notification
 {
-    public function __construct(public Quote $quote, public int $daysWaiting)
-    {
-    }
+    public function __construct(public Quote $quote, public int $daysWaiting) {}
 
     /**
      * @return array<int, string>
@@ -45,7 +43,7 @@ class QuoteReminderNotification extends Notification
         }
 
         return $mail
-            ->line('Totale (IVA inclusa): € ' . number_format($this->quote->total(), 2, ',', '.'))
-            ->action('Approva o rifiuta il preventivo', $this->quote->magicLinkFor($notifiable));
+            ->line('Totale (IVA inclusa): € '.number_format($this->quote->total(), 2, ',', '.'))
+            ->action('Leggi e firma il preventivo', $this->quote->magicLinkFor($notifiable));
     }
 }

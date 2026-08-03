@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Quotes\Schemas;
 
 use App\Models\Quote;
+use App\Support\Emittente;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -36,6 +37,13 @@ class QuoteForm
                             ->searchable()
                             ->preload()
                             ->required(),
+                        Select::make('issuer_key')
+                            ->label('Intestazione')
+                            ->options(Emittente::opzioni())
+                            ->default(Emittente::chiaveDefault())
+                            ->required()
+                            ->selectablePlaceholder(false)
+                            ->helperText('Con quale intestazione esce il documento che il cliente legge e firma.'),
                         Select::make('status')
                             ->label('Stato')
                             ->options(self::statusOptions())
@@ -87,7 +95,7 @@ class QuoteForm
                                 $vat = (float) ($get('vat_rate') ?: 0);
                                 $total = $hours * $rate * (1 + $vat / 100);
 
-                                return '€ ' . number_format($total, 2, ',', '.');
+                                return '€ '.number_format($total, 2, ',', '.');
                             }),
                     ]),
 
