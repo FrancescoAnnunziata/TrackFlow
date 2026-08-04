@@ -5,6 +5,7 @@ use App\Http\Controllers\AssetLabelController;
 use App\Http\Controllers\AssetLookupController;
 use App\Http\Controllers\DeviceExportController;
 use App\Http\Controllers\QuoteDocumentController;
+use App\Http\Middleware\QuoteMagicAccess;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\Fic\FicClient;
@@ -27,9 +28,20 @@ Route::get('/impersonation/leave', function () {
     return redirect('/');
 })->middleware('auth')->name('impersonation.leave');
 
-// Magic link: autentica il referente del cliente (senza password) e lo porta
-// sul documento del preventivo, da leggere e firmare. La firma copre
-// quote + user ed è temporanea (vedi Quote::MAGIC_LINK_DAYS).
+// Il preventivo come documento: lettura integrale, firma grafica e PDF. Fuori
+// dal pannello perché ci arriva anche il referente del cliente, che non ha
+// password: per lui vale la firma del link ricevuto via email (vedi
+// QuoteMagicAccess e Quote::MAGIC_LINK_DAYS).
+Route::middleware(QuoteMagicAccess::class)->group(function () {
+    Route::get('/q/{quote}/documento', [QuoteDocumentController::class, 'show'])->name('quote.document');
+    Route::post('/q/{quote}/firma', [QuoteDocumentController::class, 'sign'])->name('quote.sign');
+    Route::post('/q/{quote}/rifiuto', [QuoteDocumentController::class, 'reject'])->name('quote.reject');
+    Route::get('/q/{quote}/pdf', [QuoteDocumentController::class, 'pdf'])->name('quote.pdf');
+});
+
+// Vecchio magic link, quello delle email già spedite: autenticava e rimbalzava
+// sul documento. Resta valido finché non scade; i link nuovi puntano dritti al
+// documento.
 Route::get('/q/{quote}/access', function (Request $request, Quote $quote) {
     $user = User::find($request->integer('user'));
 
@@ -39,24 +51,10 @@ Route::get('/q/{quote}/access', function (Request $request, Quote $quote) {
     );
 
     Auth::login($user);
-
-    // Il magic link sostituisce la password: salta il gate "cambio password
-    // obbligatorio" solo per QUESTA sessione, senza disattivarlo in modo
-    // permanente sull'account (vedi MustChangePassword middleware).
     session()->put('quote_magic_login', true);
 
     return redirect()->route('quote.document', $quote);
 })->middleware('signed')->name('quote.magic');
-
-// Il preventivo come documento: lettura integrale, firma grafica e PDF.
-// Fuori dal pannello perché ci arrivano anche i referenti entrati col magic
-// link; l'accesso è comunque ristretto ad admin e referenti del cliente.
-Route::middleware('auth')->group(function () {
-    Route::get('/q/{quote}/documento', [QuoteDocumentController::class, 'show'])->name('quote.document');
-    Route::post('/q/{quote}/firma', [QuoteDocumentController::class, 'sign'])->name('quote.sign');
-    Route::post('/q/{quote}/rifiuto', [QuoteDocumentController::class, 'reject'])->name('quote.reject');
-    Route::get('/q/{quote}/pdf', [QuoteDocumentController::class, 'pdf'])->name('quote.pdf');
-});
 
 // Asset Management: lookup pubblico via QR (qr_token). Mostra la scheda
 // completa se l'utente è autenticato e autorizzato, altrimenti una pagina

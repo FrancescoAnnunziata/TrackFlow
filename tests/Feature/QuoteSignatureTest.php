@@ -7,6 +7,7 @@ use App\Notifications\QuoteDecidedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 uses(RefreshDatabase::class);
 
@@ -250,11 +251,75 @@ it('stampa solo i dati compilati dell\'intestazione', function () {
     $this->actingAs($contact)->get(route('quote.document', $quote))->assertSee('P.IVA IT99999999999');
 });
 
-it('porta il magic link direttamente sul documento da firmare', function () {
+it('apre il documento dal link della mail senza chiedere il login', function () {
     ['contact' => $contact, 'quote' => $quote] = quoteScenario();
 
     $this->get($quote->magicLinkFor($contact))
-        ->assertRedirect(route('quote.document', $quote));
+        ->assertOk()
+        ->assertSee('Firma e invia');
+
+    expect(auth()->id())->toBe($contact->id);
+});
+
+it('lascia firmare chi è entrato dal link della mail, senza password', function () {
+    Storage::fake(Quote::DOCUMENTS_DISK);
+    Notification::fake();
+
+    ['contact' => $contact, 'quote' => $quote] = quoteScenario();
+
+    // Nessun actingAs: l'unica credenziale è il link ricevuto via email.
+    $this->get($quote->magicLinkFor($contact))->assertOk();
+
+    $this->post(route('quote.sign', $quote), [
+        'signer_name' => 'Mario Rossi',
+        'signature' => signatureDataUri(),
+        'accept' => '1',
+    ])->assertRedirect(route('quote.document', $quote));
+
+    expect($quote->fresh()->status)->toBe(Quote::STATUS_ACCEPTED)
+        ->and($quote->fresh()->accepted_by)->toBe($contact->id);
+});
+
+it('scarica il PDF dal link firmato anche senza sessione', function () {
+    Storage::fake(Quote::DOCUMENTS_DISK);
+
+    ['contact' => $contact, 'quote' => $quote] = quoteScenario();
+
+    $this->get(URL::temporarySignedRoute(
+        'quote.pdf',
+        now()->addDays(Quote::MAGIC_LINK_DAYS),
+        ['quote' => $quote->getKey(), 'user' => $contact->getKey()],
+    ))->assertOk();
+});
+
+it('spiega che il link è scaduto invece di rimbalzare sul login', function () {
+    ['contact' => $contact, 'quote' => $quote] = quoteScenario();
+
+    $link = $quote->magicLinkFor($contact);
+
+    $this->travel(Quote::MAGIC_LINK_DAYS + 1)->days();
+
+    $this->get($link)
+        ->assertStatus(403)
+        ->assertSee('Questo link non è più valido')
+        ->assertDontSee('password', false);
+
+    // Stesso trattamento per chi arriva sull'URL nudo, senza firma.
+    $this->get(route('quote.document', $quote))
+        ->assertStatus(403)
+        ->assertSee('Questo link non è più valido');
+});
+
+it('tiene in piedi i link delle email già spedite', function () {
+    ['contact' => $contact, 'quote' => $quote] = quoteScenario();
+
+    $vecchioLink = URL::temporarySignedRoute(
+        'quote.magic',
+        now()->addDays(Quote::MAGIC_LINK_DAYS),
+        ['quote' => $quote->getKey(), 'user' => $contact->getKey()],
+    );
+
+    $this->get($vecchioLink)->assertRedirect(route('quote.document', $quote));
 
     expect(auth()->id())->toBe($contact->id);
 });

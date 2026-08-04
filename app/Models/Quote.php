@@ -117,13 +117,14 @@ class Quote extends Model
     }
 
     /**
-     * URL firmato e temporaneo che autentica il referente indicato e lo porta
-     * sulla pagina di approvazione del preventivo (magic link, niente password).
+     * Link da mettere nelle email al referente: porta sul documento e la sua
+     * firma vale come autenticazione, così il cliente non deve fare login né
+     * avere una password (magic link, vedi QuoteMagicAccess).
      */
     public function magicLinkFor(User $user): string
     {
         return URL::temporarySignedRoute(
-            'quote.magic',
+            'quote.document',
             now()->addDays(self::MAGIC_LINK_DAYS),
             ['quote' => $this->getKey(), 'user' => $user->getKey()],
         );
