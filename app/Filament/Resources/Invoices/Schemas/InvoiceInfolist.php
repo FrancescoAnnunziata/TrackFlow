@@ -87,6 +87,16 @@ class InvoiceInfolist
                             ->placeholder('—'),
                     ]),
 
+                // Fatture nate da un sistema esterno (abbonamenti via API): il
+                // riferimento del pagamento è quello che le lega all'incasso.
+                Section::make('Origine')
+                    ->columns(2)
+                    ->visible(fn ($record): bool => filled($record->source))
+                    ->components([
+                        TextEntry::make('source')->label('Sistema'),
+                        TextEntry::make('source_id')->label('Riferimento pagamento')->copyable(),
+                    ]),
+
                 Section::make('Note')
                     ->components([
                         TextEntry::make('notes')->label('')->placeholder('—'),

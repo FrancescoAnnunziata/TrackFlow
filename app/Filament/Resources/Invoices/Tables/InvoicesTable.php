@@ -131,6 +131,12 @@ class InvoicesTable
                         'sent' => 'Inviata',
                         'paid' => 'Pagata',
                     ]),
+                // Le fatture create dall'API degli abbonamenti: sono quelle che
+                // aspettano di essere spedite a mano a Fatture in Cloud.
+                Filter::make('from_subscription')
+                    ->label('Da abbonamento, non ancora su FIC')
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('source')->whereNull('fic_sent_at'))
+                    ->toggle(),
                 Filter::make('issue_date')
                     ->label('Data emissione')
                     ->schema([

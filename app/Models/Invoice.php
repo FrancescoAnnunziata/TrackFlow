@@ -31,6 +31,10 @@ class Invoice extends Model
         'vat_rate',
         'status',
         'notes',
+        'subject',
+        'ei_payment_method',
+        'source',
+        'source_id',
         'fic_document_id',
         'fic_document_token',
         'fic_sent_at',
@@ -296,11 +300,22 @@ class Invoice extends Model
     }
 
     /**
-     * ModalitaPagamento SDI da mettere nell'XML: quella del cliente, altrimenti
-     * il default di config (MP05, bonifico).
+     * ModalitaPagamento SDI da mettere nell'XML, in ordine: quella dichiarata
+     * sulla singola fattura, poi quella del cliente, poi il default di config
+     * (MP05, bonifico).
+     *
+     * Il livello per-fattura serve alle fatture che arrivano dall'API: un
+     * abbonamento incassato con carta è MP08 anche se lo stesso cliente, per la
+     * consulenza, paga con bonifico.
      */
     public function eiPaymentMethod(): string
     {
+        $ownValue = trim((string) ($this->ei_payment_method ?? ''));
+
+        if ($ownValue !== '') {
+            return $ownValue;
+        }
+
         $clientValue = trim((string) ($this->client?->ei_payment_method ?? ''));
 
         return $clientValue !== ''
@@ -382,11 +397,20 @@ class Invoice extends Model
     }
 
     /**
-     * Titolo umano della fattura (visible_subject FIC): etichetta consulenza
-     * del cliente + periodo.
+     * Titolo umano della fattura (visible_subject FIC): quello scritto sulla
+     * fattura se c'è, altrimenti etichetta consulenza del cliente + periodo.
+     *
+     * L'override serve alle fatture da abbonamento: l'etichetta del cliente
+     * dice "Consulenza", e sulla fattura del SaaS sarebbe sbagliata.
      */
     public function buildVisibleSubject(): string
     {
+        $own = trim((string) ($this->subject ?? ''));
+
+        if ($own !== '') {
+            return $own;
+        }
+
         $label = trim((string) ($this->client?->consulting_label ?? '')) ?: 'Consulenza';
 
         if ($this->period_from && $this->period_to) {

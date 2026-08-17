@@ -81,4 +81,25 @@ return [
         'cache_write_multiplier' => 1.25,
     ],
 
+    // API in ingresso per le fatture da abbonamento (chiamante: personal-ticketing).
+    // Vedi docs/api-abbonamenti.md.
+    'billing_api' => [
+        // Segreto condiviso con cui il chiamante firma il corpo della richiesta.
+        // Vuoto = endpoint spento (risponde 503): è il comportamento voluto in
+        // locale e su qualunque ambiente dove nessuno l'ha configurato apposta.
+        'secret' => env('BILLING_API_SECRET'),
+
+        // Finestra di validità della firma, in secondi. Tiene fuori il replay di
+        // una richiesta intercettata senza pretendere orologi perfettamente
+        // sincronizzati fra i due server.
+        'tolerance' => (int) env('BILLING_API_TOLERANCE', 300),
+
+        // Sistemi ammessi nel campo `source`. Serve a non ritrovarsi fatture
+        // marcate con sorgenti inventate: la chiave di idempotenza è (source, source_id).
+        'sources' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('BILLING_API_SOURCES', 'personal-ticketing')),
+        ))),
+    ],
+
 ];

@@ -11,6 +11,11 @@
 -   **Minimalist Dashboard:** A clean overview of total hours worked and expenses incurred.
 -   **Mobile-First Design:** Fully responsive layout optimized for quick entries on the go.
 
+## Documentation
+
+-   [`docs/api-abbonamenti.md`](docs/api-abbonamenti.md) — inbound API that turns a
+    collected subscription payment into a draft invoice (called by personal-ticketing).
+
 ## Tech Stack (TALL Stack)
 
 This project leverages the power of the TALL stack for a modern, reactive development experience:
