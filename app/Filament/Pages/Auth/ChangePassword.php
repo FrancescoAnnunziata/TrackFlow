@@ -6,11 +6,13 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Panel;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
@@ -21,6 +23,28 @@ class ChangePassword extends Page
     protected static ?string $title = 'Cambio Password';
 
     public ?array $data = [];
+
+    /**
+     * Questa pagina resta raggiungibile anche senza i due fattori attivi.
+     *
+     * Cambio password obbligatorio e 2FA obbligatoria sono due cancelli che si
+     * rimandano l'un l'altro: il middleware MustChangePassword porta qui, e il
+     * middleware dei due fattori — che Filament applica a tutte le pagine —
+     * rimanderebbe da qui al setup, dove MustChangePassword riporterebbe qui.
+     * Redirect infinito, utente fuori. Togliendo il gate 2FA da questa sola
+     * pagina l'ordine diventa esplicito: prima la password, poi i due fattori.
+     * (Il verso opposto legherebbe l'app di autenticazione a un account che ha
+     * ancora la password temporanea.)
+     *
+     * @return string | array<string>
+     */
+    public static function getRouteMiddleware(Panel $panel): string|array
+    {
+        return array_values(array_diff(
+            Arr::wrap(parent::getRouteMiddleware($panel)),
+            [$panel->getMultiFactorAuthenticationRequiredMiddleware()],
+        ));
+    }
 
     public function mount(): void
     {

@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
-// Routes gestite da Filament: login, register, logout
-// Le route di autenticazione sono gestite direttamente da Filament Panel
-// GET /login, POST /login, GET /register, POST /register - gestite da Filament
+// Le route di autenticazione le registra Filament dal panel provider: login,
+// logout, reset password e configurazione dei due fattori. La registrazione
+// pubblica NON e' attiva e non deve esserlo: gli utenti li crea un admin dal
+// pannello.
 
 // Termina l'impersonificazione e ripristina l'utente admin originale.
 Route::get('/impersonation/leave', function () {

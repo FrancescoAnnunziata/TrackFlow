@@ -9,6 +9,7 @@ use App\Filament\Widgets\AssetStatsOverview;
 use App\Http\Middleware\MustChangePassword;
 use App\Support\Impersonation;
 use Filament\Actions\Action;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -44,6 +45,17 @@ class AppPanelProvider extends PanelProvider
             ->login(Login::class)
             // Reset password dalla schermata di login ("Password dimenticata?").
             ->passwordReset()
+            // Due fattori OBBLIGATORI per tutti: al primo accesso Filament porta
+            // l'utente sulla pagina di configurazione e non lo lascia entrare
+            // finche' non ha collegato un'app di autenticazione (TOTP).
+            // recoverable(): genera i codici di recupero, altrimenti un telefono
+            // perso significa un account irrecuperabile senza intervento a mano
+            // sul database.
+            ->multiFactorAuthentication([
+                AppAuthentication::make()
+                    ->brandName('TrackFlow')
+                    ->recoverable(),
+            ], isRequired: true)
             // Voce nel menu utente per cambiare password dall'app.
             ->userMenuItems([
                 Action::make('changePassword')
