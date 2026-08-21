@@ -1,0 +1,82 @@
+# ==============================================================================
+# TrackFlow — security scan configuration.
+#
+# Copy this file to "scan.conf" (same directory) and fill in the real values.
+# scan.conf is gitignored and must NOT be committed (it holds the SMTP password).
+#
+#     cp scan.conf.example scan.conf
+#     chmod 600 scan.conf
+#
+# This file is sourced by prod-security-scan.sh as plain shell variables.
+# ==============================================================================
+
+# ---- SSH access to the production host (read-only scan) ----------------------
+# Il server sta dietro Tailscale: usa l'IP 100.x del nodo (`tailscale status`),
+# così non dipendi dall'IP di casa in whitelist nel Security Group AWS.
+SSH_TARGET="forge@resilient-field"
+SSH_PORT="22"
+SSH_KEY="$HOME/.ssh/id_rsa"
+SSH_TIMEOUT="25"
+HOST_LABEL="trackflow-3tbs3e1q.on-forge.com"
+
+# ---- Where the application lives on the scanned host -------------------------
+# Used by the laravel_gadget, queue_jobs and composer_audit checks to find
+# storage/logs/laravel.log, .env and composer.lock. Leave commented out for the
+# historical layout. On a server with ATOMIC DEPLOYS the code lives under
+# <site>/current, so point it there or those checks silently skip:
+#   APP_DIR="/home/forge/trackflow.example.com/current"
+#APP_DIR="/home/forge/trackflow"
+
+# Baseline SHA-256 of ~/.ssh/authorized_keys on the server, so the scan can
+# detect a newly-added (rogue) SSH key. Leave empty on first run: the scan will
+# email you the current value as a WARN; paste it here afterwards.
+AUTHORIZED_KEYS_SHA256=""
+
+# ---- Dependency audit (composer audit) ---------------------------------------
+# Il check "composer_audit" segnala (come WARN) le dipendenze PHP con advisory
+# di sicurezza note. Per silenziare advisory GIÀ TRIAGGIATI e accettati (così
+# l'email resta verde e solo i NUOVI advisory fanno scattare l'avviso), elenca
+# qui ID advisory, CVE o nomi pacchetto separati da spazi/virgole. Esempio con
+# un advisory accettato perche' senza patch stabile:
+#   DEP_AUDIT_IGNORE="phpoffice/phpspreadsheet CVE-2026-12345"
+DEP_AUDIT_IGNORE=""
+
+# ---- GitHub: PR aperte nell'email notturna -----------------------------------
+# Il check "open_prs" elenca nell'email le PR aperte sul repo (incluse quelle di
+# Dependabot coi fix di sicurezza), così non restano inosservate su GitHub.
+# Il repo è privato → serve un token A SOLA LETTURA. Consigliato un fine-grained
+# PAT limitato a QUESTO repo, con permesso "Pull requests: Read-only" (niente
+# altro). Crealo su: GitHub > Settings > Developer settings > Fine-grained tokens.
+# Lascia vuoto GITHUB_TOKEN per disattivare il check.
+GITHUB_REPO="FrancescoAnnunziata/TrackFlow"
+GITHUB_TOKEN=""
+
+# ---- Rilievi accettati (non fanno piu' scattare l'allarme) -------------------
+# Elenca gli id dei check gia' valutati e consapevolmente accettati: restano
+# stampati nel report in una sezione "ACCETTATI", ma non decidono la severita'
+# dell'email. Serve a tenere verde la mail quando non c'e' niente di nuovo: un
+# 🚨 che arriva tutte le notti per una cosa nota smette di essere letto, ed e'
+# cosi' che passa inosservato quello vero.
+# Situazione attuale del server (agosto 2026): Redis gira senza password e in
+# ascolto su 0.0.0.0, MySQL su bind-address = *. Dall'esterno sono irraggiungibili
+# (il Security Group AWS chiude 3306/6379/22, si entra solo da Tailscale), ma il
+# rimedio giusto resta bindarli su 127.0.0.1 — non silenziarli per sempre.
+#   ACK_FINDINGS="redis_noauth redis_exposed mysql_exposed"
+ACK_FINDINGS=""
+
+# ---- Email delivery (SMTP) ---------------------------------------------------
+# Recipient of the report.
+MAIL_TO="giorgio@g8labs.it"
+
+# Sender identity.
+MAIL_FROM="trackflow-monitor@g8labs.it"
+MAIL_FROM_NAME="TrackFlow - Monitor Sicurezza"
+
+# SMTP server: usa lo stesso provider di posta transazionale dell'app (in modo
+# locale sul server queste righe si possono lasciare vuote, le credenziali
+# vengono lette dal .env). SMTP_SECURITY: ssl (465) | starttls (587) | none
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="465"
+SMTP_SECURITY="ssl"
+SMTP_USER="trackflow-monitor@g8labs.it"
+SMTP_PASS="CHANGE_ME"

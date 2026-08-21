@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd job to run the nightly CRM security scan on macOS.
+
+  Setup:
+    1. Edit the two absolute paths below (ProgramArguments + log file) so they
+       point to where this repo lives on your Mac.
+    2. Copy (renaming without .example) into ~/Library/LaunchAgents/ :
+         cp com.g8labs.trackflow-security-scan.plist.example \
+            ~/Library/LaunchAgents/com.g8labs.trackflow-security-scan.plist
+    3. Load it:
+         launchctl load ~/Library/LaunchAgents/com.g8labs.trackflow-security-scan.plist
+    4. Test immediately (without waiting for the schedule):
+         launchctl start com.g8labs.trackflow-security-scan
+
+  Runs every night at 03:30. The Mac must be awake at that time (or use
+  `pmset` to schedule a wake) and Tailscale must be up, since SSH to the
+  server goes over the tailnet. If the scan can't connect it emails a
+  warning instead of failing silently.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.g8labs.trackflow-security-scan</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/giorgiogiotto/Documents/projects/TrackFlow/scripts/security-scan/prod-security-scan.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/giorgiogiotto/Documents/projects/TrackFlow/scripts/security-scan/scan.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/giorgiogiotto/Documents/projects/TrackFlow/scripts/security-scan/scan.log</string>
+</dict>
+</plist>

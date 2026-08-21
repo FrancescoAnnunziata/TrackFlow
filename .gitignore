@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# security scan: config locale (password SMTP) e log delle esecuzioni
+/scripts/security-scan/scan.conf
+/scripts/security-scan/scan.log
