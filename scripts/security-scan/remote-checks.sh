@@ -144,7 +144,9 @@ elif [ -n "$mysql_listen" ]; then
 fi
 redis_listen=$(ss -tln 2>/dev/null | awk '{print $4}' | grep -E ':6379$')
 redis_listen_1l=$(echo "$redis_listen" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+REDIS_PUBLIC=0
 if echo "$redis_listen" | grep -qE '^(0\.0\.0\.0|\*):6379$'; then
+  REDIS_PUBLIC=1
   emit WARN redis_exposed "Redis in ascolto su tutte le interfacce ($redis_listen_1l) — dovrebbe essere 127.0.0.1"
 elif [ -n "$redis_listen" ]; then
   emit OK redis_exposed "Redis in ascolto solo in locale ($redis_listen_1l)"
@@ -155,8 +157,15 @@ fi
 # ------------------------------------------------------------------------------
 if command -v redis-cli >/dev/null 2>&1; then
   r=$(redis-cli -h 127.0.0.1 ping 2>/dev/null)
-  if [ "$r" = "PONG" ]; then
-    emit HIGH redis_noauth "Redis risponde a PING SENZA autenticazione (requirepass mancante)"
+  if [ "$r" = "PONG" ] && [ "${REDIS_PUBLIC:-0}" = "1" ]; then
+    emit HIGH redis_noauth "Redis risponde a PING SENZA autenticazione (requirepass mancante) ED e' in ascolto su tutte le interfacce"
+  elif [ "$r" = "PONG" ]; then
+    # Il PING arriva dal loopback: e' lo stesso host su cui gira lo scan, quindi
+    # risponde per forza. Senza password ma senza ascolto pubblico l'unico che
+    # puo' parlarci e' un processo locale, che pero' ha gia' il .env con tutte
+    # le credenziali: la password aggiungerebbe poco. Segnalarlo come HIGH tutte
+    # le notti renderebbe rosso un server sano — e il rosso perderebbe senso.
+    emit OK redis_noauth "Redis solo su loopback; nessuna password impostata, accettabile perche' non raggiungibile da fuori"
   elif echo "$r" | grep -qi 'NOAUTH'; then
     emit OK redis_auth "Redis richiede autenticazione"
   else

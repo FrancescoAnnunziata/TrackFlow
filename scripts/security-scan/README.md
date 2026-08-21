@@ -156,7 +156,7 @@ segnala sul sistema, e vanno lanciati **come root sul server**:
 6. Connessioni in uscita verso pool di mining
 7. Nuovi eseguibili in tmp (ultimi 2 giorni)
 8. MySQL / Redis in ascolto su interfacce pubbliche
-9. Redis raggiungibile senza autenticazione
+9. Redis senza password **e** in ascolto pubblico (solo loopback: non e' un rilievo)
 10. Firme di deserializzazione (gadget PHPGGC) nei log Laravel
 11. Payload malevoli nella coda DB (`jobs` / `failed_jobs`)
 12. Integrità di `~/.ssh/authorized_keys` (vs baseline)
