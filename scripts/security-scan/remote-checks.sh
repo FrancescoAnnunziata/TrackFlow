@@ -430,6 +430,42 @@ if [ "${MYSQL_PUBLIC:-0}" = "1" ] && [ -r "$APP_DIR/.env" ] && command -v mysql 
 fi
 
 # ------------------------------------------------------------------------------
+# 19) Queue worker vivo e coda che scorre
+# Non e' sicurezza in senso stretto, ma e' esattamente il tipo di guasto muto
+# per cui esiste l'email quotidiana: il 21/08/2026 il riavvio di MySQL durante
+# un apt upgrade ha fatto fallire il worker abbastanza volte da mandarlo in
+# FATAL su supervisor, che a quel punto non ci riprova piu'. MySQL e' tornato
+# su, il sito rispondeva, e la coda e' rimasta ferma senza che nulla lo dicesse.
+# supervisorctl vuole root, quindi guardiamo il processo e la coda: entrambi
+# leggibili dall'utente forge.
+# ------------------------------------------------------------------------------
+qw=$(pgrep -f 'artisan queue:work' 2>/dev/null | wc -l | tr -d ' ')
+if [ "${qw:-0}" -gt 0 ]; then
+  emit OK queue_worker "Worker della coda in esecuzione ($qw processi)"
+else
+  emit WARN queue_worker "NESSUN worker della coda in esecuzione: i job non vengono lavorati (supervisorctl status / Forge > Daemons)"
+fi
+
+if [ -r "$APP_DIR/.env" ] && command -v mysql >/dev/null 2>&1; then
+  DB=$(grep -E '^DB_DATABASE=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"'\' | tr -d "'")
+  DU=$(grep -E '^DB_USERNAME=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"'\' | tr -d "'")
+  DP=$(grep -E '^DB_PASSWORD=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"'\' | tr -d "'")
+  # Un job fermo in coda da piu' di 30 minuti significa che nessuno la consuma:
+  # la profondita' da sola non basta, una coda piena ma che scorre va bene.
+  stale=$(MYSQL_PWD="$DP" mysql -u"$DU" "$DB" -N -e \
+          "SELECT COUNT(*) FROM jobs WHERE created_at < UNIX_TIMESTAMP(NOW() - INTERVAL 30 MINUTE);" 2>/dev/null)
+  failed=$(MYSQL_PWD="$DP" mysql -u"$DU" "$DB" -N -e \
+          "SELECT COUNT(*) FROM failed_jobs WHERE failed_at >= NOW() - INTERVAL 1 DAY;" 2>/dev/null)
+  if [ -n "$stale" ] && [ "$stale" != "0" ]; then
+    emit WARN queue_stale "Coda ferma: $stale job in attesa da oltre 30 minuti"
+  elif [ -n "$failed" ] && [ "$failed" != "0" ]; then
+    emit WARN queue_stale "Job falliti nelle ultime 24h: $failed (tabella failed_jobs)"
+  elif [ -n "$stale" ]; then
+    emit OK queue_stale "Coda che scorre, nessun job fallito nelle 24h"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
 # Scan footer (always OK; lets the orchestrator confirm the scan completed)
 # ------------------------------------------------------------------------------
 emit OK scan_complete "Scan completato su $(hostname) come $(id -un) — uptime:$(uptime | sed 's/^ *//')"

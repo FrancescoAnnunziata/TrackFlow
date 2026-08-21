@@ -166,6 +166,7 @@ segnala sul sistema, e vanno lanciati **come root sul server**:
 16. Igiene della configurazione di produzione (`APP_DEBUG`, `APP_ENV`, permessi `.env`)
 17. File che non devono essere raggiungibili dal web (`.env`, dump SQL, `.git` in `public/`)
 18. Utenti MySQL raggiungibili da qualsiasi host (solo se MySQL e' anche esposto)
+19. Worker della coda vivo e coda che scorre (job fermi da oltre 30 minuti, job falliti)
 
 Gli IOC (hash, wallet, pool) vengono dall'incidente cryptominer del 2026 sul CRM
 Fedespedi: stessa infrastruttura d'attacco, stesso layout Forge/AWS, quindi lo
@@ -180,6 +181,16 @@ un'infezione in corso: restano WARN, così quando arriva un 🚨 significa davve
 qualcosa. L'unica eccezione è un `.env` o un dump SQL **scaricabile dal web**
 (check 17), che è HIGH: non è una compromissione, ma è la porta aperta che ne
 provoca una.
+
+### Perche' c'e' un check sulla coda in un monitor di sicurezza (19)
+
+Perche' l'email quotidiana serve a sapere se il sistema sta bene, e il guasto
+muto e' il piu' pericoloso di tutti. Il 21/08/2026 il riavvio di MySQL durante
+un `apt upgrade` ha fatto fallire il queue worker abbastanza volte da mandarlo
+in FATAL su supervisor, che a quel punto smette di riprovare. MySQL e' tornato
+su, il sito rispondeva 200, e la coda e' rimasta ferma senza che niente lo
+dicesse. `supervisorctl` richiede root, quindi il check guarda il processo
+(`pgrep`) e l'eta' dei job in coda: entrambi leggibili dall'utente `forge`.
 
 ### Tenere verde la mail: `ACK_FINDINGS`
 

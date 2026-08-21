@@ -22,13 +22,21 @@ it('lascia entrare chi i due fattori li ha gia attivi', function () {
     $this->actingAs($user)->get('/clients')->assertOk();
 });
 
-it('vale anche per i clienti, non solo per gli admin', function () {
+// I clienti sono l'eccezione voluta: entrano saltuariamente, spesso da un magic
+// link, e se perdono il telefono l'unico help desk siamo noi.
+it('non chiede i due fattori ai clienti', function () {
     $client = User::factory()->withoutTwoFactor()->create(['role' => 'client']);
 
-    $this->actingAs($client)
+    $this->actingAs($client)->get('/')->assertOk();
+});
+
+it('continua a chiederli a membri e commercialisti', function (string $role) {
+    $user = User::factory()->withoutTwoFactor()->create(['role' => $role]);
+
+    $this->actingAs($user)
         ->get('/')
         ->assertRedirect(route('filament.app.auth.multi-factor-authentication.set-up-required'));
-});
+})->with(['member', 'accountant']);
 
 // Cambio password obbligatorio e due fattori obbligatori sono due cancelli che
 // rimandano l'uno alla pagina dell'altro: senza un ordine esplicito si finisce
