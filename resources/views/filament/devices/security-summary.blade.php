@@ -44,6 +44,6 @@
     </ul>
 
     <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        {{ $rilevazioni }} rilevazioni in archivio.
+        {{ $rilevazioni }} {{ $rilevazioni === 1 ? 'rilevazione' : 'rilevazioni' }} in archivio.
     </p>
 @endif

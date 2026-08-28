@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DeviceSecurityChecks\Schemas;
 
 use App\Models\DeviceSecurityCheck;
+use Closure;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -54,10 +55,8 @@ class DeviceSecurityCheckInfolist
                         self::critical('laps', 'laps', 'LAPS'),
                         self::critical('admin_group', 'admin_group_members', 'Amministratori locali')
                             ->columnSpan(2),
-                        self::critical('av_tamper', 'av_tamper_protection', 'Tamper Protection')
-                            ->formatStateUsing(fn (?bool $state): string => self::yesNo($state)),
-                        self::critical('backup_restore', 'backup_last_restore_test_at', 'Ultimo restore testato')
-                            ->formatStateUsing(fn ($state): string => $state?->format('d/m/Y') ?? 'Mai testato'),
+                        self::critical('av_tamper', 'av_tamper_protection', 'Tamper Protection', fn (bool $value): string => self::yesNo($value)),
+                        self::critical('backup_restore', 'backup_last_restore_test_at', 'Ultimo restore testato', fn ($value): string => $value->format('d/m/Y')),
                     ]),
 
                 Section::make('Sistema operativo e patch')
@@ -172,13 +171,22 @@ class DeviceSecurityCheckInfolist
     /**
      * Voce di un campo critico: colore e icona vengono dallo stato calcolato
      * dalla rilevazione, il testo di aiuto riporta il motivo della segnalazione.
+     *
+     * Il testo del badge NON puo' basarsi su placeholder()+formatStateUsing():
+     * Filament controlla se il valore grezzo della colonna e' vuoto PRIMA di
+     * chiamare il formatter, quindi quando il rischio si manifesta proprio
+     * come valore assente (bitlocker_protection vuoto, nessun restore mai
+     * testato) il placeholder generico vincerebbe sempre, mostrando "Non
+     * rilevato" in grigio-sembrante sopra un badge colorato di rosso — due
+     * segnali in contraddizione. Si usa quindi state() per decidere sempre il
+     * testo a partire dallo stato valutato, non dal valore grezzo.
      */
-    private static function critical(string $key, string $column, string $label): TextEntry
+    private static function critical(string $key, string $column, string $label, ?Closure $format = null): TextEntry
     {
         return TextEntry::make($column)
             ->label($label)
             ->badge()
-            ->placeholder('Non rilevato')
+            ->state(fn (DeviceSecurityCheck $record): string => self::criticalBadgeText($key, $record, $column, $format))
             ->color(fn (DeviceSecurityCheck $record): string => self::stateColor($record->criticalState($key)))
             ->icon(fn (DeviceSecurityCheck $record): ?Heroicon => match ($record->criticalState($key)) {
                 DeviceSecurityCheck::STATE_RISK => Heroicon::OutlinedExclamationTriangle,
@@ -188,6 +196,31 @@ class DeviceSecurityCheckInfolist
             ->helperText(fn (DeviceSecurityCheck $record): ?string => $record->evaluateCritical($key)['state'] === DeviceSecurityCheck::STATE_RISK
                 ? $record->evaluateCritical($key)['detail']
                 : null);
+    }
+
+    /**
+     * Testo da mostrare per un campo critico: il valore grezzo formattato se
+     * presente, altrimenti un testo derivato dallo stato valutato — mai il
+     * placeholder generico di Filament, che ignorerebbe lo stato di rischio
+     * quando il rischio e' proprio l'assenza del valore (vedi critical()).
+     * Riusato dalla tabella (DeviceSecurityChecksTable) per lo stesso motivo.
+     */
+    public static function criticalBadgeText(string $key, DeviceSecurityCheck $record, string $column, ?Closure $format = null): string
+    {
+        $format ??= fn (mixed $value): string => (string) $value;
+        $value = $record->{$column};
+
+        if ($value !== null) {
+            return $format($value);
+        }
+
+        $evaluation = $record->evaluateCritical($key);
+
+        return match ($evaluation['state']) {
+            DeviceSecurityCheck::STATE_RISK => $evaluation['detail'] ?? 'A rischio',
+            DeviceSecurityCheck::STATE_OK => 'A posto',
+            default => 'Non rilevato',
+        };
     }
 
     public static function stateColor(string $state): string

@@ -53,19 +53,19 @@ class DeviceSecurityChecksTable
                 TextColumn::make('os_support')
                     ->label('Supporto SO')
                     ->badge()
-                    ->placeholder('—')
+                    ->state(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::criticalBadgeText('os_support', $record, 'os_support'))
                     ->color(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::stateColor($record->criticalState('os_support')))
                     ->toggleable(),
                 TextColumn::make('bitlocker_protection')
                     ->label('BitLocker')
                     ->badge()
-                    ->placeholder('—')
+                    ->state(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::criticalBadgeText('bitlocker', $record, 'bitlocker_protection'))
                     ->color(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::stateColor($record->criticalState('bitlocker')))
                     ->toggleable(),
                 TextColumn::make('laps')
                     ->label('LAPS')
                     ->badge()
-                    ->placeholder('—')
+                    ->state(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::criticalBadgeText('laps', $record, 'laps'))
                     ->limit(20)
                     ->color(fn (DeviceSecurityCheck $record): string => DeviceSecurityCheckInfolist::stateColor($record->criticalState('laps')))
                     ->toggleable(isToggledHiddenByDefault: true),

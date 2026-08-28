@@ -54,11 +54,14 @@ class AppPanelProvider extends PanelProvider
             // recoverable(): genera i codici di recupero, altrimenti un telefono
             // perso significa un account irrecuperabile senza intervento a mano
             // sul database.
+            // isRequired: non su APP_ENV=local, altrimenti ogni test in
+            // locale richiede il codice TOTP. In staging/produzione resta
+            // obbligatorio senza eccezioni.
             ->multiFactorAuthentication([
                 AppAuthentication::make()
                     ->brandName('TrackFlow')
                     ->recoverable(),
-            ], isRequired: true)
+            ], isRequired: ! app()->environment('local'))
             ->multiFactorAuthenticationRequiredMiddlewareName(RequireTwoFactorExceptClients::class)
             // Voce nel menu utente per cambiare password dall'app.
             ->userMenuItems([
