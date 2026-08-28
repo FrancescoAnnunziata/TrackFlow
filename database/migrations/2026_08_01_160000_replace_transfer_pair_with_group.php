@@ -22,7 +22,12 @@ return new class extends Migration
 
         // I giroconti esistenti (coppie reciproche) diventano gruppi di due:
         // entrambe le righe prendono come gruppo l'id più piccolo della coppia.
-        DB::statement('UPDATE bank_transactions SET transfer_group_id = LEAST(id, transfer_pair_id) WHERE transfer_pair_id IS NOT NULL');
+        // CASE e non LEAST(): SQLite (usato dai test) non ha quella funzione.
+        DB::statement(<<<'SQL'
+            UPDATE bank_transactions
+            SET transfer_group_id = CASE WHEN transfer_pair_id < id THEN transfer_pair_id ELSE id END
+            WHERE transfer_pair_id IS NOT NULL
+        SQL);
 
         Schema::table('bank_transactions', function (Blueprint $table): void {
             $table->dropConstrainedForeignId('transfer_pair_id');
