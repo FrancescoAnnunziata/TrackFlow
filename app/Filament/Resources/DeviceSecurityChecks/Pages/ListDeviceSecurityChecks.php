@@ -23,10 +23,27 @@ class ListDeviceSecurityChecks extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->checkWindowsEolAction(),
             $this->downloadScriptAction(),
             $this->importAction(),
             CreateAction::make(),
         ];
+    }
+
+    /**
+     * Porta alla pagina Microsoft da cui vanno prese le date di fine
+     * supporto Windows quando si aggiorna config/inventario_endpoint.php →
+     * windows_eol (tabella "Releases", vale solo per le edizioni Home/Pro).
+     */
+    private function checkWindowsEolAction(): Action
+    {
+        return Action::make('checkWindowsEol')
+            ->label('Verifica le ultime versioni')
+            ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+            ->color('gray')
+            ->visible(fn (): bool => ! auth()->user()->isClient())
+            ->url('https://learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro')
+            ->openUrlInNewTab();
     }
 
     /**

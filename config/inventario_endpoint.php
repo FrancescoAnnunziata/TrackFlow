@@ -70,18 +70,24 @@ return [
     | aggiorna qui, e chi scarica lo script da Security check → Scarica
     | script riceve sempre la tabella corrente (vedi EndpointScriptBuilder).
     |
-    | Verificare le date su learn.microsoft.com/lifecycle prima di aggiornarle:
-    | cambiano nel tempo e differiscono per edizione Enterprise/Education.
+    | Fonte ufficiale, da controllare prima di ogni aggiornamento (tabella
+    | "Releases", non "Support Dates" che riporta solo il primo/ultimo giorno
+    | dell'intera linea Windows 11 senza distinguere le versioni):
+    | https://learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro
+    | Le date differiscono per edizione Enterprise/Education: quella pagina
+    | vale solo per Home/Pro, cioe' quello che gira sulle macchine censite.
     */
     'windows_eol' => [
         // OS_Versione (il "feature update", es. 24H2) => data di fine supporto
-        // per i canali Home/Pro.
+        // per i canali Home/Pro. Verificate su learn.microsoft.com/lifecycle
+        // (link sopra) il 2026-08-28.
         'dates' => [
             '21H2' => '2023-10-10',
             '22H2' => '2024-10-08',
             '23H2' => '2025-11-11',
             '24H2' => '2026-10-13',
-            // '25H2' => 'da verificare su learn.microsoft.com/lifecycle',
+            '25H2' => '2027-10-12',
+            '26H1' => '2028-03-14',
         ],
         'windows10_eol' => '2025-10-14',
     ],

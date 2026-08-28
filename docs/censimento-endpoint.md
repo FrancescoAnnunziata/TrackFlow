@@ -139,17 +139,27 @@ La fonte di verita' e' `config/inventario_endpoint.php` → `windows_eol`:
         '22H2' => '2024-10-08',
         '23H2' => '2025-11-11',
         '24H2' => '2026-10-13',
+        '25H2' => '2027-10-12',
+        '26H1' => '2028-03-14',
     ],
     'windows10_eol' => '2025-10-14',
 ],
 ```
 
-Per aggiungere una versione (es. quando esce 25H2) si aggiunge una riga qui,
-con la data verificata su learn.microsoft.com/lifecycle — mai una data
-inventata: se non e' ancora nota, la versione resta assente dalla tabella e lo
-script produce `DA VERIFICARE` per quella macchina, che la regola
-`os_support` tratta correttamente come rischio (vedi sopra) finche' non viene
-aggiornata la config.
+Le date vengono da qui, e da nessun'altra parte — controllare **questa pagina**
+prima di ogni aggiornamento:
+
+> **[learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro](https://learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro)**
+> tabella **"Releases"** (non "Support Dates", che copre l'intera linea
+> Windows 11 senza distinguere le versioni). Vale per le edizioni Home/Pro,
+> quelle installate sulle macchine censite: Enterprise/Education hanno date
+> diverse su un'altra pagina.
+
+Quando esce una nuova versione (es. 26H2) si aggiunge una riga con la data
+verificata li' — mai una data inventata: se non e' ancora nota, la versione
+resta assente dalla tabella e lo script produce `DA VERIFICARE` per quella
+macchina, che la regola `os_support` tratta correttamente come rischio (vedi
+sopra) finche' non viene aggiornata la config.
 
 `App\Services\Security\EndpointScriptBuilder` compila il template in
 `resources/scripts/Inventario-Sicurezza.ps1.stub` sostituendo i placeholder
