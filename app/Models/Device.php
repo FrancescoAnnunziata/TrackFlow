@@ -23,6 +23,7 @@ class Device extends Model
         'barcode',
         'qr_token',
         'name',
+        'hostname',
         'category',
         'type',
         'manufacturer',
@@ -34,8 +35,11 @@ class Device extends Model
         'invoice_number',
         'warranty_until',
         'assigned_user_id',
+        'inventory_assignee',
         'location',
+        'department',
         'status',
+        'lifecycle_stage',
         'notes',
         'next_maintenance_at',
         'attachments',
@@ -143,6 +147,17 @@ class Device extends Model
     public function latestSecurityCheck(): HasOne
     {
         return $this->hasOne(DeviceSecurityCheck::class)->latestOfMany('checked_at');
+    }
+
+    /**
+     * Rilevazioni del censimento endpoint in ordine cronologico: e' la serie su
+     * cui si legge l'evoluzione dei campi critici nel tempo.
+     */
+    public function inventoryChecks(): HasMany
+    {
+        return $this->hasMany(DeviceSecurityCheck::class)
+            ->where('source', DeviceSecurityCheck::SOURCE_INVENTORY)
+            ->orderBy('checked_at');
     }
 
     /**

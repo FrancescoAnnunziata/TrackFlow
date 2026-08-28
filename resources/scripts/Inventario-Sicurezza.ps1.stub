@@ -1,0 +1,502 @@
+<#
+.SYNOPSIS
+    Rilevazione stato di sicurezza endpoint Windows - SOLA LETTURA.
+
+.DESCRIPTION
+    Raccoglie i parametri di sicurezza e inventario di una singola macchina
+    e li scrive in un CSV cumulativo (una riga per PC) piu' un JSON di dettaglio.
+
+    Lo script NON modifica nulla sul sistema: nessuna scrittura in registro,
+    nessuna modifica a policy, servizi o configurazioni.
+    NON raccoglie chiavi di ripristino BitLocker, password o dati personali.
+
+.PARAMETER OutputPath
+    Cartella di destinazione (chiavetta USB, share di rete, cartella locale).
+    Default: la cartella in cui si trova lo script.
+
+.PARAMETER Assegnatario
+    Facoltativo. Nome dell'utente a cui e' assegnata la macchina.
+    Se omesso, il campo resta vuoto e va compilato a mano nel CSV.
+
+.PARAMETER Note
+    Facoltativo. Annotazioni libere (es. "PC produzione, collegato a tornio CNC").
+
+.EXAMPLE
+    .\Inventario-Sicurezza.ps1 -OutputPath "E:\Censimento" -Assegnatario "Mario Rossi"
+
+.NOTES
+    Eseguire come AMMINISTRATORE: senza elevazione BitLocker, TPM, Defender
+    e Secure Boot non sono leggibili e risulteranno "N/D (serve admin)".
+
+    Avvio consigliato da prompt elevato:
+        powershell.exe -ExecutionPolicy Bypass -File .\Inventario-Sicurezza.ps1
+
+    Testato su Windows 10 / 11, PowerShell 5.1.
+
+    Tabella OS_Supporto generata da TrackFlow il {{TRACKFLOW:GENERATED_AT}}
+    (scaricando lo script da Security check -> Scarica script si ottiene
+    sempre la tabella corrente: non va piu' modificata a mano in questo file).
+#>
+
+[CmdletBinding()]
+param(
+    [string]$OutputPath = $PSScriptRoot,
+    [string]$Assegnatario = '',
+    [string]$Note = ''
+)
+
+$ErrorActionPreference = 'SilentlyContinue'
+
+# ---------------------------------------------------------------------------
+# Utility
+# ---------------------------------------------------------------------------
+
+function Get-Safe {
+    <# Esegue un blocco e restituisce un fallback in caso di errore. #>
+    param(
+        [scriptblock]$Script,
+        $Fallback = 'N/D'
+    )
+    try {
+        $r = & $Script
+        if ($null -eq $r -or $r -eq '') { return $Fallback }
+        return $r
+    } catch {
+        return $Fallback
+    }
+}
+
+function Test-Admin {
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    (New-Object Security.Principal.WindowsPrincipal $id).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+$IsAdmin = Test-Admin
+$NoAdmin = 'N/D (serve admin)'
+
+Write-Host ''
+Write-Host '=== Rilevazione sicurezza endpoint (sola lettura) ===' -ForegroundColor Cyan
+if (-not $IsAdmin) {
+    Write-Warning 'Script NON eseguito come amministratore: diversi controlli non saranno leggibili.'
+}
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# 1. Identita' macchina
+# ---------------------------------------------------------------------------
+Write-Host '[1/12] Identita macchina...'
+
+$cs  = Get-CimInstance Win32_ComputerSystem
+$bios = Get-CimInstance Win32_BIOS
+$os  = Get-CimInstance Win32_OperatingSystem
+
+$Hostname     = $env:COMPUTERNAME
+$Produttore   = Get-Safe { $cs.Manufacturer }
+$Modello      = Get-Safe { $cs.Model }
+$Seriale      = Get-Safe { $bios.SerialNumber }
+$RAMGB        = Get-Safe { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) }
+$InDominio    = Get-Safe { if ($cs.PartOfDomain) { "SI ($($cs.Domain))" } else { 'NO (workgroup)' } }
+$UtenteAttivo = Get-Safe { $cs.UserName }
+
+# ---------------------------------------------------------------------------
+# 2. Sistema operativo e supporto
+# ---------------------------------------------------------------------------
+Write-Host '[2/12] Sistema operativo...'
+
+$regCV = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+$OSNome     = Get-Safe { $os.Caption }
+$OSEdizione = Get-Safe { (Get-ItemProperty $regCV).EditionID }
+$OSVersione = Get-Safe { (Get-ItemProperty $regCV).DisplayVersion }   # es. 23H2, 24H2
+$OSBuild    = Get-Safe { "$($os.BuildNumber).$((Get-ItemProperty $regCV).UBR)" }
+$OSArch     = Get-Safe { $os.OSArchitecture }
+$OSInstall  = Get-Safe { $os.InstallDate.ToString('yyyy-MM-dd') }
+$UltimoBoot = Get-Safe { $os.LastBootUpTime.ToString('yyyy-MM-dd HH:mm') }
+$GiorniUptime = Get-Safe { [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalDays, 0) }
+
+# Tabella EOL semplificata (canale Home/Pro).
+# ATTENZIONE: verificare le date su learn.microsoft.com/lifecycle prima di usarle
+# come riferimento formale: cambiano e differiscono per edizione Enterprise/Education.
+# Generata da TrackFlow (config/inventario_endpoint.php) il {{TRACKFLOW:GENERATED_AT}}.
+$EOL = @{
+{{TRACKFLOW:EOL_TABLE}}
+}
+$OSSupporto = 'DA VERIFICARE'
+if ($OSNome -like '*Windows 10*') {
+    $OSSupporto = 'FUORI SUPPORTO (Win10 EOL {{TRACKFLOW:WIN10_EOL}})'
+} elseif ($EOL.ContainsKey($OSVersione)) {
+    $dataEol = [datetime]$EOL[$OSVersione]
+    if ((Get-Date) -gt $dataEol) {
+        $OSSupporto = "FUORI SUPPORTO (dal $($dataEol.ToString('yyyy-MM-dd')))"
+    } else {
+        $OSSupporto = "Supportato fino al $($dataEol.ToString('yyyy-MM-dd'))"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# 3. Aggiornamenti
+# ---------------------------------------------------------------------------
+Write-Host '[3/12] Aggiornamenti Windows...'
+
+$ultimoHf = Get-Safe { Get-HotFix | Where-Object { $_.InstalledOn } |
+                       Sort-Object InstalledOn -Descending | Select-Object -First 1 } $null
+$UltimaPatch  = if ($ultimoHf) { $ultimoHf.InstalledOn.ToString('yyyy-MM-dd') } else { 'N/D' }
+$UltimaPatchKB = if ($ultimoHf) { $ultimoHf.HotFixID } else { 'N/D' }
+$GiorniDaPatch = if ($ultimoHf) { [math]::Round(((Get-Date) - $ultimoHf.InstalledOn).TotalDays, 0) } else { 'N/D' }
+
+# Riavvio in sospeso
+$RiavvioPendente = Get-Safe {
+    $p = $false
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') { $p = $true }
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') { $p = $true }
+    if ($p) { 'SI' } else { 'NO' }
+}
+
+# ---------------------------------------------------------------------------
+# 4. Antivirus / Defender
+# ---------------------------------------------------------------------------
+Write-Host '[4/12] Antivirus...'
+
+if ($IsAdmin) {
+    $mp = Get-Safe { Get-MpComputerStatus } $null
+    $AVProdotto      = if ($mp) { 'Microsoft Defender' } else { 'N/D' }
+    $AVRealtime      = Get-Safe { if ($mp.RealTimeProtectionEnabled) { 'SI' } else { 'NO' } }
+    $AVServizio      = Get-Safe { if ($mp.AMServiceEnabled) { 'SI' } else { 'NO' } }
+    $AVFirmeData     = Get-Safe { $mp.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd') }
+    $AVFirmeGiorni   = Get-Safe { $mp.AntivirusSignatureAge }
+    $AVTamperProt    = Get-Safe { if ($mp.IsTamperProtected) { 'SI' } else { 'NO' } }
+    $AVUltimaScans   = Get-Safe { $mp.QuickScanEndTime.ToString('yyyy-MM-dd') }
+} else {
+    $AVProdotto = $AVRealtime = $AVServizio = $AVFirmeData = $NoAdmin
+    $AVFirmeGiorni = $AVTamperProt = $AVUltimaScans = $NoAdmin
+}
+
+# Antivirus di terze parti registrati nel Security Center
+$AVTerzeParti = Get-Safe {
+    $lista = Get-CimInstance -Namespace 'root\SecurityCenter2' -ClassName AntiVirusProduct |
+             Where-Object { $_.displayName -notlike '*Defender*' } |
+             Select-Object -ExpandProperty displayName
+    if ($lista) { $lista -join '; ' } else { 'nessuno' }
+} 'nessuno'
+
+# ---------------------------------------------------------------------------
+# 5. Cifratura disco (BitLocker) - NON legge le chiavi di ripristino
+# ---------------------------------------------------------------------------
+Write-Host '[5/12] Cifratura disco...'
+
+if ($IsAdmin) {
+    $bl = Get-Safe { Get-BitLockerVolume -MountPoint $env:SystemDrive } $null
+    if ($bl) {
+        $BLStato       = Get-Safe { $bl.VolumeStatus }        # FullyEncrypted / FullyDecrypted / ...
+        $BLProtezione  = Get-Safe { $bl.ProtectionStatus }    # On / Off
+        $BLMetodo      = Get-Safe { $bl.EncryptionMethod }
+        $BLProtettori  = Get-Safe { ($bl.KeyProtector | Select-Object -ExpandProperty KeyProtectorType) -join '; ' }
+        # Esiste una recovery password? (l'esistenza, NON il valore)
+        $BLRecoveryEsiste = Get-Safe {
+            if ($bl.KeyProtector | Where-Object { $_.KeyProtectorType -eq 'RecoveryPassword' }) { 'SI' } else { 'NO' }
+        }
+    } else {
+        $BLStato = $BLProtezione = $BLMetodo = $BLProtettori = $BLRecoveryEsiste = 'BitLocker non disponibile/non attivo'
+    }
+} else {
+    $BLStato = $BLProtezione = $BLMetodo = $BLProtettori = $BLRecoveryEsiste = $NoAdmin
+}
+
+# TPM e Secure Boot (prerequisiti)
+if ($IsAdmin) {
+    $tpm = Get-Safe { Get-Tpm } $null
+    $TPMPresente = Get-Safe { if ($tpm.TpmPresent) { 'SI' } else { 'NO' } }
+    $TPMPronto   = Get-Safe { if ($tpm.TpmReady) { 'SI' } else { 'NO' } }
+    $SecureBoot  = Get-Safe { if (Confirm-SecureBootUEFI) { 'SI' } else { 'NO' } } 'NO / BIOS legacy'
+} else {
+    $TPMPresente = $TPMPronto = $SecureBoot = $NoAdmin
+}
+
+# ---------------------------------------------------------------------------
+# 6. Account e privilegi
+# ---------------------------------------------------------------------------
+Write-Host '[6/12] Account e privilegi...'
+
+# Gruppo Administrators risolto per SID (indipendente dalla lingua del SO)
+$AdminLocali = Get-Safe {
+    $grp = Get-LocalGroup | Where-Object { $_.SID.Value -eq 'S-1-5-32-544' }
+    (Get-LocalGroupMember -Group $grp.Name | Select-Object -ExpandProperty Name) -join '; '
+}
+
+# Account Administrator predefinito (SID che termina in -500)
+$acct500 = Get-Safe { Get-LocalUser | Where-Object { $_.SID.Value -like '*-500' } } $null
+$AdminBuiltinNome    = Get-Safe { $acct500.Name }
+$AdminBuiltinAttivo  = Get-Safe { if ($acct500.Enabled) { 'SI - ATTIVO' } else { 'NO - disabilitato' } }
+$AdminBuiltinRinom   = Get-Safe { if ($acct500.Name -in @('Administrator','Amministratore')) { 'NO' } else { 'SI' } }
+
+# LAPS (Windows LAPS o legacy) presente?
+$LAPS = Get-Safe {
+    $wl = Test-Path 'HKLM:\SOFTWARE\Microsoft\Policies\LAPS'
+    $ll = Test-Path 'HKLM:\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+    if ($wl) { 'Windows LAPS configurato' }
+    elseif ($ll) { 'LAPS legacy configurato' }
+    else { 'NO - password admin locale non gestita' }
+}
+
+# Account locali abilitati (utili per trovare utenze dimenticate)
+$AccountLocaliAttivi = Get-Safe {
+    (Get-LocalUser | Where-Object { $_.Enabled } | Select-Object -ExpandProperty Name) -join '; '
+}
+
+# ---------------------------------------------------------------------------
+# 7. Firewall e accesso remoto
+# ---------------------------------------------------------------------------
+Write-Host '[7/12] Firewall e accesso remoto...'
+
+$FirewallProfili = Get-Safe {
+    (Get-NetFirewallProfile | ForEach-Object { "$($_.Name)=$(if($_.Enabled){'ON'}else{'OFF'})" }) -join '; '
+}
+
+$RDPAbilitato = Get-Safe {
+    $v = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server').fDenyTSConnections
+    if ($v -eq 0) { 'SI - RDP ATTIVO' } else { 'NO' }
+}
+
+# Strumenti di controllo remoto installati (shadow IT tipico)
+$RemoteTools = @('TeamViewer','AnyDesk','UltraVNC','TightVNC','LogMeIn','Splashtop','Chrome Remote','Supremo','RustDesk','Ammyy','ScreenConnect','Radmin')
+
+# ---------------------------------------------------------------------------
+# 8. Blocco schermo
+# ---------------------------------------------------------------------------
+Write-Host '[8/12] Blocco schermo...'
+
+# Nota: se lo script gira come admin, HKCU e' quello dell'admin, non dell'utente.
+# Si leggono quindi le policy di macchina, piu' affidabili come indicatore.
+$BloccoSchermoPolicy = Get-Safe {
+    $k = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop'
+    if (Test-Path $k) {
+        $p = Get-ItemProperty $k
+        "Policy: attivo=$($p.ScreenSaveActive) sicuro=$($p.ScreenSaverIsSecure) timeout=$($p.ScreenSaveTimeOut)s"
+    } else { 'Nessuna policy di macchina - impostazione lasciata allutente' }
+}
+$TimeoutSchermoAC = Get-Safe {
+    $out = powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 2>$null | Select-String 'Indice impostazione corrente CA|Current AC Power Setting Index'
+    if ($out) { [int]"0x$(($out -split ' ')[-1] -replace '0x','')" } else { 'N/D' }
+} 'N/D'
+
+# ---------------------------------------------------------------------------
+# 9. Gestione centralizzata / cloud join
+# ---------------------------------------------------------------------------
+Write-Host '[9/12] Stato join e gestione...'
+
+$dsreg = Get-Safe { dsregcmd /status 2>$null } $null
+function Get-DsregValue([string]$campo) {
+    if (-not $dsreg) { return 'N/D' }
+    $riga = $dsreg | Select-String -Pattern "^\s*$campo\s*:" | Select-Object -First 1
+    if ($riga) { ($riga -split ':', 2)[1].Trim() } else { 'N/D' }
+}
+$AzureADJoined = Get-DsregValue 'AzureAdJoined'
+$DomainJoined  = Get-DsregValue 'DomainJoined'
+$MDMUrl        = Get-DsregValue 'MdmUrl'
+$MDMEnrolled   = if ($MDMUrl -and $MDMUrl -ne 'N/D' -and $MDMUrl -ne '') { 'SI' } else { 'NO' }
+
+# ---------------------------------------------------------------------------
+# 10. Dischi e utilizzo
+# ---------------------------------------------------------------------------
+Write-Host '[10/12] Dischi e profili utente...'
+
+$DiscoInfo = Get-Safe {
+    (Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | ForEach-Object {
+        "$($_.DeviceID) $([math]::Round($_.Size/1GB,0))GB (liberi $([math]::Round($_.FreeSpace/1GB,0))GB)"
+    }) -join '; '
+}
+
+# Ultimo utilizzo dei profili: serve a individuare macchine abbandonate
+$UltimoUtilizzoProfilo = Get-Safe {
+    $p = Get-CimInstance Win32_UserProfile |
+         Where-Object { -not $_.Special -and $_.LastUseTime } |
+         Sort-Object LastUseTime -Descending | Select-Object -First 1
+    if ($p) { $p.LastUseTime.ToString('yyyy-MM-dd') } else { 'N/D' }
+}
+
+# ---------------------------------------------------------------------------
+# 11. Software installato (da registro: NON usare Win32_Product,
+#      che innesca la riconfigurazione MSI di ogni pacchetto)
+# ---------------------------------------------------------------------------
+Write-Host '[11/12] Inventario software...'
+
+$percorsiUninstall = @(
+    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+)
+$software = @()
+foreach ($p in $percorsiUninstall) {
+    $software += Get-ItemProperty $p |
+        Where-Object { $_.DisplayName -and -not $_.SystemComponent } |
+        Select-Object @{n='Nome';e={$_.DisplayName}},
+                      @{n='Versione';e={$_.DisplayVersion}},
+                      @{n='Editore';e={$_.Publisher}},
+                      @{n='DataInstall';e={$_.InstallDate}}
+}
+$software = $software | Sort-Object Nome -Unique
+$NumeroSoftware = $software.Count
+
+# Software rilevante ai fini sicurezza
+$AppCritiche = @('Chrome','Firefox','Edge','Adobe Acrobat','Adobe Reader','Java','7-Zip','WinRAR','Zoom','VLC','Notepad++','OpenVPN','FortiClient','Putty','FileZilla')
+$AppCriticheTrovate = Get-Safe {
+    ($software | Where-Object { $n = $_.Nome; $AppCritiche | Where-Object { $n -like "*$_*" } } |
+        ForEach-Object { "$($_.Nome) $($_.Versione)" }) -join '; '
+} 'nessuna'
+
+$RemoteToolsTrovati = Get-Safe {
+    $t = $software | Where-Object { $n = $_.Nome; $RemoteTools | Where-Object { $n -like "*$_*" } } |
+         ForEach-Object { $_.Nome }
+    if ($t) { ($t -join '; ') } else { 'nessuno' }
+} 'nessuno'
+
+# Presenza OneDrive (indizio, non prova, di backup dei dati utente)
+$OneDrive = Get-Safe {
+    if (Get-Process OneDrive -ErrorAction SilentlyContinue) { 'in esecuzione' }
+    elseif ($software | Where-Object { $_.Nome -like '*OneDrive*' }) { 'installato non attivo' }
+    else { 'non presente' }
+}
+
+# ---------------------------------------------------------------------------
+# 12. Composizione output
+# ---------------------------------------------------------------------------
+Write-Host '[12/12] Scrittura output...'
+
+$record = [ordered]@{
+    # --- rilevazione
+    DataRilevazione        = (Get-Date).ToString('yyyy-MM-dd HH:mm')
+    RilevatoDa             = $env:USERNAME
+    EseguitoComeAdmin      = if ($IsAdmin) { 'SI' } else { 'NO - dati parziali' }
+
+    # --- da compilare a mano se non passati come parametro
+    Assegnatario           = $Assegnatario
+    Reparto                = ''
+    Ubicazione             = ''
+    StatoCicloVita         = ''   # in uso / scorta / dismesso / da restituire
+    Note                   = $Note
+
+    # --- identita'
+    Hostname               = $Hostname
+    Produttore             = $Produttore
+    Modello                = $Modello
+    Seriale                = $Seriale
+    RAM_GB                 = $RAMGB
+    Dischi                 = $DiscoInfo
+    UtenteLoggato          = $UtenteAttivo
+    UltimoUtilizzoProfilo  = $UltimoUtilizzoProfilo
+
+    # --- sistema operativo
+    OS                     = $OSNome
+    OS_Edizione            = $OSEdizione
+    OS_Versione            = $OSVersione
+    OS_Build                = $OSBuild
+    OS_Architettura        = $OSArch
+    OS_Supporto            = $OSSupporto
+    OS_DataInstallazione   = $OSInstall
+    UltimoRiavvio          = $UltimoBoot
+    GiorniDaRiavvio        = $GiorniUptime
+
+    # --- patching
+    UltimaPatch_Data       = $UltimaPatch
+    UltimaPatch_KB         = $UltimaPatchKB
+    GiorniDaUltimaPatch    = $GiorniDaPatch
+    RiavvioPendente        = $RiavvioPendente
+
+    # --- antivirus
+    AV_Prodotto            = $AVProdotto
+    AV_TerzeParti          = $AVTerzeParti
+    AV_RealTime            = $AVRealtime
+    AV_ServizioAttivo      = $AVServizio
+    AV_FirmeAggiornateAl   = $AVFirmeData
+    AV_FirmeGiorniEta      = $AVFirmeGiorni
+    AV_TamperProtection    = $AVTamperProt
+    AV_UltimaScansione     = $AVUltimaScans
+
+    # --- cifratura
+    BitLocker_Stato        = $BLStato
+    BitLocker_Protezione   = $BLProtezione
+    BitLocker_Metodo       = $BLMetodo
+    BitLocker_Protettori   = $BLProtettori
+    BitLocker_RecoveryKeyPresente = $BLRecoveryEsiste
+    BitLocker_DoveECustoditaLaChiave = ''   # DA COMPILARE A MANO
+    TPM_Presente           = $TPMPresente
+    TPM_Pronto             = $TPMPronto
+    SecureBoot             = $SecureBoot
+
+    # --- account
+    MembriGruppoAdmin      = $AdminLocali
+    AdminBuiltin_Nome      = $AdminBuiltinNome
+    AdminBuiltin_Stato     = $AdminBuiltinAttivo
+    AdminBuiltin_Rinominato = $AdminBuiltinRinom
+    LAPS                   = $LAPS
+    AccountLocaliAttivi    = $AccountLocaliAttivi
+
+    # --- rete e accesso
+    Firewall               = $FirewallProfili
+    RDP                    = $RDPAbilitato
+    BloccoSchermo          = $BloccoSchermoPolicy
+    TimeoutVideoAC_sec     = $TimeoutSchermoAC
+
+    # --- gestione
+    AzureAD_Joined         = $AzureADJoined
+    Dominio_Joined         = $DomainJoined
+    InDominio              = $InDominio
+    MDM_Enrolled           = $MDMEnrolled
+    MDM_Url                = $MDMUrl
+
+    # --- software
+    NumeroSoftwareInstallati = $NumeroSoftware
+    AppCritiche              = $AppCriticheTrovate
+    StrumentiControlloRemoto = $RemoteToolsTrovati
+    OneDrive                 = $OneDrive
+
+    # --- backup: non rilevabile in modo attendibile, va accertato a mano
+    Backup_Tipo              = ''   # DA COMPILARE A MANO
+    Backup_UltimoOK          = ''   # DA COMPILARE A MANO
+    Backup_UltimoRestoreTestato = ''# DA COMPILARE A MANO
+}
+
+# --- scrittura file
+if (-not (Test-Path $OutputPath)) {
+    New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+}
+
+$csvFile  = Join-Path $OutputPath 'Inventario-Sicurezza.csv'
+$jsonFile = Join-Path $OutputPath "Dettaglio_$Hostname.json"
+
+# CSV cumulativo: delimitatore ';' per apertura diretta in Excel italiano
+[pscustomobject]$record |
+    Export-Csv -Path $csvFile -Delimiter ';' -NoTypeInformation -Encoding UTF8 -Append
+
+# JSON di dettaglio con elenco software completo
+[pscustomobject]@{
+    Riepilogo        = $record
+    SoftwareCompleto = $software
+} | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonFile -Encoding UTF8
+
+# ---------------------------------------------------------------------------
+# Riepilogo a schermo
+# ---------------------------------------------------------------------------
+Write-Host ''
+Write-Host "=== $Hostname ===" -ForegroundColor Cyan
+Write-Host "  OS               : $OSNome $OSVersione (build $OSBuild)"
+Write-Host "  Supporto         : $OSSupporto"
+Write-Host "  Ultima patch     : $UltimaPatch ($GiorniDaPatch giorni fa)"
+Write-Host "  Antivirus        : $AVProdotto | realtime=$AVRealtime | firme=$AVFirmeData"
+Write-Host "  Tamper protection: $AVTamperProt"
+Write-Host "  BitLocker        : $BLStato / protezione=$BLProtezione"
+Write-Host "  TPM / SecureBoot : $TPMPresente / $SecureBoot"
+Write-Host "  Admin locali     : $AdminLocali"
+Write-Host "  Admin builtin    : $AdminBuiltinNome -> $AdminBuiltinAttivo"
+Write-Host "  LAPS             : $LAPS"
+Write-Host "  Firewall         : $FirewallProfili"
+Write-Host "  RDP              : $RDPAbilitato"
+Write-Host "  MDM / AzureAD    : $MDMEnrolled / $AzureADJoined"
+Write-Host "  Controllo remoto : $RemoteToolsTrovati"
+Write-Host ''
+Write-Host "CSV  -> $csvFile" -ForegroundColor Green
+Write-Host "JSON -> $jsonFile" -ForegroundColor Green
+Write-Host ''
+Write-Host 'Ricorda di compilare a mano: Assegnatario, Ubicazione, StatoCicloVita,' -ForegroundColor Yellow
+Write-Host 'dove e custodita la chiave BitLocker e i tre campi Backup_*.' -ForegroundColor Yellow
+Write-Host ''

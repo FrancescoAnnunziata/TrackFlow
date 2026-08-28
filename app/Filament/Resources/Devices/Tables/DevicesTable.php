@@ -4,8 +4,11 @@ namespace App\Filament\Resources\Devices\Tables;
 
 use App\Enums\DeviceCategory;
 use App\Enums\DeviceStatus;
+use App\Enums\MaintenanceType;
+use App\Enums\TicketPriority;
+use App\Enums\TicketStatus;
+use App\Filament\Resources\DeviceSecurityChecks\DeviceSecurityCheckResource;
 use App\Models\Device;
-use App\Models\DeviceMaintenance;
 use App\Models\SupportTicket;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -17,8 +20,8 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -62,6 +65,16 @@ class DevicesTable
                     ->label('Modello')
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('hostname')
+                    ->label('Hostname')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('department')
+                    ->label('Reparto')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('assignedUser.name')
                     ->label('Assegnato a')
                     ->placeholder('—')
@@ -73,7 +86,12 @@ class DevicesTable
                     ->label('Security')
                     ->badge()
                     ->placeholder('Mai verificato')
-                    ->color(fn ($state) => $state?->getColor() ?? 'gray'),
+                    ->color(fn ($state) => $state?->getColor() ?? 'gray')
+                    // Elenca i campi critici in rischio sull'ultima rilevazione,
+                    // cosi' la tabella dice anche *cosa* non va.
+                    ->description(fn (Device $record): ?string => collect($record->latestSecurityCheck?->criticalIssues() ?? [])
+                        ->pluck('label')
+                        ->implode(', ') ?: null),
                 TextColumn::make('warranty_until')
                     ->label('Garanzia')
                     ->date()
@@ -201,8 +219,8 @@ class DevicesTable
                     ->required(),
                 Select::make('type')
                     ->label('Tipo')
-                    ->options(\App\Enums\MaintenanceType::class)
-                    ->default(\App\Enums\MaintenanceType::Ordinary)
+                    ->options(MaintenanceType::class)
+                    ->default(MaintenanceType::Ordinary)
                     ->required(),
                 Textarea::make('description')
                     ->label('Descrizione'),
@@ -243,7 +261,7 @@ class DevicesTable
             ->icon(Heroicon::OutlinedShieldCheck)
             ->color('info')
             ->visible(fn (): bool => ! auth()->user()->isClient())
-            ->url(fn (Device $record): string => \App\Filament\Resources\DeviceSecurityChecks\DeviceSecurityCheckResource::getUrl('create', ['device_id' => $record->id]));
+            ->url(fn (Device $record): string => DeviceSecurityCheckResource::getUrl('create', ['device_id' => $record->id]));
     }
 
     private static function ticketAction(): Action
@@ -260,8 +278,8 @@ class DevicesTable
                     ->label('Descrizione'),
                 Select::make('priority')
                     ->label('Priorità')
-                    ->options(\App\Enums\TicketPriority::class)
-                    ->default(\App\Enums\TicketPriority::Medium)
+                    ->options(TicketPriority::class)
+                    ->default(TicketPriority::Medium)
                     ->required(),
             ])
             ->action(function (Device $record, array $data): void {
@@ -272,7 +290,7 @@ class DevicesTable
                     'title' => $data['title'],
                     'description' => $data['description'] ?? null,
                     'priority' => $data['priority'],
-                    'status' => \App\Enums\TicketStatus::Open,
+                    'status' => TicketStatus::Open,
                 ]);
 
                 Notification::make()->title('Ticket aperto')->success()->send();

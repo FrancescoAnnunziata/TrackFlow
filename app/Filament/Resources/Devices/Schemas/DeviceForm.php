@@ -9,8 +9,8 @@ use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -79,9 +79,15 @@ class DeviceForm
                         TextInput::make('model')
                             ->label('Modello'),
                         TextInput::make('serial_number')
-                            ->label('Numero di serie'),
+                            ->label('Numero di serie')
+                            ->helperText('Chiave con cui il censimento riconosce il dispositivo nel tempo.'),
+                        TextInput::make('hostname')
+                            ->label('Hostname')
+                            ->helperText('Usato dal censimento quando il BIOS non espone un seriale valido.'),
                         TextInput::make('location')
                             ->label('Ubicazione'),
+                        TextInput::make('department')
+                            ->label('Reparto'),
                     ]),
 
                 Section::make('Acquisto e garanzia')
@@ -116,6 +122,11 @@ class DeviceForm
                             ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->full_name)
                             ->searchable(['name', 'surname'])
                             ->preload(),
+                        TextInput::make('inventory_assignee')
+                            ->label('Assegnatario da censimento')
+                            ->helperText('Testo libero compilato nello script: aggiornato ad ogni import.'),
+                        TextInput::make('lifecycle_stage')
+                            ->label('Stato ciclo di vita'),
                         DatePicker::make('next_maintenance_at')
                             ->label('Prossima manutenzione'),
                     ]),

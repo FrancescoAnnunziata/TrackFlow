@@ -4,6 +4,7 @@ use App\Filament\Pages\FattureInCloud;
 use App\Http\Controllers\AssetLabelController;
 use App\Http\Controllers\AssetLookupController;
 use App\Http\Controllers\DeviceExportController;
+use App\Http\Controllers\EndpointInventoryScriptController;
 use App\Http\Controllers\QuoteDocumentController;
 use App\Http\Middleware\QuoteMagicAccess;
 use App\Models\Quote;
@@ -65,6 +66,7 @@ Route::get('/assets/lookup/{qrToken}', AssetLookupController::class)->name('asse
 // Etichette stampabili (tipo Dymo). Richiedono autenticazione.
 Route::middleware('auth')->group(function () {
     Route::get('/assets/export', [DeviceExportController::class, 'export'])->name('assets.export');
+    Route::get('/inventario/script', [EndpointInventoryScriptController::class, 'download'])->name('inventario.script');
     Route::get('/assets/labels', [AssetLabelController::class, 'bulk'])->name('assets.labels');
     Route::get('/assets/{device}/label', [AssetLabelController::class, 'show'])->name('assets.label');
 });

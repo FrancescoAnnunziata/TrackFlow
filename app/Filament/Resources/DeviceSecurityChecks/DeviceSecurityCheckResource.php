@@ -5,7 +5,9 @@ namespace App\Filament\Resources\DeviceSecurityChecks;
 use App\Filament\Resources\DeviceSecurityChecks\Pages\CreateDeviceSecurityCheck;
 use App\Filament\Resources\DeviceSecurityChecks\Pages\EditDeviceSecurityCheck;
 use App\Filament\Resources\DeviceSecurityChecks\Pages\ListDeviceSecurityChecks;
+use App\Filament\Resources\DeviceSecurityChecks\Pages\ViewDeviceSecurityCheck;
 use App\Filament\Resources\DeviceSecurityChecks\Schemas\DeviceSecurityCheckForm;
+use App\Filament\Resources\DeviceSecurityChecks\Schemas\DeviceSecurityCheckInfolist;
 use App\Filament\Resources\DeviceSecurityChecks\Tables\DeviceSecurityChecksTable;
 use App\Models\DeviceSecurityCheck;
 use BackedEnum;
@@ -34,6 +36,11 @@ class DeviceSecurityCheckResource extends Resource
         return DeviceSecurityCheckForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return DeviceSecurityCheckInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return DeviceSecurityChecksTable::configure($table);
@@ -56,6 +63,7 @@ class DeviceSecurityCheckResource extends Resource
         return [
             'index' => ListDeviceSecurityChecks::route('/'),
             'create' => CreateDeviceSecurityCheck::route('/create'),
+            'view' => ViewDeviceSecurityCheck::route('/{record}'),
             'edit' => EditDeviceSecurityCheck::route('/{record}/edit'),
         ];
     }
