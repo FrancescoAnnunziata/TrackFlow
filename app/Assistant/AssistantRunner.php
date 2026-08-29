@@ -45,7 +45,7 @@ class AssistantRunner
         ], array_values($registry));
 
         $model = $thread->model ?: (string) config('services.anthropic.model', 'claude-opus-5');
-        $messages = $this->history($thread);
+        $messages = $this->cacheHistory($this->history($thread));
 
         $steps = [];
         $actions = [];
@@ -218,5 +218,57 @@ class AssistantRunner
     private function threadContext(): string
     {
         return '';
+    }
+
+    /**
+     * Segna la fine della conversazione già avvenuta come punto di taglio della
+     * cache.
+     *
+     * Senza, di cachato c'è solo il prompt statico e TUTTA la storia viaggia a
+     * prezzo pieno a ogni turno: sui dati reali era la voce di costo più grossa
+     * dell'assistente. Con il marcatore, i turni precedenti si rileggono a un
+     * decimo e si paga per intero solo il messaggio nuovo.
+     *
+     * Il marcatore resta fermo per tutto il giro dei tool: spostarlo a ogni
+     * iterazione scriverebbe una cache nuova ogni volta, che costa più di quel
+     * che fa risparmiare. I blocchi aggiunti durante il giro si cachano al turno
+     * dopo.
+     *
+     * @param  array<int, array<string, mixed>>  $messages
+     * @return array<int, array<string, mixed>>
+     */
+    private function cacheHistory(array $messages): array
+    {
+        if ($messages === []) {
+            return $messages;
+        }
+
+        $ultimo = array_key_last($messages);
+        $contenuto = $messages[$ultimo]['content'] ?? null;
+
+        // Il contenuto è una stringa (messaggio semplice) o un elenco di blocchi:
+        // il marcatore va comunque sull'ultimo blocco.
+        if (is_string($contenuto)) {
+            $messages[$ultimo]['content'] = [[
+                'type' => 'text',
+                'text' => $contenuto,
+                'cache_control' => ['type' => 'ephemeral', 'ttl' => '1h'],
+            ]];
+
+            return $messages;
+        }
+
+        if (! is_array($contenuto) || $contenuto === []) {
+            return $messages;
+        }
+
+        $ultimoBlocco = array_key_last($contenuto);
+
+        if (is_array($contenuto[$ultimoBlocco])) {
+            $contenuto[$ultimoBlocco]['cache_control'] = ['type' => 'ephemeral', 'ttl' => '1h'];
+            $messages[$ultimo]['content'] = $contenuto;
+        }
+
+        return $messages;
     }
 }

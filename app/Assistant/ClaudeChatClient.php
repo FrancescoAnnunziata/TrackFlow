@@ -21,10 +21,15 @@ class ClaudeChatClient implements ChatClient
             throw new RuntimeException('Chiave API Anthropic non configurata (ANTHROPIC_API_KEY).');
         }
 
+        // TTL di un'ora invece dei 5 minuti di default. Una chat con una persona
+        // ha pause lunghe — si legge la risposta, si pensa, si scrive — e con 5
+        // minuti la cache scade quasi a ogni messaggio: si finisce per pagare la
+        // SCRITTURA del prefisso (1,25x) invece della lettura (0,1x). L'ora costa
+        // di più a scriverla (2x) ma la si scrive una volta per conversazione.
         $system = [[
             'type' => 'text',
             'text' => $systemStatic,
-            'cache_control' => ['type' => 'ephemeral'],
+            'cache_control' => ['type' => 'ephemeral', 'ttl' => '1h'],
         ]];
         if (trim($systemContext) !== '') {
             $system[] = ['type' => 'text', 'text' => $systemContext];
