@@ -81,3 +81,29 @@ it('non fa vedere a un admin le conversazioni di un altro', function () {
 
     expect($pagina->threadId)->toBeNull();
 });
+
+it('avvisa il modello che segnare come costo ha un prezzo fiscale', function () {
+    $catturato = null;
+
+    app()->instance(ChatClient::class, new class($catturato) implements ChatClient
+    {
+        public function __construct(public ?string &$statico) {}
+
+        public function converse(string $systemStatic, string $systemContext, array $messages, array $tools, string $model): AssistantTurn
+        {
+            $this->statico = $systemStatic;
+
+            return new AssistantTurn([], [], 'Fatto.', 'end_turn');
+        }
+    });
+
+    $utente = User::factory()->admin()->create();
+    $thread = AssistantThread::create(['user_id' => $utente->id, 'title' => 'Prova']);
+    AssistantMessage::create(['assistant_thread_id' => $thread->id, 'role' => 'user', 'content' => 'Segna come costo questa uscita da 80 euro']);
+
+    app(AssistantRunner::class)->run($thread->fresh());
+
+    expect(app(ChatClient::class)->statico)
+        ->toContain('IVA non si detrae')
+        ->toContain('10-15');
+});

@@ -43,3 +43,12 @@ it('dice a Paola dove cercare i PDF delle fatture estere', function () {
         ->test(Guida::class)
         ->assertSee('amministrazione@g8labs.it', escape: false);
 });
+
+it('avverte Paola che segnare come costo ha un prezzo', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('IVA non si detrae', escape: false)
+        ->assertSee('10–15', escape: false)
+        // Il collegamento spesa → pagamento non deve sembrare una riconciliazione.
+        ->assertSee('Collega movimento', escape: false);
+});

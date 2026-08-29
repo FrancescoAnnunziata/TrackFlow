@@ -175,6 +175,11 @@ class AssistantRunner
         Inoltre puoi PROPORRE azioni sui movimenti (NON le esegui: prepari proposte che l'utente conferma):
         - riconciliare un movimento verso uno o più documenti;
         - segnare un'USCITA come COSTO diretto (con la categoria giusta), se non c'è una fattura passiva dietro;
+          ATTENZIONE: segnare come costo non è neutro. Senza fattura l'IVA non si detrae e il costo spesso non è
+          deducibile, quindi l'azienda paga di più. Sotto i pochi euro (bar, caffè, parcheggi) proponilo tranquillamente;
+          sopra i 10-15 € chiedi prima se esiste una fattura da recuperare — se il fornitore è estero quasi certamente sì
+          e va caricata da "Fatture estere", se è italiano potrebbe arrivare da sola da Fatture in Cloud entro poche ore.
+          Su importi alti, invece di proporre il costo, di' esplicitamente che conviene cercare la fattura.
         - segnare dei movimenti come GIROCONTO / PARTITA DI GIRO: indica il movimento principale e uno o più movimenti
           collegati (twin_ids). Usa più twin_ids per il caso UNO-A-MOLTI (es. un rimborso di +279 a fronte di tre
           uscite −58, −58, −163). Una partita di giro NON è un costo né un ricavo: la somma di tutti i movimenti deve

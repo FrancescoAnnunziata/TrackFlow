@@ -186,6 +186,13 @@
                 <em>restituire a chi ha anticipato di tasca propria</em>, non finiscono nella fattura al cliente. Per la
                 fatturazione ti serve il menu <strong>Spese</strong>.
             </div>
+            <div class="g-callout g-note">
+                <strong>Collegare la spesa al pagamento (facoltativo).</strong> Nel menu <strong>Spese</strong>, su ogni
+                riga c'è <span class="g-kbd">Collega movimento</span>: serve a segnare con quale uscita bancaria quella
+                spesa è stata pagata. <strong>Non è una riconciliazione</strong> e non cambia nessun totale — è solo
+                memoria, per ritrovare a distanza di mesi il pagamento dietro uno scontrino. L'uscita in banca si
+                riconcilia lo stesso, alla fattura passiva o al costo.
+            </div>
         </div>
 
         {{-- STEP 4 emetti --}}
@@ -480,6 +487,50 @@
         </div>
 
         {{-- STEP 9 invio al commercialista --}}
+        {{-- STEP 8b: cosa vuol dire segnare come costo --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num alt">8b</span><p class="g-h">💸 «Segna come costo» non è gratis</p></div>
+            <p>Quando un'uscita non ha una fattura dietro, la si chiude con <span class="g-kbd">Segna come costo</span>.
+                È il gesto giusto in tanti casi, ma <strong>non è una scorciatoia per far sparire un movimento</strong>:
+                ha un prezzo, e lo paga l'azienda.</p>
+            <div class="g-callout g-danger">
+                <strong>Senza fattura si perdono due cose:</strong>
+                <ul class="g-list tight" style="margin-top:.5rem">
+                    <li>l'<strong>IVA non si detrae</strong> — quel 22% resta a carico nostro invece di essere recuperato;</li>
+                    <li>il costo spesso <strong>non è deducibile</strong> — non abbatte l'utile, quindi si pagano più imposte.</li>
+                </ul>
+                In pratica: la stessa spesa fatta con fattura costa all'azienda parecchio meno.
+            </div>
+            <p class="g-sub">La regola pratica</p>
+            <div class="g-tablewrap">
+                <table class="g-table">
+                    <thead><tr><th>Importo</th><th>Cosa fare</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td class="name">Pochi euro <span class="g-muted">(caffè, bar, parcheggio)</span></td>
+                            <td>Segna come costo senza pensarci. Rincorrere la fattura costerebbe più di quanto si recupera.</td>
+                        </tr>
+                        <tr>
+                            <td class="name">Sopra i <strong>10–15 €</strong></td>
+                            <td><strong>Fermati e ragiona.</strong> Esiste una fattura da farsi dare? Il fornitore la emette
+                                se gliela chiedi? Se sì, meglio recuperarla che segnare un costo.</td>
+                        </tr>
+                        <tr>
+                            <td class="name">Importi alti</td>
+                            <td>Non segnare come costo di tua iniziativa: <strong>chiedi a Giorgio</strong>.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="g-callout g-info">
+                Prima di segnare come costo, la domanda da farsi è sempre la stessa: <strong>«questa fattura esiste
+                da qualche parte?»</strong> Se è un fornitore estero, quasi certamente sì — vedi il passo 6c, va
+                caricata da <strong>Fatture estere</strong>. Se è un fornitore italiano, potrebbe arrivare su Fatture
+                in Cloud entro poche ore (passo 6b): in quel caso conviene aspettare invece di segnare un costo che poi
+                andrebbe disfatto.
+            </div>
+        </div>
+
         <div class="g-card">
             <div class="g-head"><span class="g-num">9</span><p class="g-h">Invia la documentazione al commercialista (Anna Messa)</p></div>
             <p>Quando <strong>hai riconciliato tutto il mese</strong> (la lista «Riconciliato = No» è vuota), l'ultimo passo è mandare i documenti ad <strong>Anna Messa</strong>. Sono <strong>due invii separati</strong>: i report del gestionale e, a parte, le fatture di Fiscozen.</p>

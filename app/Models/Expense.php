@@ -23,6 +23,7 @@ class Expense extends Model
         'client_id',
         'supplier_id',
         'passive_invoice_id',
+        'bank_transaction_id',
         'notes',
     ];
 
@@ -41,6 +42,17 @@ class Expense extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Il movimento bancario con cui la spesa è stata pagata.
+     *
+     * Solo tracciabilità: non è una riconciliazione e non entra in nessun
+     * conteggio. L'uscita resta giustificata dalla fattura passiva o dal costo.
+     */
+    public function bankTransaction(): BelongsTo
+    {
+        return $this->belongsTo(BankTransaction::class);
     }
 
     public function supplier(): BelongsTo
