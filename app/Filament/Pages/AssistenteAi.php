@@ -104,7 +104,7 @@ class AssistenteAi extends Page
             : AssistantThread::create([
                 'user_id' => auth()->id(),
                 'title' => Str::limit($text, 40),
-                'model' => (string) config('services.anthropic.model', 'claude-opus-4-8'),
+                'model' => (string) config('services.anthropic.model', 'claude-opus-5'),
             ]);
 
         if ($thread === null) {

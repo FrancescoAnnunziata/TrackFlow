@@ -43,7 +43,7 @@ class AssistantRunner
             'input_schema' => $t->inputSchema(),
         ], array_values($registry));
 
-        $model = $thread->model ?: (string) config('services.anthropic.model', 'claude-opus-4-8');
+        $model = $thread->model ?: (string) config('services.anthropic.model', 'claude-opus-5');
         $messages = $this->history($thread);
 
         $steps = [];

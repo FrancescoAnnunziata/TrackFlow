@@ -32,7 +32,12 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // Una settimana invece delle 2 ore di default: con i due fattori
+    // obbligatori, una sessione che scade ogni due ore significa rifare
+    // password + codice dell'app più volte al giorno. La sessione è a
+    // scorrimento (ogni richiesta la rinnova), quindi il login torna solo dopo
+    // 7 giorni pieni senza usare l'app.
+    'lifetime' => (int) env('SESSION_LIFETIME', 10080),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

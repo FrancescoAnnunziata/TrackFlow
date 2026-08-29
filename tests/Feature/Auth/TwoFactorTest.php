@@ -110,3 +110,11 @@ it('non offre l azzeramento dei due fattori a chi non e admin', function () {
         ->test(ListUsers::class)
         ->assertActionHidden(TestAction::make('resetTwoFactor')->table($target));
 });
+
+// Con i due fattori obbligatori, una sessione da 2 ore significa rifare
+// password e codice dell'app più volte al giorno. Una settimana è la scelta
+// voluta: se qualcuno la riabbassa senza accorgersene, questo test lo dice.
+it('tiene la sessione valida una settimana, così il login torna al massimo ogni 7 giorni', function () {
+    expect((int) config('session.lifetime'))->toBe(7 * 24 * 60)
+        ->and(config('session.expire_on_close'))->toBeFalse();
+});

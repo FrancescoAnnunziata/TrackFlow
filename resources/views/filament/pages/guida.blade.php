@@ -206,6 +206,42 @@
             <div class="g-callout g-info">C'è anche <span class="g-kbd">Crea vuota</span> per partire da zero, ma nel 99% dei casi si usa <strong>Genera fattura</strong>: fa il lavoro partendo da ore e spese del periodo.</div>
         </div>
 
+        {{-- STEP 2b: il caso del trimestre anticipato --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num alt">2b</span><p class="g-h">⚠️ Alsea: attenzione a quale trimestre generi</p></div>
+            <p>Alsea è l'unico cliente <strong>trimestrale anticipato</strong>: si fattura in anticipo il trimestre che
+                <em>deve ancora iniziare</em>, e sulla stessa fattura si fa il <strong>conguaglio</strong> del trimestre
+                appena chiuso.</p>
+            <div class="g-callout g-warn">
+                <strong>La conseguenza da ricordare:</strong> <strong>ore e rimborsi spese arrivano dal trimestre
+                <u>precedente</u></strong>, non da quello che stai fatturando. Sono costi già sostenuti, quindi
+                appartengono al periodo chiuso.
+            </div>
+            <p class="g-sub">Che vuol dire in pratica</p>
+            <p>Per riaddebitare le spese di <strong>giugno–agosto</strong>, devi generare il trimestre che parte a
+                <strong>settembre</strong>. Se metti «Inizio periodo» ad agosto, TrackFlow cerca le spese di
+                <strong>maggio–luglio</strong> e la riga «Rimborsi spese» non compare.</p>
+            <div class="g-tablewrap">
+                <table class="g-table">
+                    <thead><tr><th>Inizio periodo</th><th>Trimestre fatturato</th><th>Spese e ore prese da</th></tr></thead>
+                    <tbody>
+                        <tr><td class="name">01/06</td><td>giu – ago</td><td>mar – mag</td></tr>
+                        <tr><td class="name">01/09</td><td>set – nov</td><td>giu – ago</td></tr>
+                        <tr><td class="name">01/12</td><td>dic – feb</td><td>set – nov</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="g-callout g-info">
+                <strong>Non devi ricordartelo a memoria:</strong> nel popup <em>«Genera fattura»</em>, appena scegli il
+                cliente compare un <strong>riepilogo</strong> che dice canale, IVA, come è configurato e — soprattutto —
+                <strong>da quale periodo arrivano le spese e quante ne ha trovate</strong>. Se dice «nessuna spesa da
+                riaddebitare» ma tu sai che ce ne sono, hai sbagliato trimestre: cambia «Inizio periodo» e ricontrolla
+                <u>prima</u> di generare.
+            </div>
+            <p class="g-muted">Se non trovi la riga «Rimborsi spese» dove te l'aspettavi, non è un errore dell'app: quelle
+                spese usciranno sulla fattura del trimestre successivo. Nel dubbio, chiedi a Giorgio.</p>
+        </div>
+
         {{-- STEP 3 --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num">3</span><p class="g-h">Controlla e ritocca la bozza</p></div>
@@ -276,6 +312,31 @@
                 Se su un cliente G8Labs il pulsante <strong>non compare</strong>: o Fatture in Cloud non è collegato
                 (pagina <strong>Fatture in Cloud</strong>, gruppo <em>Impostazioni</em>), o il cliente non è su FiC. Se dà
                 <em>«Dati fiscali mancanti»</em>, aggiungi P.IVA o Codice Fiscale al cliente.
+            </div>
+        </div>
+
+        {{-- Accesso a Fatture in Cloud --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num gray">🔑</span><p class="g-h">Entrare in Fatture in Cloud per i controlli</p></div>
+            <p>Per scaricare un PDF, verificare che una fattura sia partita allo SDI o controllare un dato, serve
+                entrare nel pannello di <strong>Fatture in Cloud</strong>. Si entra con <strong>l'utenza di
+                Giorgio</strong>: non ce n'è una separata.</p>
+            <ol class="g-ol">
+                <li>Vai su <strong>fattureincloud.it</strong> e premi <strong>Accedi</strong>.</li>
+                <li>Utente: <strong>giorgio@g8labs.it</strong>. <span class="g-muted">La password non è scritta qui: chiedila a Giorgio.</span></li>
+                <li>Arriva un <strong>codice OTP via email</strong> sulla casella di Giorgio. Quella casella è
+                    <strong>inoltrata in automatico anche alla tua</strong>: il codice ti arriva subito, prendilo dalla
+                    tua posta e inseriscilo.</li>
+                <li>Poi Fatture in Cloud chiede una <strong>conferma dall'app</strong>. L'app <em>Fatture in Cloud</em> è
+                    <strong>già installata e configurata sul tuo telefono</strong>: aprila e approva l'accesso.</li>
+            </ol>
+            <div class="g-callout g-info">
+                Se l'OTP non arriva entro un minuto, controlla lo spam prima di richiederne un altro: chiedendone uno
+                nuovo il precedente smette di funzionare.
+            </div>
+            <div class="g-callout g-warn">
+                Stai entrando con l'utenza di Giorgio: <strong>guarda e scarica</strong>, ma non modificare né emettere
+                nulla direttamente da lì se non te l'ha chiesto lui.
             </div>
         </div>
 

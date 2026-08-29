@@ -199,7 +199,7 @@
     {{-- ==================== GIORGIO GIOTTO — FORFETTARIO ==================== --}}
     <x-filament::section>
         <x-slot name="heading">Giorgio Giotto — P.IVA forfettaria</x-slot>
-        <x-slot name="description">Il forfettario tassa l'incassato (non il fatturato) e non deduce i costi.</x-slot>
+        <x-slot name="description">Il forfettario tassa l'incassato (non il fatturato) e non deduce i costi. Include le vendite dell'e-commerce, al lordo delle commissioni.</x-slot>
 
         {{-- Semaforo limite annuo --}}
         @php
@@ -212,6 +212,9 @@
                 <span style="font-weight:700;">{{ $eur($f['incassato_anno']) }} <span style="color:#9ca3af; font-weight:400;">({{ $pct($f['perc_limite']) }})</span></span>
             </div>
             <div class="fd-bartrack"><div class="fd-bar" style="width:{{ $perc }}%; background:{{ $barColor }};"></div></div>
+            <div class="fd-sub" style="margin-top:.4rem;">
+                Fatture {{ $eur($f['fatture_anno']) }} · e-commerce {{ $eur($f['corrispettivi_anno']) }}
+            </div>
             @if ($perc >= 90)
                 <div class="fd-sub fd-neg" style="margin-top:.4rem;">Attenzione: vicino alla soglia — se la superi rischi di uscire dal regime forfettario.</div>
             @endif
@@ -245,18 +248,25 @@
         <div class="fd-tablewrap" style="margin-top:1.25rem;">
             <table class="fd-table">
                 <thead>
-                    <tr><th>Mese</th><th>Incassato</th></tr>
+                    <tr><th>Mese</th><th>Fatture</th><th>E-commerce</th><th>Incassato</th></tr>
                 </thead>
                 <tbody>
                     @foreach ($f['months'] as $row)
                         <tr class="{{ $row['incassato'] == 0 ? 'fd-empty' : '' }}">
                             <td>{{ $row['label'] }}</td>
+                            <td>{{ $eur($row['fatture']) }}</td>
+                            <td>{{ $eur($row['corrispettivi']) }}</td>
                             <td>{{ $eur($row['incassato']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
-                    <tr><td>Totale {{ $year }}</td><td>{{ $eur($f['incassato_anno']) }}</td></tr>
+                    <tr>
+                        <td>Totale {{ $year }}</td>
+                        <td>{{ $eur($f['fatture_anno']) }}</td>
+                        <td>{{ $eur($f['corrispettivi_anno']) }}</td>
+                        <td>{{ $eur($f['incassato_anno']) }}</td>
+                    </tr>
                 </tfoot>
             </table>
         </div>

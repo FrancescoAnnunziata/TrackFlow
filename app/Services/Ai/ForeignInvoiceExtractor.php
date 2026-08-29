@@ -52,7 +52,7 @@ class ForeignInvoiceExtractor
         }
 
         $client = new Client(apiKey: (string) config('services.anthropic.api_key'));
-        $model = (string) config('services.anthropic.model', 'claude-opus-4-8');
+        $model = (string) config('services.anthropic.model', 'claude-opus-5');
 
         $message = $client->messages->create(
             maxTokens: 1024,

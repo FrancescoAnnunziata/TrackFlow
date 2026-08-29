@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Hour;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Support\PeriodoFatturazione;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -27,10 +28,11 @@ class InvoiceBuilder
     public function build(Client $client, CarbonInterface $periodStart): Invoice
     {
         $months = max(1, (int) $client->billing_period_months);
-        $start = CarbonImmutable::instance($periodStart)->startOfMonth();
-        [$from, $to] = $this->window($start, $months);
+        $periodo = PeriodoFatturazione::per($client, $periodStart);
+        $from = $periodo->da;
+        $to = $periodo->a;
 
-        return DB::transaction(function () use ($client, $start, $months, $from, $to): Invoice {
+        return DB::transaction(function () use ($client, $months, $from, $to, $periodo): Invoice {
             $invoice = Invoice::create([
                 'user_id' => auth()->id(),
                 'client_id' => $client->id,
@@ -43,8 +45,6 @@ class InvoiceBuilder
             ]);
 
             $lines = collect();
-            $expenseFrom = $from;
-            $expenseTo = $to;
 
             if ($client->billing_model === Client::MODEL_FORFAIT) {
                 $lines = $lines->merge($this->forfaitLines($client, $months));
@@ -53,12 +53,13 @@ class InvoiceBuilder
             } elseif ($client->billing_timing === Client::TIMING_ADVANCE) {
                 $lines = $lines->merge($this->advanceLines($client, $months));
 
-                if ($client->reconcile_previous_period) {
-                    [$pFrom, $pTo] = $this->window($start->subMonths($months), $months);
-                    $lines = $lines->merge($this->reconciliationLines($client, $pFrom, $pTo, $invoice));
-                    // Le spese seguono il periodo conguagliato.
-                    $expenseFrom = $pFrom;
-                    $expenseTo = $pTo;
+                if ($periodo->conguaglioDa !== null) {
+                    $lines = $lines->merge($this->reconciliationLines(
+                        $client,
+                        $periodo->conguaglioDa,
+                        $periodo->conguaglioA,
+                        $invoice,
+                    ));
                 }
             } else { // hourly, posticipato
                 $lines = $lines->merge($this->hourlyLines($client, $from, $to, $months, $invoice));
@@ -66,7 +67,7 @@ class InvoiceBuilder
 
             // Extra fisso ricorrente e spese (art. 15) valgono per tutti i modelli.
             $lines = $lines->merge($this->extraLine($client, $months));
-            $lines = $lines->merge($this->expenseLine($client, $expenseFrom, $expenseTo, $invoice));
+            $lines = $lines->merge($this->expenseLine($client, $periodo->speseDa, $periodo->speseA, $invoice));
 
             $lines->values()->each(function (array $line, int $i) use ($invoice): void {
                 $invoice->items()->create($line + ['sort' => $i]);
@@ -74,14 +75,6 @@ class InvoiceBuilder
 
             return $invoice->fresh(['items', 'hours', 'expenses', 'client']);
         });
-    }
-
-    /**
-     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
-     */
-    private function window(CarbonImmutable $start, int $months): array
-    {
-        return [$start->startOfMonth(), $start->addMonths($months - 1)->endOfMonth()];
     }
 
     private function periodLabel(Client $client, ?string $suffix = null): string

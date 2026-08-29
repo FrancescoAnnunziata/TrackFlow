@@ -1,0 +1,24 @@
+<?php
+
+use App\Filament\Pages\Guida;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
+
+it('renderizza il manuale per gli admin', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSuccessful()
+        // I due punti che si sbagliano più spesso devono restare nel manuale.
+        ->assertSee('Alsea', escape: false)
+        ->assertSee('giorgio@g8labs.it', escape: false);
+});
+
+it('tiene il manuale fuori dalla portata dei non admin', function () {
+    expect(Guida::canAccess())->toBeFalse();
+
+    $this->actingAs(User::factory()->create(['role' => 'member']));
+    expect(Guida::canAccess())->toBeFalse();
+});

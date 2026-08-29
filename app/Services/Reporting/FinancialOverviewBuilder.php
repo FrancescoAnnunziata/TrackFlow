@@ -5,6 +5,7 @@ namespace App\Services\Reporting;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Client;
+use App\Models\Corrispettivo;
 use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -223,13 +224,24 @@ class FinancialOverviewBuilder
      * (coefficiente) del fatturato; i contributi INPS sono deducibili prima
      * dell'imposta.
      *
-     * @return array{months: array<int, array{mese: int, label: string, incassato: float}>, incassato_anno: float, limite: float, perc_limite: float, reddito_lordo: float, inps: float, imposta: float, tasse_totali: float, netto: float, coefficiente: float, aliquota: float, inps_rate: float}
+     * L'incassato è la somma di due mondi che nessun gestionale vede insieme:
+     * le fatture ai clienti della P.IVA personale e gli incassi giornalieri
+     * dell'e-commerce. Entrambi al lordo — nel forfettario le commissioni non
+     * si deducono e sottrarle sottostimerebbe la soglia.
+     *
+     * @return array{months: array<int, array{mese: int, label: string, fatture: float, corrispettivi: float, incassato: float}>, fatture_anno: float, corrispettivi_anno: float, incassato_anno: float, limite: float, perc_limite: float, reddito_lordo: float, inps: float, imposta: float, tasse_totali: float, netto: float, coefficiente: float, aliquota: float, inps_rate: float}
      */
     public function forfettario(int $year): array
     {
         $months = [];
         for ($m = 1; $m <= 12; $m++) {
-            $months[$m] = ['mese' => $m, 'label' => self::MESI[$m], 'incassato' => 0.0];
+            $months[$m] = [
+                'mese' => $m,
+                'label' => self::MESI[$m],
+                'fatture' => 0.0,
+                'corrispettivi' => 0.0,
+                'incassato' => 0.0,
+            ];
         }
 
         $invoices = Invoice::query()
@@ -241,14 +253,28 @@ class FinancialOverviewBuilder
         foreach ($invoices as $inv) {
             $m = Carbon::parse($inv->issue_date)->month;
             // Forfettario: fattura senza IVA, total() = imponibile.
-            $months[$m]['incassato'] += $inv->total();
+            $months[$m]['fatture'] += $inv->total();
         }
+
+        // Incassi e-commerce: netto dei resi, per il giorno in cui l'ordine è
+        // stato pagato (il forfettario ragiona per cassa).
+        $corrispettivi = Corrispettivo::query()
+            ->whereYear('date', $year)
+            ->get();
+        foreach ($corrispettivi as $giorno) {
+            $months[Carbon::parse($giorno->date)->month]['corrispettivi'] += $giorno->net;
+        }
+
         foreach ($months as &$row) {
-            $row['incassato'] = round($row['incassato'], 2);
+            $row['fatture'] = round($row['fatture'], 2);
+            $row['corrispettivi'] = round($row['corrispettivi'], 2);
+            $row['incassato'] = round($row['fatture'] + $row['corrispettivi'], 2);
         }
         unset($row);
 
-        $incassato = round(array_sum(array_column($months, 'incassato')), 2);
+        $fatture = round(array_sum(array_column($months, 'fatture')), 2);
+        $eCommerce = round(array_sum(array_column($months, 'corrispettivi')), 2);
+        $incassato = round($fatture + $eCommerce, 2);
 
         $coeff = (float) config('forfettario.coefficiente_redditivita');
         $aliquota = (float) config('forfettario.aliquota_imposta');
@@ -263,6 +289,8 @@ class FinancialOverviewBuilder
 
         return [
             'months' => array_values($months),
+            'fatture_anno' => $fatture,
+            'corrispettivi_anno' => $eCommerce,
             'incassato_anno' => $incassato,
             'limite' => $limite,
             'perc_limite' => $limite > 0 ? round($incassato / $limite * 100, 1) : 0.0,

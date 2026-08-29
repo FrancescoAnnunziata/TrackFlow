@@ -65,15 +65,18 @@ return [
     // Anthropic (Claude): estrazione dati dalle fatture estere e assistente AI.
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
-        'model' => env('ANTHROPIC_MODEL', 'claude-opus-4-8'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5'),
 
         // Prezzi in USD per 1.000.000 di token, per calcolare il costo di ogni
         // chiamata AI. I moltiplicatori sono i fattori Anthropic sui token in
         // cache (~0.1x lettura, ~1.25x scrittura). Da tenere allineati ai listini.
         'pricing' => [
-            'claude-opus-4-8' => ['input' => 5.00, 'output' => 25.00],
+            'claude-fable-5' => ['input' => 10.00, 'output' => 50.00],
             'claude-opus-5' => ['input' => 5.00, 'output' => 25.00],
-            'claude-sonnet-5' => ['input' => 3.00, 'output' => 15.00],
+            'claude-opus-4-8' => ['input' => 5.00, 'output' => 25.00],
+            'claude-opus-4-7' => ['input' => 5.00, 'output' => 25.00],
+            'claude-opus-4-6' => ['input' => 5.00, 'output' => 25.00],
+            'claude-sonnet-5' => ['input' => 2.00, 'output' => 10.00],
             'claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00],
             'claude-haiku-4-5' => ['input' => 1.00, 'output' => 5.00],
         ],
@@ -100,6 +103,26 @@ return [
             'trim',
             explode(',', (string) env('BILLING_API_SOURCES', 'personal-ticketing')),
         ))),
+    ],
+
+    // Shopify (Admin API di una custom app): incassi giornalieri dell'e-commerce
+    // sulla P.IVA personale. Serve solo in lettura sugli ordini.
+    'shopify' => [
+        // Dominio tecnico del negozio, es. "mio-negozio.myshopify.com".
+        'domain' => env('SHOPIFY_SHOP_DOMAIN'),
+
+        // Admin API access token della custom app (shpat_...). Mostrato una
+        // sola volta da Shopify al momento dell'installazione.
+        'token' => env('SHOPIFY_ADMIN_API_TOKEN'),
+
+        // Versione dell'API GraphQL. Shopify ne pubblica una a trimestre e
+        // supporta l'ultimo anno: va alzata ogni tanto.
+        'api_version' => env('SHOPIFY_API_VERSION', '2026-01'),
+
+        // Quanti giorni indietro il sync giornaliero riscrive ogni volta. I resi
+        // arrivano dopo l'ordine e cambiano il netto di un giorno già chiuso,
+        // quindi non basta guardare solo ieri.
+        'resync_days' => (int) env('SHOPIFY_RESYNC_DAYS', 14),
     ],
 
 ];
