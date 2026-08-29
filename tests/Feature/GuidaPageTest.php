@@ -29,3 +29,11 @@ it('spiega da dove arrivano le fatture passive', function () {
         ->assertSee('Importa da Fatture in Cloud', escape: false)
         ->assertSee('tre ore', escape: false);
 });
+
+it('spiega che le fatture estere vanno caricate a mano prima di riconciliare', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('Fatture estere', escape: false)
+        // Il punto che fa fallire la riconciliazione se lo si ignora.
+        ->assertSee('Importo EUR (cambio)', escape: false);
+});

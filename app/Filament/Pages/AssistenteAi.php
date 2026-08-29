@@ -38,14 +38,20 @@ class AssistenteAi extends Page
 
     public string $draft = '';
 
-    /** La chat è privata al titolare; il commercialista (ruolo accountant) la usa in sola lettura. */
-    private const OWNER_EMAIL = 'giorgio.giotto@g8labs.it';
-
+    /**
+     * Chi lavora sulla contabilità (admin) e il commercialista (accountant, in
+     * sola lettura). I clienti no: vedono solo le proprie cose e la chat legge
+     * tutti i conti dell'azienda.
+     *
+     * Ogni conversazione appartiene a chi l'ha scritta (i thread sono filtrati
+     * per user_id), quindi aprire la pagina a più persone non espone a nessuno
+     * le chat degli altri.
+     */
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
-        return $user !== null && ($user->email === self::OWNER_EMAIL || $user->isAccountant());
+        return $user !== null && ($user->isAdmin() || $user->isAccountant());
     }
 
     /** Chi può eseguire azioni (confermare riconciliazioni): solo gli admin. */
