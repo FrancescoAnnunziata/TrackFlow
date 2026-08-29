@@ -22,3 +22,10 @@ it('tiene il manuale fuori dalla portata dei non admin', function () {
     $this->actingAs(User::factory()->create(['role' => 'member']));
     expect(Guida::canAccess())->toBeFalse();
 });
+
+it('spiega da dove arrivano le fatture passive', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('Importa da Fatture in Cloud', escape: false)
+        ->assertSee('tre ore', escape: false);
+});

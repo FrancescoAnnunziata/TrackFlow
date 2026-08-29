@@ -138,7 +138,7 @@
                 <li><span class="g-num">4</span> Emetti: <em>Invia a Fatture in Cloud</em> (G8Labs) o a mano su <em>Fiscozen</em> (G. Giotto)</li>
                 <li><span class="g-num">5</span> Importa i movimenti delle banche</li>
                 <li><span class="g-num">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
-                <li><span class="g-num">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti)</li>
+                <li><span class="g-num">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti) <span class="g-muted">— arrivano da sole da Fatture in Cloud</span></li>
                 <li><span class="g-num">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
                 <li><span class="g-num">9</span> Invia la documentazione al <strong>commercialista</strong> (Anna Messa)</li>
             </ol>
@@ -415,6 +415,36 @@
                 <li><span class="g-kbd">Registra incasso</span>. Se copre tutto → <strong>Pagata</strong> ✅; se copre in parte resta Inviata con il residuo.</li>
             </ol>
             <div class="g-callout g-info">Se il bonifico non compare tra i suggeriti, apri la fattura (<em>Visualizza</em>) e usa <span class="g-kbd">Riconcilia con movimento</span>: scegli il movimento a mano tra tutti quelli liberi, con importo libero. Stesso risultato.</div>
+        </div>
+
+        {{-- STEP 6b: da dove arrivano le fatture passive --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num alt">6b</span><p class="g-h">Da dove arrivano le fatture passive</p></div>
+            <p>Le fatture d'acquisto (quelle che <em>riceviamo</em> dai fornitori) <strong>non si inseriscono a
+                mano</strong>: arrivano da sole da Fatture in Cloud.</p>
+            <div class="g-callout g-ok">
+                <strong>È automatico.</strong> Ogni <strong>tre ore</strong> TrackFlow si collega a Fatture in Cloud e
+                scarica le fatture d'acquisto e le note di credito ricevute. Se un fornitore non l'abbiamo ancora in
+                anagrafica, viene creato da solo con i dati che arrivano da Fatture in Cloud. Non devi fare nulla:
+                quando apri <strong>Controllo Finanziario → Fatture passive</strong>, le trovi già lì.
+            </div>
+            <p class="g-sub">Se ti serve subito, senza aspettare</p>
+            <p>Capita: hai appena registrato una fattura su Fatture in Cloud e la vuoi qui adesso per riconciliare un
+                pagamento. In quel caso c'è il pulsante.</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Controllo Finanziario → Fatture passive</strong>.</li>
+                <li>In alto a destra <span class="g-kbd">Importa da Fatture in Cloud</span>.</li>
+                <li>I campi sono già compilati bene: premi <strong>Importa</strong> senza toccarli.</li>
+            </ol>
+            <div class="g-callout g-info">
+                Premere il pulsante <strong>non crea doppioni</strong>: le fatture già presenti vengono riconosciute e
+                aggiornate, non duplicate. Puoi cliccarlo tutte le volte che vuoi senza far danni.
+            </div>
+            <div class="g-callout g-warn">
+                Se non arriva niente e il pulsante dà errore, quasi sempre il collegamento a Fatture in Cloud è da
+                rifare: pagina <strong>Fatture in Cloud</strong> nel gruppo <em>Impostazioni</em>. Se non sai cosa
+                fare lì, chiedi a Giorgio invece di provare: si tratta di ricollegare l'account.
+            </div>
         </div>
 
         {{-- STEP 7 passive --}}
