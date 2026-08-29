@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BankTransactions\Pages;
 
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Models\BankAccount;
+use App\Services\Ai\BankCsvLayoutDetector;
 use App\Services\Import\BankCsvImporter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -12,7 +13,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
@@ -125,7 +128,18 @@ class ListBankTransactions extends ListRecords
                     ])
                     ->disk('local')
                     ->directory('imports')
+                    ->live()
                     ->required(),
+                Actions::make([
+                    Action::make('detectLayout')
+                        ->label('Riconosci il formato dal file')
+                        ->icon(Heroicon::OutlinedSparkles)
+                        ->color('gray')
+                        ->visible(fn (): bool => app(BankCsvLayoutDetector::class)->configured())
+                        ->disabled(fn (Get $get): bool => blank(Arr::first((array) $get('file'))))
+                        ->action(fn (Get $get, Set $set) => $this->detectCsvLayout($get, $set)),
+                ])
+                    ->fullWidth(),
                 Section::make('Formato file')
                     ->columns(3)
                     ->components([
@@ -194,5 +208,54 @@ class ListBankTransactions extends ListRecords
                     ->body("Importati {$result['imported']} movimenti. Duplicati saltati: {$result['duplicates']}. Scartati: {$result['skipped']}.")
                     ->send();
             });
+    }
+
+    /**
+     * Compila il formato e la mappatura leggendo il file appena caricato.
+     *
+     * I preset di config/banks.php coprono le banche note; questo serve quando
+     * il tracciato non lo conosciamo (banca nuova, export cambiato). Riempie il
+     * form e basta: l'utente vede cosa è stato riconosciuto e può correggerlo
+     * prima di importare, quindi un errore del modello non finisce mai nei
+     * movimenti senza passare sotto gli occhi di qualcuno.
+     */
+    private function detectCsvLayout(Get $get, Set $set): void
+    {
+        $relativePath = Arr::first((array) $get('file'));
+
+        if (blank($relativePath)) {
+            Notification::make()->warning()->title('Carica prima il file')->send();
+
+            return;
+        }
+
+        try {
+            $layout = app(BankCsvLayoutDetector::class)
+                ->detect(Storage::disk('local')->path($relativePath));
+        } catch (Throwable $e) {
+            Notification::make()
+                ->danger()
+                ->title('Non sono riuscito a riconoscere il formato')
+                ->body($e->getMessage().' Puoi comunque compilare i campi a mano.')
+                ->send();
+
+            return;
+        }
+
+        $set('delimiter', $layout['delimiter']);
+        $set('decimal', $layout['decimal']);
+        $set('thousands', $layout['thousands']);
+        $set('date_format', $layout['date_format']);
+        $set('amount_mode', $layout['amount_mode']);
+
+        foreach ($layout['columns'] as $field => $header) {
+            $set('col_'.$field, $header);
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Formato riconosciuto')
+            ->body(($layout['note'] ?? 'Controlla la mappatura qui sotto').' — controlla i campi prima di importare.')
+            ->send();
     }
 }
