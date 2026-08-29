@@ -52,3 +52,10 @@ it('avverte Paola che segnare come costo ha un prezzo', function () {
         // Il collegamento spesa → pagamento non deve sembrare una riconciliazione.
         ->assertSee('Collega movimento', escape: false);
 });
+
+it('dice chi può scaricare quale estratto conto', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('Vivid Business', escape: false)
+        ->assertSee('Chiedi a Giorgio', escape: false);
+});

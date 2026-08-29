@@ -259,7 +259,31 @@
         {{-- STEP 5 import movimenti --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num">5</span><p class="g-h">Importa i movimenti delle banche</p></div>
-            <p>Emesse le fatture, carichi i movimenti bancari: servono dopo per collegare gli incassi. Una volta per banca (<strong>InBank</strong> e <strong>Vivid Business</strong>): scarichi il CSV dal sito della banca e lo importi qui.</p>
+            <p>Emesse le fatture, carichi i movimenti bancari: servono dopo per collegare gli incassi. Si fa
+                <strong>una volta per conto</strong>, e i conti sono due: scarichi il CSV dal sito della banca e lo
+                importi qui.</p>
+            <p class="g-sub">I due conti, e chi scarica cosa</p>
+            <div class="g-tablewrap">
+                <table class="g-table">
+                    <thead><tr><th>Conto</th><th>Chi scarica l'estratto</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td class="name">Vivid Business</td>
+                            <td>✅ <strong>Fai da te.</strong> Hai le credenziali: entri, scarichi il CSV del periodo e
+                                lo importi.</td>
+                        </tr>
+                        <tr>
+                            <td class="name">InBank</td>
+                            <td>🔑 <strong>Chiedi a Giorgio.</strong> Le credenziali al momento ce le ha solo lui: non
+                                puoi entrare tu, fatti mandare il file CSV.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="g-callout g-info">
+                Chiedi il file di InBank <strong>prima</strong> di metterti a riconciliare: senza quei movimenti metà
+                delle fatture risulterà «da incassare» anche se è già stata pagata, e ti sembrerà che manchi qualcosa.
+            </div>
             <ol class="g-ol">
                 <li>Menu <strong>Controllo Finanziario → Movimenti bancari</strong>.</li>
                 <li>In alto <span class="g-kbd">Importa movimenti</span> → popup <em>«Importa movimenti da CSV/XLSX»</em>.</li>
