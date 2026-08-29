@@ -37,3 +37,9 @@ it('spiega che le fatture estere vanno caricate a mano prima di riconciliare', f
         // Il punto che fa fallire la riconciliazione se lo si ignora.
         ->assertSee('Importo EUR (cambio)', escape: false);
 });
+
+it('dice a Paola dove cercare i PDF delle fatture estere', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('amministrazione@g8labs.it', escape: false);
+});

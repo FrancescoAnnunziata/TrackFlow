@@ -3,8 +3,10 @@
 use App\Assistant\AssistantRunner;
 use App\Assistant\AssistantTurn;
 use App\Assistant\Contracts\ChatClient;
+use App\Assistant\Tools\ProposeReconciliationTool;
 use App\Assistant\Tools\ReadInvoiceExpensesTool;
 use App\Filament\Pages\AssistenteAi;
+use App\Filament\Resources\BankTransactions\Tables\BankTransactionsTable;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\Client;
@@ -101,4 +103,22 @@ it('reads the reimbursed expenses of an invoice and their linked passive invoice
     expect($res->content)->toContain('781T')          // la fattura passiva collegata
         ->toContain('Tekworld')                        // il fornitore
         ->toContain('193,87');                         // l'importo
+});
+
+// L'assistente non deve poter proporre quello che dall'interfaccia non si può
+// fare a mano: le spese non sono agganciabili a un movimento, quindi non
+// devono comparire nemmeno fra i tipi che il modello può scegliere.
+it('non offre al modello tipi di documento che l\'interfaccia non permette', function () {
+    $schema = app(ProposeReconciliationTool::class)->inputSchema();
+    $tipi = $schema['properties']['targets']['items']['properties']['type']['enum'];
+
+    expect($tipi)->not->toContain('expense')
+        ->and($tipi)->toContain('passive_invoice')
+        ->and($tipi)->toContain('costo')
+        ->and($tipi)->toContain('reimbursement');
+
+    // E il selettore manuale dell'interfaccia offre gli stessi tipi.
+    $ui = BankTransactionsTable::class;
+    expect(file_get_contents((new ReflectionClass($ui))->getFileName()))
+        ->not->toContain("'expense' => 'Spesa'");
 });

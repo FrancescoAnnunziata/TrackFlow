@@ -25,7 +25,7 @@ class ProposeReconciliationTool implements AssistantTool
     public function description(): string
     {
         return 'Prepara una proposta di riconciliazione di un movimento bancario verso uno o più documenti '
-            .'(fatture attive/passive, costi, spese, rimborsi spese). NON esegue: crea una proposta che l\'utente deve confermare. '
+            .'(fatture attive, fatture passive, costi, rimborsi spese). NON esegue: crea una proposta che l\'utente deve confermare. '
             .'Puoi indicare più documenti la cui somma torna con l\'importo del movimento. '
             .'Verifica prima con gli altri tool che movimento e documenti esistano e che gli importi tornino.';
     }
@@ -42,7 +42,11 @@ class ProposeReconciliationTool implements AssistantTool
                     'items' => [
                         'type' => 'object',
                         'properties' => [
-                            'type' => ['type' => 'string', 'enum' => ['invoice', 'passive_invoice', 'costo', 'expense', 'reimbursement'], 'description' => 'invoice=fattura attiva, passive_invoice=fattura passiva, costo, expense=spesa, reimbursement=rimborso spese'],
+                            // Niente 'expense': le spese non sono agganciabili a un
+                            // movimento nemmeno dall'interfaccia (conterebbero lo
+                            // stesso denaro due volte). L'assistente non deve poter
+                            // proporre quello che l'utente non può fare a mano.
+                            'type' => ['type' => 'string', 'enum' => ['invoice', 'passive_invoice', 'costo', 'reimbursement'], 'description' => 'invoice=fattura attiva, passive_invoice=fattura passiva, costo, reimbursement=rimborso spese'],
                             'id' => ['type' => 'integer'],
                         ],
                         'required' => ['type', 'id'],

@@ -370,9 +370,17 @@
                 fattura</strong>, perché quella fattura in TrackFlow non c'è ancora. Non è un errore e non manca
                 niente: va <strong>caricata prima</strong>. Poi il movimento si chiude normalmente.
             </div>
+            <p class="g-sub">Dove trovi i PDF</p>
+            <p>Ti serve il <strong>PDF della fattura</strong>, e quasi sempre è arrivato per email. Il posto giusto
+                dove cercarlo è la casella <strong>amministrazione@g8labs.it</strong>: è un gruppo di Google Workspace
+                in cui ci siete sia tu che Giorgio, quindi <strong>la vedi anche tu</strong>, non serve chiederla.</p>
+            <p><strong>Cerca il nome del fornitore</strong> (per esempio <em>Anthropic</em>, <em>Tailscale</em>,
+                <em>Meilisearch</em>): la fattura del mese di solito salta fuori come allegato PDF.</p>
+            <div class="g-callout g-info">
+                Se lì non c'è, può darsi che quel fornitore scriva alla casella personale di Giorgio: in quel caso
+                chiedila a lui, non c'è modo per te di recuperarla da sola.
+            </div>
             <p class="g-sub">Come si caricano</p>
-            <p>Ti serve il <strong>PDF della fattura</strong>: di solito arriva via email dal fornitore, oppure si
-                scarica dal suo sito. Se non ce l'hai, chiedi a Giorgio.</p>
             <ol class="g-ol">
                 <li>Menu <strong>Controllo Finanziario → Fatture estere</strong>.</li>
                 <li>Trascina i PDF nel riquadro <strong>«1. Carica i PDF»</strong>. Puoi caricarne <strong>più di uno
