@@ -24,7 +24,10 @@ function dataCells(array $table): array
     return collect($table['rows'])->where('kind', 'data')->pluck('cells')->all();
 }
 
-it('reconciles an expense with a bank outflow and suggests it as a candidate', function () {
+// Le spese restano agganciabili a mano (le riconciliazioni storiche continuano a
+// valere), ma non si propongono più da sole: un'uscita che riguarda una spesa o
+// ha dietro una fattura passiva, o si chiude con "Segna come costo".
+it('reconciles an expense with a bank outflow, but never proposes one as a candidate', function () {
     $user = User::factory()->admin()->create();
     $account = BankAccount::create(['name' => 'Conto', 'bank_key' => 'generic', 'opening_balance' => 0]);
     $expense = Expense::create([
@@ -36,18 +39,14 @@ it('reconciles an expense with a bank outflow and suggests it as a candidate', f
         'amount' => -50, 'description' => 'POS Ristorante', 'dedup_hash' => 'e1',
     ]);
 
-    // La spesa è fra i candidati per l'uscita.
     $suggestions = app(MatchSuggestionService::class)->suggestions($tx);
-    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeTrue();
+    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense))->toBeFalse();
 
+    // Agganciata a mano resta valida: il legame regge, cambia solo cosa suggeriamo.
     app(ReconciliationService::class)->attach($tx, $expense, 50);
 
     expect($tx->fresh()->reconciled)->toBeTrue();
     expect($expense->reconciledAmount())->toBe(50.0);
-
-    // Riconciliata, non è più fra i candidati.
-    $after = app(MatchSuggestionService::class)->suggestions($tx->fresh());
-    expect($after->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeFalse();
 });
 
 it('builds the registro acquisti with conto grouping, riaddebito and no double counting', function () {

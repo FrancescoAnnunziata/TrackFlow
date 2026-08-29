@@ -5,7 +5,6 @@ namespace App\Services\Reconciliation;
 use App\Models\BankTransaction;
 use App\Models\Client;
 use App\Models\Costo;
-use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use Illuminate\Database\Eloquent\Model;
@@ -113,8 +112,15 @@ class MatchSuggestionService
         // Solo i costi non ancora coperti da riconciliazioni: un costo creato da un
         // movimento ("Segna come costo") è già riconciliato a quel movimento e non
         // deve riproporsi come candidato per un altro.
+        //
+        // Esclusi anche i costi che appartengono a un RIMBORSO SPESE: sono le voci
+        // anticipate da una persona, e il movimento bancario corrispondente è il
+        // bonifico di rimborso, che si aggancia al documento Rimborso spese.
+        // Proporli qui significherebbe offrire proprio i documenti che contano lo
+        // stesso costo una seconda volta.
         $costi = Costo::with('supplier')
             ->withSum('reconciliations', 'amount')
+            ->whereNull('reimbursement_id')
             ->whereBetween('date', [$from, $to])
             ->limit(200)
             ->get()
@@ -127,28 +133,15 @@ class MatchSuggestionService
                 'name' => (string) ($c->supplier->name ?? $c->description),
             ]);
 
-        // Le spese (scontrini) sono documenti di costo riconciliabili: entrano
-        // fra i candidati solo se non ancora coperte da riconciliazioni. Le spese
-        // già collegate a una fattura passiva sono escluse: rappresentano lo
-        // stesso costo, che si riconcilia sulla fattura passiva (evita il doppio
-        // conteggio); la catena verso il riaddebito resta comunque tracciata dal
-        // link spesa→passiva.
-        $expenses = Expense::with(['supplier', 'client'])
-            ->withSum('reconciliations', 'amount')
-            ->whereNull('passive_invoice_id')
-            ->whereBetween('date', [$from, $to])
-            ->limit(200)
-            ->get()
-            ->filter(fn (Expense $e): bool => (float) ($e->reconciliations_sum_amount ?? 0) + 0.01 < $e->total())
-            ->map(fn (Expense $e): array => [
-                'model' => $e,
-                'label' => sprintf('Spesa — %s', $e->supplier->name ?? $e->notes ?? (optional($e->date)->format('d/m/Y') ?? '')),
-                'amount' => $e->total(),
-                'date' => $e->date,
-                'name' => (string) ($e->supplier->name ?? $e->client->name ?? ''),
-            ]);
+        // Le SPESE non sono candidate alla riconciliazione, di proposito.
+        //
+        // Una spesa riaddebitabile o ha dietro una fattura passiva — e allora è
+        // quella a giustificare l'uscita — oppure non ce l'ha, e allora l'uscita
+        // si chiude con "Segna come costo". In entrambi i casi agganciare la
+        // spesa al movimento conterebbe lo stesso denaro due volte, e il legame
+        // col cliente lo tiene già la spesa per conto suo (riaddebito in art. 15).
 
-        return $passive->concat($costi)->concat($expenses);
+        return $passive->concat($costi);
     }
 
     /**

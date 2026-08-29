@@ -6,6 +6,7 @@ use App\Models\Costo;
 use App\Models\Expense;
 use App\Models\PassiveInvoice;
 use App\Models\Reconciliation;
+use App\Models\Reimbursement;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Reconciliation\MatchSuggestionService;
@@ -41,7 +42,7 @@ it('suggests the passive invoice and not the linked expense for an outflow', fun
     expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeFalse();
 });
 
-it('still suggests a standalone expense (no passive) for an outflow', function () {
+it('non propone la spesa nemmeno quando non ha una fattura passiva dietro', function () {
     $user = User::factory()->admin()->create();
     $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
     $expense = Expense::create(['user_id' => $user->id, 'date' => '2026-06-15', 'amount' => 50, 'conto' => 'Ristorazione']);
@@ -53,7 +54,28 @@ it('still suggests a standalone expense (no passive) for an outflow', function (
 
     $suggestions = app(MatchSuggestionService::class)->suggestions($tx);
 
-    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeTrue();
+    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Expense && $s['model']->is($expense)))->toBeFalse();
+});
+
+it('non propone i costi che appartengono a un rimborso spese', function () {
+    // Il bonifico che li salda si aggancia al documento Rimborso spese: proporre
+    // anche le singole voci significherebbe contare lo stesso costo due volte.
+    $user = User::factory()->admin()->create();
+    $account = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'opening_balance' => 0]);
+    $rimborso = Reimbursement::create(['user_id' => $user->id, 'date' => '2026-06-30', 'notes' => 'Giugno', 'amount' => 120]);
+
+    $suo = Costo::create(['date' => '2026-06-10', 'description' => 'Rimborso chilometrico', 'category' => 'Trasferte', 'amount' => 120, 'reimbursement_id' => $rimborso->id]);
+    $libero = Costo::create(['date' => '2026-06-10', 'description' => 'Commissione bonifico', 'category' => 'Commissioni bancarie', 'amount' => 120]);
+
+    $tx = BankTransaction::create([
+        'bank_account_id' => $account->id, 'booked_at' => '2026-06-12',
+        'amount' => -120, 'description' => 'Uscita da riconciliare', 'dedup_hash' => 'x3',
+    ]);
+
+    $suggestions = app(MatchSuggestionService::class)->suggestions($tx);
+
+    expect($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Costo && $s['model']->is($suo)))->toBeFalse()
+        ->and($suggestions->contains(fn (array $s): bool => $s['model'] instanceof Costo && $s['model']->is($libero)))->toBeTrue();
 });
 
 it('fuzzy-matches a foreign-currency outflow to the passive by name and near amount', function () {

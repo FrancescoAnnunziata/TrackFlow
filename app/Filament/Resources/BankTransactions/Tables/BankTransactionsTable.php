@@ -4,7 +4,6 @@ namespace App\Filament\Resources\BankTransactions\Tables;
 
 use App\Models\BankTransaction;
 use App\Models\Costo;
-use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Reimbursement;
@@ -215,7 +214,6 @@ class BankTransactionsTable
                                 'invoice' => 'Fattura attiva',
                                 'passive_invoice' => 'Fattura passiva',
                                 'costo' => 'Costo',
-                                'expense' => 'Spesa',
                                 'reimbursement' => 'Rimborso spese',
                             ])
                             ->live(),
@@ -532,20 +530,12 @@ class BankTransactionsTable
             'passive_invoice' => PassiveInvoice::with('supplier')->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->latest('document_date')->limit(100)->get()
                 ->mapWithKeys(fn (PassiveInvoice $p): array => [$p->id => sprintf('%s — %s (€%s)', $p->number, $p->supplier->name ?? '—', number_format($p->total(), 2, ',', '.'))])
                 ->all(),
-            // Solo costi/spese non ancora coperti da riconciliazioni: quelli già
-            // agganciati a un movimento non devono riproporsi come candidati.
-            'costo' => Costo::withSum('reconciliations', 'amount')->latest('date')->limit(100)->get()
+            // Solo i costi non ancora coperti da riconciliazioni e non appartenenti
+            // a un rimborso spese (quelli si saldano col bonifico, agganciato al
+            // documento Rimborso spese): vedi MatchSuggestionService.
+            'costo' => Costo::withSum('reconciliations', 'amount')->whereNull('reimbursement_id')->latest('date')->limit(100)->get()
                 ->filter(fn (Costo $c): bool => (float) ($c->reconciliations_sum_amount ?? 0) + 0.01 < $c->total())
                 ->mapWithKeys(fn (Costo $c): array => [$c->id => sprintf('%s (€%s)', $c->description, number_format($c->total(), 2, ',', '.'))])
-                ->all(),
-            'expense' => Expense::with(['supplier', 'client'])->withSum('reconciliations', 'amount')->whereNull('passive_invoice_id')->latest('date')->limit(100)->get()
-                ->filter(fn (Expense $e): bool => (float) ($e->reconciliations_sum_amount ?? 0) + 0.01 < $e->total())
-                ->mapWithKeys(fn (Expense $e): array => [$e->id => sprintf(
-                    '%s — %s (€%s)',
-                    optional($e->date)->format('d/m/Y') ?? '',
-                    $e->supplier->name ?? $e->client->name ?? (string) ($e->notes ?? 'Spesa'),
-                    number_format($e->total(), 2, ',', '.'),
-                )])
                 ->all(),
             // Rimborsi spese ancora scoperti: il bonifico che li salda si aggancia qui.
             'reimbursement' => Reimbursement::latest('date')->limit(100)->get()
