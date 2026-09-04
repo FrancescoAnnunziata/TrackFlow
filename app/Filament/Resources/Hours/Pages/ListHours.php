@@ -61,7 +61,7 @@ class ListHours extends ListRecords
             ->visible(fn (): bool => auth()->user()->isAdmin())
             ->action(function (): ?BinaryFileResponse {
                 $hours = $this->getFilteredTableQuery()
-                    ?->with(['clients', 'user'])
+                    ?->with(['client', 'user'])
                     ->orderBy('date')
                     ->get() ?? collect();
 
@@ -79,7 +79,7 @@ class ListHours extends ListRecords
 
                 $rows = $hours->map(fn (Hour $h): array => [
                     optional($h->date)->format('d/m/Y'),
-                    $h->clients->pluck('name')->implode(', '),
+                    $h->client?->name ?? '—',
                     $h->user?->name ?? $h->user?->email ?? '—',
                     (float) $h->hours,
                     $h->billable ? 'Sì' : 'No',

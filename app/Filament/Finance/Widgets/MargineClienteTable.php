@@ -49,7 +49,7 @@ class MargineClienteTable extends Widget
                 ->sum('amount');
 
             $ore = (float) Hour::whereBetween('date', [$from, $until])
-                ->whereHas('clients', fn ($q) => $q->where('clients.id', $client->id))
+                ->where('client_id', $client->id)
                 ->sum('hours');
 
             return [

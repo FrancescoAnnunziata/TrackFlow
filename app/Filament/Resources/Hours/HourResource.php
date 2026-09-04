@@ -11,11 +11,11 @@ use App\Filament\Resources\Hours\Schemas\HourInfolist;
 use App\Filament\Resources\Hours\Tables\HoursTable;
 use App\Models\Hour;
 use BackedEnum;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class HourResource extends Resource
 {
@@ -28,7 +28,6 @@ class HourResource extends Resource
     protected static ?string $modelLabel = 'Ora';
 
     protected static ?string $pluralModelLabel = 'Ore';
-
 
     public static function form(Schema $schema): Schema
     {
@@ -55,7 +54,7 @@ class HourResource extends Resource
         }
 
         if ($user->isClient()) {
-            return $query->whereHas('clients', fn (Builder $q) => $q->whereKey($user->allClientIds()));
+            return $query->whereIn('client_id', $user->allClientIds());
         }
 
         return $query->where('user_id', $user->id);

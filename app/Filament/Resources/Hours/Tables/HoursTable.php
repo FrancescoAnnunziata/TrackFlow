@@ -28,8 +28,8 @@ class HoursTable
                     ->searchable()
                     ->sortable()
                     ->visible(fn (): bool => auth()->user()->isAdmin() || auth()->user()->isClient()),
-                TextColumn::make('clients.name')
-                    ->label('Clienti')
+                TextColumn::make('client.name')
+                    ->label('Cliente')
                     ->badge()
                     ->searchable(),
                 TextColumn::make('date')
@@ -78,16 +78,16 @@ class HoursTable
                         fn (Builder $query): Builder => $query
                             ->whereIn('role', ['admin', 'member'])
                             ->whereHas(
-                                'hours.clients',
-                                fn (Builder $q): Builder => $q->whereKey(auth()->user()->allClientIds())
+                                'hours',
+                                fn (Builder $q): Builder => $q->whereIn('client_id', auth()->user()->allClientIds())
                             )
                     )
                     ->searchable()
                     ->preload()
                     ->visible(fn (): bool => auth()->user()->isClient()),
-                SelectFilter::make('clients')
+                SelectFilter::make('client')
                     ->label('Cliente')
-                    ->relationship('clients', 'name')
+                    ->relationship('client', 'name')
                     ->searchable()
                     ->preload()
                     ->visible(fn (): bool => ! auth()->user()->isClient()),

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Hour;
 use App\Http\Requests\HourRequest;
+use App\Models\Hour;
 use Illuminate\Auth\Access\Gate;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +15,7 @@ class HourController extends Controller
     public function index()
     {
         return view('hours.index', [
-            'hours' => Auth::user()->hours
+            'hours' => Auth::user()->hours,
         ]);
     }
 
@@ -33,13 +33,13 @@ class HourController extends Controller
     public function store(HourRequest $request)
     {
         $hour = Auth::user()->hours()->create([
-            'date'      => $request->date,
-            'hours'     => $request->hours,
-            'notes'     => $request->notes,
-            'billable'  => $request->boolean('billable'),
+            'date' => $request->date,
+            'hours' => $request->hours,
+            'notes' => $request->notes,
+            'billable' => $request->boolean('billable'),
         ]);
 
-        $hour->clients()->sync($request->client_ids);
+        $hour->update(['client_id' => $request->client_id]);
 
         return redirect('/hours');
     }
@@ -52,7 +52,7 @@ class HourController extends Controller
         Gate::authorize('update', $hour);
 
         return view('hours.show', [
-            'hour' => $hour
+            'hour' => $hour,
         ]);
     }
 
@@ -64,7 +64,7 @@ class HourController extends Controller
         Gate::authorize('update', $hour);
 
         return view('hours.edit', [
-            'hour' => $hour
+            'hour' => $hour,
         ]);
     }
 
@@ -76,13 +76,13 @@ class HourController extends Controller
         Gate::authorize('update', $hour);
 
         $hour->update([
-            'date'      => $request->date,
-            'hours'     => $request->hours,
-            'notes'     => $request->notes,
-            'billable'  => $request->boolean('billable'),
+            'date' => $request->date,
+            'hours' => $request->hours,
+            'notes' => $request->notes,
+            'billable' => $request->boolean('billable'),
         ]);
 
-        $hour->clients()->sync($request->client_ids);
+        $hour->update(['client_id' => $request->client_id]);
 
         return redirect("/hours/{$hour->id}");
     }
@@ -93,7 +93,7 @@ class HourController extends Controller
     public function destroy(Hour $hour)
     {
         Gate::authorize('update', $hour);
-        
+
         $hour->delete();
 
         return redirect('/hours');

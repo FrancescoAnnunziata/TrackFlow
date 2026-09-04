@@ -41,7 +41,7 @@ it('computes the hours subtotal from the hours column', function () {
         'hours' => 2.5,
         'billable' => true,
     ]);
-    $hour->clients()->attach($client->id);
+    $hour->update(['client_id' => $client->id]);
     $invoice->hours()->attach($hour->id);
 
     // 2.5h * 50 = 125 (con il vecchio bug 'minutes' sarebbe stato 0).
@@ -118,7 +118,7 @@ it('creates an issued document with the invoice payload', function () {
         'status' => 'draft',
     ]);
     $hour = Hour::create(['user_id' => $invoice->user_id, 'date' => now(), 'hours' => 3, 'billable' => true]);
-    $hour->clients()->attach($client->id);
+    $hour->update(['client_id' => $client->id]);
     $invoice->hours()->attach($hour->id);
 
     $document = FicClient::fromConfig()->createIssuedDocument($invoice);

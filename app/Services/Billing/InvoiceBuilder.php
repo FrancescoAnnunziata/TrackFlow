@@ -310,7 +310,7 @@ class InvoiceBuilder
     {
         return Hour::query()
             ->where('billable', true)
-            ->whereHas('clients', fn ($q) => $q->whereKey($client->id))
+            ->where('client_id', $client->id)
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
             ->whereDoesntHave('invoices')

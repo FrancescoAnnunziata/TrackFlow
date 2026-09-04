@@ -40,7 +40,7 @@ it('imports hours and matches clients flexibly', function () use ($map) {
     expect((float) $hour->hours)->toBe(10.0);
     expect($hour->notes)->toBe('Trasferta');
     expect($hour->billable)->toBeTrue();
-    expect($hour->clients->first()->id)->toBe($client->id);
+    expect($hour->client->id)->toBe($client->id);
 });
 
 it('honours a forced client for every row', function () use ($map) {
@@ -53,7 +53,7 @@ it('honours a forced client for every row', function () use ($map) {
     // Anche la riga "Sconosciuto" viene importata perché si forza il cliente.
     expect($res['imported'])->toBe(3);
     expect($res['unmatched'])->toBe([]);
-    expect(Hour::first()->clients->first()->id)->toBe($forced->id);
+    expect(Hour::first()->client->id)->toBe($forced->id);
     expect(Hour::first()->billable)->toBeFalse();
 });
 

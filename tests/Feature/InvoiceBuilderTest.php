@@ -21,7 +21,7 @@ beforeEach(function () {
 function loggedHour(Client $client, User $user, string $date, float $hours, bool $billable = true): Hour
 {
     $h = Hour::create(['user_id' => $user->id, 'date' => $date, 'hours' => $hours, 'billable' => $billable]);
-    $h->clients()->attach($client->id);
+    $h->update(['client_id' => $client->id]);
 
     return $h;
 }

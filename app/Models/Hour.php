@@ -10,6 +10,7 @@ class Hour extends Model
 {
     protected $fillable = [
         'user_id',
+        'client_id',
         'date',
         'hours',
         'notes',
@@ -26,9 +27,9 @@ class Hour extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function clients(): BelongsToMany
+    public function client(): BelongsTo
     {
-        return $this->belongsToMany(Client::class)->withTimestamps();
+        return $this->belongsTo(Client::class);
     }
 
     public function invoices(): BelongsToMany

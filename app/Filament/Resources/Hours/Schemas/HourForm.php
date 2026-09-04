@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Hours\Schemas;
 
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -15,14 +15,13 @@ class HourForm
     {
         return $schema
             ->components([
-                Select::make('clients')
-                    ->label('Clienti')
-                    ->relationship(name: 'clients', titleAttribute: 'name')
-                    ->multiple()
+                Select::make('client_id')
+                    ->label('Cliente')
+                    ->relationship(name: 'client', titleAttribute: 'name')
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->helperText('Scegli i clienti per cui stai registrando le ore'),
+                    ->helperText('Il cliente per cui stai registrando le ore'),
                 DatePicker::make('date')
                     ->default(now())
                     ->required(),

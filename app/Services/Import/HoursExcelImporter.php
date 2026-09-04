@@ -99,7 +99,7 @@ class HoursExcelImporter
                 'notes' => $notes ?: null,
                 'billable' => $billable,
             ]);
-            $hour->clients()->attach($clientId);
+            $hour->update(['client_id' => $clientId]);
             $imported++;
         }
 

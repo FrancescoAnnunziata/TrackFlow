@@ -19,7 +19,7 @@ it('exports hours to an excel file for admins', function () {
         'billable' => true,
         'notes' => 'Trasferta sede',
     ]);
-    $hour->clients()->attach($client->id);
+    $hour->update(['client_id' => $client->id]);
 
     $this->actingAs($admin);
 
