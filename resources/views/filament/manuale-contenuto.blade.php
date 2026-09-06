@@ -239,10 +239,12 @@
                 Giorgio</strong>: non ce n'è una separata.</p>
             <ol class="g-ol">
                 <li>Vai su <strong>fattureincloud.it</strong> e premi <strong>Accedi</strong>.</li>
-                <li>Utente: <strong>giorgio@g8labs.it</strong>. <span class="g-muted">La password non è scritta qui: chiedila a Giorgio.</span></li>
+                <li>Utente: <strong>giorgio@g8labs.it</strong>. Poi <strong>non serve nessuna password</strong>: premi
+                    <span class="g-kbd">Accedi senza password</span>. <span class="g-muted">Non chiederla a Giorgio, non
+                    ti serve.</span></li>
                 <li>Arriva un <strong>codice OTP via email</strong> sulla casella di Giorgio. Quella casella è
-                    <strong>inoltrata in automatico anche alla tua</strong>: il codice ti arriva subito, prendilo dalla
-                    tua posta e inseriscilo.</li>
+                    <strong>inoltrata in automatico anche alla tua</strong> (<strong>paola.colombo@g8labs.it</strong>):
+                    il codice ti arriva subito, prendilo dalla tua posta e inseriscilo.</li>
                 <li>Poi Fatture in Cloud chiede una <strong>conferma dall'app</strong>. L'app <em>Fatture in Cloud</em> è
                     <strong>già installata e configurata sul tuo telefono</strong>: aprila e approva l'accesso.</li>
             </ol>
