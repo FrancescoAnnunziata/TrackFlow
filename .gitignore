@@ -27,3 +27,6 @@ Thumbs.db
 # security scan: config locale (password SMTP) e log delle esecuzioni
 /scripts/security-scan/scan.conf
 /scripts/security-scan/scan.log
+
+# Database SQLite generato dai test (phpunit.xml: DB_DATABASE=testing)
+/testing
