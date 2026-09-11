@@ -17,7 +17,19 @@
         @foreach ($summary as $key => $row)
             <li class="flex items-start justify-between gap-4 py-3">
                 <div class="min-w-0">
-                    <span class="font-medium text-gray-950 dark:text-white">{{ $row['label'] }}</span>
+                    <span class="inline-flex items-center gap-1">
+                        <span class="font-medium text-gray-950 dark:text-white">{{ $row['label'] }}</span>
+
+                        @if ($explanation = \App\Filament\Resources\DeviceSecurityChecks\Schemas\DeviceSecurityCheckInfolist::criticalExplanation($key))
+                            <svg
+                                title="{{ $explanation }}"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                                class="h-4 w-4 shrink-0 cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                        @endif
+                    </span>
 
                     @if ($row['detail'])
                         <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $row['detail'] }}</p>
