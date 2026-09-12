@@ -6,12 +6,15 @@ use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Quotes\QuoteResource;
 use App\Models\Invoice;
 use App\Models\Quote;
+use App\Models\User;
 use App\Notifications\QuoteSubmittedNotification;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Text;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Notification;
 
@@ -27,6 +30,7 @@ class ViewQuote extends ViewRecord
             $this->downloadPdfAction(),
             $this->sendAction(),
             $this->resendAction(),
+            $this->copyLinkAction(),
             $this->generateInvoiceAction(),
             EditAction::make()
                 ->visible(fn (Quote $record): bool => auth()->user()->isAdmin()),
@@ -133,6 +137,54 @@ class ViewQuote extends ViewRecord
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('gray')
             ->url(fn (Quote $record): string => route('quote.pdf', $record));
+    }
+
+    /**
+     * Admin: i link di firma da copiare e incollare a mano — in un'email di
+     * sollecito, in chat — senza passare da "Reinvia al cliente", che invece
+     * rimanda l'email e azzera i solleciti.
+     *
+     * Uno per referente e non uno solo: il link fa da autenticazione (vedi
+     * QuoteMagicAccess), quindi chi lo apre firma col nome dell'intestatario
+     * del link. Mandare a Tizio il link di Caio farebbe risultare Caio come
+     * firmatario.
+     */
+    private function copyLinkAction(): Action
+    {
+        return Action::make('copyLink')
+            ->label('Copia link')
+            ->icon(Heroicon::OutlinedLink)
+            ->color('gray')
+            ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->status === Quote::STATUS_SENT)
+            ->modalHeading('Link per la firma')
+            ->modalDescription(fn (): string => 'Un link per ogni referente: chi lo apre entra come quella persona, ed è a suo nome che risulterà la firma. Valido fino al '
+                .now()->addDays(Quote::MAGIC_LINK_DAYS)->format('d/m/Y').' (ogni volta che apri questa finestra i link ripartono da oggi).')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Chiudi')
+            ->schema(fn (Quote $record): array => $this->linkEntries($record));
+    }
+
+    /**
+     * @return array<int, TextEntry|Text>
+     */
+    private function linkEntries(Quote $record): array
+    {
+        $contacts = $record->client->contacts;
+
+        if ($contacts->isEmpty()) {
+            return [
+                Text::make('Il cliente non ha referenti, quindi non c\'è nessuno a cui intestare il link. Creane uno dalla sezione Utenti e torna qui.'),
+            ];
+        }
+
+        return $contacts
+            ->map(fn (User $contact): TextEntry => TextEntry::make('magic_link_'.$contact->getKey())
+                ->label($contact->name.' — '.$contact->email)
+                ->state($record->magicLinkFor($contact))
+                ->copyable()
+                ->copyMessage('Link copiato')
+                ->extraAttributes(['class' => 'break-all']))
+            ->all();
     }
 
     /**

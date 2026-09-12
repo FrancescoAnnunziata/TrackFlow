@@ -1,13 +1,17 @@
 <?php
 
+use App\Filament\Resources\Quotes\Pages\ViewQuote;
 use App\Models\Client;
 use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\QuoteDecidedNotification;
+use Filament\Facades\Filament;
+use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -322,4 +326,58 @@ it('tiene in piedi i link delle email già spedite', function () {
     $this->get($vecchioLink)->assertRedirect(route('quote.document', $quote));
 
     expect(auth()->id())->toBe($contact->id);
+});
+
+it('dà all\'admin il link di firma da copiare, uno per referente', function () {
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+
+    ['admin' => $admin, 'contact' => $contact, 'quote' => $quote] = quoteScenario();
+    $altroReferente = User::factory()->create([
+        'role' => 'client',
+        'client_id' => $quote->client_id,
+        'name' => 'Luisa',
+        'surname' => 'Bianchi',
+    ]);
+
+    $this->actingAs($admin);
+
+    $page = Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionVisible('copyLink')
+        ->mountAction('copyLink')
+        ->assertActionMounted('copyLink')
+        ->instance();
+
+    // La modale delle azioni non finisce nell'HTML del componente in test: i
+    // link si leggono dallo schema dell'azione montata.
+    $links = collect($page->getMountedAction()->getSchema(Schema::make($page))->getComponents())
+        ->mapWithKeys(fn ($entry) => [$entry->getName() => $entry->getState()]);
+
+    expect($links)->toHaveCount(2);
+
+    // Ogni link è intestato a un referente e funziona senza password: è quello
+    // che Giorgio incolla nell'email di sollecito.
+    foreach ([$contact, $altroReferente] as $referente) {
+        $link = $links->get('magic_link_'.$referente->getKey());
+
+        expect($link)->toContain('user='.$referente->getKey());
+
+        // Arriva a sessione vuota, come il cliente che apre l'email.
+        auth()->logout();
+        $this->flushSession();
+
+        $this->get($link)->assertOk()->assertSee('Firma e invia');
+
+        expect(auth()->id())->toBe($referente->getKey());
+    }
+});
+
+it('non offre il link di firma sul preventivo ancora in bozza', function () {
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+
+    ['admin' => $admin, 'quote' => $quote] = quoteScenario(Quote::STATUS_DRAFT);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionHidden('copyLink');
 });
