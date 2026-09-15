@@ -58,6 +58,18 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      # Gli asset vanno compilati: `public/build` è in .gitignore, e senza il
+      # manifest la direttiva @vite solleva un'eccezione. In locale non si vede
+      # perché il manifest c'è già, e ogni test che renderizza una pagina
+      # risponde 500 solo qui.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
       - name: Stile (Pint)
         run: ./vendor/bin/pint --test
 
