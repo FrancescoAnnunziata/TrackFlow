@@ -1,0 +1,88 @@
+name: Sicurezza
+
+# Tre domande diverse, ognuna con il suo strumento:
+#   - le dipendenze che usiamo hanno vulnerabilità note?
+#   - il codice che scriviamo ne introduce di nuove?        (Semgrep)
+#   - abbiamo committato per sbaglio una credenziale?       (Gitleaks)
+#
+# Il code scanning nativo di GitHub (CodeQL) su un repository privato richiede
+# GitHub Advanced Security, che non è acquistato: questi strumenti coprono la
+# stessa superficie e girano ovunque.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # Lunedì alle 6:00 (UTC): una vulnerabilità pubblicata durante la settimana
+    # va trovata anche se nessuno tocca il codice per un mese.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  dipendenze:
+    name: Vulnerabilità note nelle dipendenze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # `composer audit` legge il lock, non installa niente: la versione di
+          # PHP qui non cambia il risultato.
+          php-version: '8.4'
+          coverage: none
+
+      # --locked legge composer.lock: controlla le versioni che finiranno
+      # davvero sul server, non quelle che il vincolo permetterebbe.
+      - name: composer audit
+        run: composer audit --locked --no-interaction
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Un problema nelle dipendenze JS raramente è sfruttabile in produzione:
+      # si segnala senza bloccare, e lo si guarda con calma.
+      - name: npm audit
+        run: npm audit --audit-level=high || echo "::warning::npm audit ha trovato qualcosa, guarda il log"
+
+  codice:
+    name: Analisi statica del codice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install --quiet semgrep
+
+      # Solo le regole di severità ERROR fanno fallire: sono quelle in cui
+      # Semgrep ha trovato un problema, non un odore. Le altre restano nel log.
+      - name: Semgrep
+        run: |
+          semgrep scan \
+            --config=p/php \
+            --config=p/security-audit \
+            --config=p/secrets \
+            --severity=ERROR \
+            --error \
+            --exclude=vendor --exclude=node_modules --exclude=dist --exclude=public/js --exclude=public/css
+
+  credenziali:
+    name: Credenziali committate per sbaglio
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tutta la storia: una chiave rimossa in un commit successivo resta
+          # nel repository, ed è comunque da revocare.
+          fetch-depth: 0
+
+      - name: Gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --redact --verbose --no-banner

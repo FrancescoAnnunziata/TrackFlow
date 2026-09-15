@@ -1,0 +1,46 @@
+# Aggiornamenti automatici delle dipendenze.
+#
+# Gli alert di sicurezza e le PR che li correggono sono attivi a livello di
+# repository: questo file aggiunge il controllo periodico delle versioni, che
+# è un'altra cosa — serve a non ritrovarsi fra un anno indietro di due major e
+# un aggiornamento impossibile da fare in un pomeriggio.
+#
+# I major stanno in un gruppo, non sciolti: un major resta aperto per settimane
+# perché si guarda con calma, e intanto ogni patch di quella versione fa aprire
+# una PR nuova. Raggruppati restano una PR sola che si aggiorna da sé.
+version: 2
+
+updates:
+
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Rome
+    open-pull-requests-limit: 5
+    groups:
+      patch-e-minor:
+        update-types: [minor, patch]
+      major:
+        update-types: [major]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Europe/Rome
+    open-pull-requests-limit: 3
+    groups:
+      tutto:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Europe/Rome
+    groups:
+      tutte:
+        patterns: ["*"]
