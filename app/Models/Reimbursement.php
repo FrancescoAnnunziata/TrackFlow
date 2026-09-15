@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ReimbursementStatus;
 use App\Enums\ReimbursementType;
+use Database\Factories\ReimbursementFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Reimbursement extends Model
 {
-    /** @use HasFactory<\Database\Factories\ReimbursementFactory> */
+    /** @use HasFactory<ReimbursementFactory> */
     use HasFactory;
 
     protected $fillable = [

@@ -1,0 +1,17 @@
+# Eccezioni di Gitleaks, una per una e col motivo.
+#
+# La regola: si allowlista il singolo file e la singola regola, mai un intero
+# tipo di file. Un'eccezione larga spegne il controllo proprio dove servirebbe —
+# ed è il modo in cui uno scanner smette di trovare le cose senza che nessuno se
+# ne accorga.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsi positivi verificati a mano"
+
+paths = [
+  # `Hash::make('password')` nella factory standard di Laravel: è la password
+  # degli utenti di test, uguale in ogni progetto Laravel del mondo.
+  '''database/factories/UserFactory\.php''',
+]

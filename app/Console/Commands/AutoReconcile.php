@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\BankTransaction;
+use App\Models\Reconciliation;
 use App\Services\Reconciliation\MatchSuggestionService;
 use App\Services\Reconciliation\ReconciliationService;
 use Illuminate\Console\Command;
@@ -44,7 +45,7 @@ class AutoReconcile extends Command
                     if ($exact->count() === 1) {
                         $reconciler->attach(
                             $transaction, $exact->first()['model'], $target,
-                            matchedBy: \App\Models\Reconciliation::BY_AUTO,
+                            matchedBy: Reconciliation::BY_AUTO,
                             confidence: $exact->first()['confidence'],
                         );
                         $byUnique++;
@@ -59,7 +60,7 @@ class AutoReconcile extends Command
                         && abs($best['amount'] - $target) <= 0.01) {
                         $reconciler->attach(
                             $transaction, $best['model'], $target,
-                            matchedBy: \App\Models\Reconciliation::BY_AUTO,
+                            matchedBy: Reconciliation::BY_AUTO,
                             confidence: $best['confidence'],
                         );
                         $byConfidence++;
@@ -119,7 +120,7 @@ class AutoReconcile extends Command
 
             $reconciler->attach(
                 $pair['tx'], $pair['passive'], (float) $pair['tx']->unreconciledAmount(),
-                matchedBy: \App\Models\Reconciliation::BY_AUTO,
+                matchedBy: Reconciliation::BY_AUTO,
                 confidence: 0,
             );
 

@@ -2,6 +2,7 @@
 
 use App\Enums\ReimbursementStatus;
 use App\Enums\ReimbursementType;
+use App\Filament\Resources\Reimbursements\Pages\CreateReimbursement;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Costo;
@@ -82,14 +83,14 @@ it('registers a payslip as a cost and reconciles the salary bonifico', function 
     ]);
     $this->artisan('finance:register-payslip', ['--spec' => $spec])->assertSuccessful();
 
-    $costo = App\Models\Costo::where('category', 'Collaboratori')->where('amount', 1500)->first();
+    $costo = Costo::where('category', 'Collaboratori')->where('amount', 1500)->first();
     expect($costo)->not->toBeNull();
     expect($bonifico->fresh()->reconciled)->toBeTrue();
     expect($bonifico->fresh()->unreconciledAmount())->toBe(0.0);
 
     // Idempotente: una seconda esecuzione non duplica.
     $this->artisan('finance:register-payslip', ['--spec' => $spec])->assertSuccessful();
-    expect(App\Models\Costo::where('category', 'Collaboratori')->where('amount', 1500)->count())->toBe(1);
+    expect(Costo::where('category', 'Collaboratori')->where('amount', 1500)->count())->toBe(1);
 });
 
 it('links the passive invoices selected in the create form', function () {
@@ -102,7 +103,7 @@ it('links the passive invoices selected in the create form', function () {
     ]);
 
     $this->actingAs($user);
-    Livewire\Livewire::test(App\Filament\Resources\Reimbursements\Pages\CreateReimbursement::class)
+    Livewire\Livewire::test(CreateReimbursement::class)
         ->fillForm([
             'type' => 'trasferta', 'date' => '2026-01-31', 'amount' => 405.31,
             'status' => 'pending', 'passiveInvoices' => [$passive->id],

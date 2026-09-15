@@ -12,6 +12,3 @@ class Login extends BaseLogin
         return parent::form($schema);
     }
 }
-
-
-

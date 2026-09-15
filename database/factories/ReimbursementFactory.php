@@ -4,11 +4,12 @@ namespace Database\Factories;
 
 use App\Enums\ReimbursementStatus;
 use App\Enums\ReimbursementType;
+use App\Models\Reimbursement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<\App\Models\Reimbursement>
+ * @extends Factory<Reimbursement>
  */
 class ReimbursementFactory extends Factory
 {

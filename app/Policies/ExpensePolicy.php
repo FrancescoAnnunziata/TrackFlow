@@ -33,4 +33,3 @@ class ExpensePolicy
         return $user->is($expense->user) ? Response::allow() : Response::denyAsNotFound();
     }
 }
-

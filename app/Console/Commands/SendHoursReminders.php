@@ -36,7 +36,7 @@ class SendHoursReminders extends Command
                 continue;
             }
 
-            $user->notify(new LogHoursReminderNotification());
+            $user->notify(new LogHoursReminderNotification);
         }
 
         $verb = $dryRun ? 'Da inviare' : 'Inviati';

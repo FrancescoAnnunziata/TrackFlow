@@ -3,7 +3,6 @@
 use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\User;
 use App\Services\Billing\InvoiceExpenseExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 uses(RefreshDatabase::class);
 
 it('parses inline detail lines into amounts, ignoring embedded dates', function () {
-    $extractor = new InvoiceExpenseExtractor();
+    $extractor = new InvoiceExpenseExtractor;
 
     $parts = $extractor->parseDetail("Trenitalia: 99€\nPranzo 12/01 23,50\nPranzo 21/01 23,50\npranzo 30/01 36");
 
@@ -22,7 +21,7 @@ it('parses inline detail lines into amounts, ignoring embedded dates', function 
 });
 
 it('parses the FiC HTML notes table into per-row amounts', function () {
-    $extractor = new InvoiceExpenseExtractor();
+    $extractor = new InvoiceExpenseExtractor;
 
     $html = '<table><tbody>'
         .'<tr><td>Data</td><td>importo</td><td>note</td></tr>'
@@ -39,7 +38,7 @@ it('parses the FiC HTML notes table into per-row amounts', function () {
 });
 
 it('infers the conto from keywords', function () {
-    $extractor = new InvoiceExpenseExtractor();
+    $extractor = new InvoiceExpenseExtractor;
 
     expect($extractor->contoFromText('Trenitalia'))->toBe('Trasferte');
     expect($extractor->contoFromText('Pranzo per trasferta'))->toBe('Trasferte'); // "trasfert" vince

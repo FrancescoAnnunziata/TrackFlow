@@ -11,11 +11,11 @@ use App\Filament\Resources\Expenses\Schemas\ExpenseInfolist;
 use App\Filament\Resources\Expenses\Tables\ExpensesTable;
 use App\Models\Expense;
 use BackedEnum;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ExpenseResource extends Resource
 {
@@ -28,7 +28,6 @@ class ExpenseResource extends Resource
     protected static ?string $modelLabel = 'Spesa';
 
     protected static ?string $pluralModelLabel = 'Spese';
-
 
     public static function form(Schema $schema): Schema
     {

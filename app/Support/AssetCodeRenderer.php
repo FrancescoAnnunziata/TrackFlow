@@ -20,7 +20,7 @@ class AssetCodeRenderer
      */
     public static function barcodeDataUri(string $value, int $widthFactor = 2, int $height = 50): string
     {
-        $generator = new BarcodeGeneratorPNG();
+        $generator = new BarcodeGeneratorPNG;
         $png = $generator->getBarcode($value, $generator::TYPE_CODE_128, $widthFactor, $height);
 
         return 'data:image/png;base64,'.base64_encode($png);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Expenses\Schemas;
 
+use App\Models\Expense;
 use App\Models\PassiveInvoice;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -122,7 +123,7 @@ class ExpenseForm
             ->whereNotNull('category')->where('category', '!=', '')
             ->distinct()->orderBy('category')->pluck('category')
             ->merge(
-                \App\Models\Expense::query()
+                Expense::query()
                     ->whereNotNull('conto')->where('conto', '!=', '')
                     ->distinct()->pluck('conto')
             )

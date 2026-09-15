@@ -79,7 +79,7 @@ class SendQuoteReminders extends Command
             $sent++;
         }
 
-        $this->info(($dryRun ? '[dry-run] ' : '') . "Solleciti elaborati: {$sent}.");
+        $this->info(($dryRun ? '[dry-run] ' : '')."Solleciti elaborati: {$sent}.");
 
         return self::SUCCESS;
     }

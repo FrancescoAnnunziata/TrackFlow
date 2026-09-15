@@ -28,7 +28,6 @@ class ClientResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Clienti';
 
-
     public static function form(Schema $schema): Schema
     {
         return ClientForm::configure($schema);

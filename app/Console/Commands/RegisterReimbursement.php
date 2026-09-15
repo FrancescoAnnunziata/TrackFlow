@@ -138,6 +138,7 @@ class RegisterReimbursement extends Command
                 $tx = BankTransaction::find($txId);
                 if ($tx === null) {
                     $this->warn("  movimento tx#{$txId} non trovato, salto.");
+
                     continue;
                 }
                 $alloc = round(min($tx->unreconciledAmount(), $remaining), 2);

@@ -36,7 +36,7 @@ class DeviceExportController extends Controller
 
         // Larghezza colonne (in caratteri) dimensionata sul contenuto tipico,
         // così le celle non stringono/troncano i valori piu' lunghi.
-        $options = new Options();
+        $options = new Options;
         $options->setColumnWidth(18, 1); // Codice
         $options->setColumnWidth(16, 2); // Tipo
         $options->setColumnWidth(34, 3); // Modello
@@ -46,7 +46,7 @@ class DeviceExportController extends Controller
         $writer = new Writer($options);
         $writer->openToFile($tmpPath);
 
-        $headerStyle = (new Style())
+        $headerStyle = (new Style)
             ->setFontBold()
             ->setBackgroundColor('EFEFEF');
 

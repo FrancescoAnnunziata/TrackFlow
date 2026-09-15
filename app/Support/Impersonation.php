@@ -78,6 +78,6 @@ class Impersonation
      */
     protected static function forgetSessionPasswordHash(): void
     {
-        session()->forget('password_hash_' . Auth::getDefaultDriver());
+        session()->forget('password_hash_'.Auth::getDefaultDriver());
     }
 }

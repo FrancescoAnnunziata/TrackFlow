@@ -24,7 +24,7 @@ class SpreadsheetExporter
 
         $path = tempnam(sys_get_temp_dir(), 'export_').'.'.$format;
 
-        $writer = $format === 'csv' ? new CsvWriter() : new XlsxWriter();
+        $writer = $format === 'csv' ? new CsvWriter : new XlsxWriter;
         $writer->openToFile($path);
         $writer->addRow(Row::fromValues($headings));
 
