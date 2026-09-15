@@ -36,7 +36,7 @@ jobs:
       DB_PASSWORD: password
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -45,7 +45,7 @@ jobs:
           coverage: none
 
       - name: Cache delle dipendenze
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
@@ -62,7 +62,7 @@ jobs:
       # manifest la direttiva @vite solleva un'eccezione. In locale non si vede
       # perché il manifest c'è già, e ogni test che renderizza una pagina
       # risponde 500 solo qui.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
