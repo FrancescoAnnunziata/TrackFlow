@@ -33,8 +33,10 @@ updates:
       timezone: Europe/Rome
     open-pull-requests-limit: 3
     groups:
-      tutto:
-        patterns: ["*"]
+      patch-e-minor:
+        update-types: [minor, patch]
+      major:
+        update-types: [major]
 
   - package-ecosystem: github-actions
     directory: /
@@ -42,5 +44,7 @@ updates:
       interval: monthly
       timezone: Europe/Rome
     groups:
-      tutte:
-        patterns: ["*"]
+      patch-e-minor:
+        update-types: [minor, patch]
+      major:
+        update-types: [major]
