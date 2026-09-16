@@ -7,6 +7,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\NotificationPreferences;
 use App\Filament\Widgets\AssetStatsOverview;
 use App\Http\Middleware\MustChangePassword;
+use App\Http\Middleware\ReauthenticateWeekly;
 use App\Http\Middleware\RequireTwoFactorExceptClients;
 use App\Support\Impersonation;
 use Filament\Actions\Action;
@@ -106,6 +107,9 @@ class AppPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // Dopo una settimana l'accesso va rifatto per intero, anche su
+                // un dispositivo che ha spuntato «Ricordami».
+                ReauthenticateWeekly::class,
                 MustChangePassword::class,
             ]);
     }

@@ -71,6 +71,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'hours_reminder_opt_in' => 'boolean',

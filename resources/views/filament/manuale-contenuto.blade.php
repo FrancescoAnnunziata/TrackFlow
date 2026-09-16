@@ -231,6 +231,16 @@
             </div>
         </div>
 
+        {{-- Accesso a TrackFlow --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num gray">🔐</span><p class="g-h">Entrare in TrackFlow</p></div>
+            <p>Si entra con email, password e il <strong>codice a sei cifre</strong> dell'app di autenticazione (i due fattori sono obbligatori per chi lavora in TrackFlow; i clienti ne sono esclusi).</p>
+            <p>Sulla schermata di accesso c'è <strong>«Ricorda questo dispositivo per 7 giorni»</strong>: spuntandola, su quel computer o telefono per una settimana non vengono più chiesti né password né codice. Passati i sette giorni l'accesso va rifatto per intero — <strong>succede una volta a settimana, non tutti i giorni</strong>.</p>
+            <div class="g-callout g-warn"><strong>Spuntala solo su un dispositivo tuo.</strong> Su un computer condiviso o prestato, no: per una settimana chiunque lo usi entrerebbe in TrackFlow senza sapere né la password né il codice.</div>
+            <p class="g-sub">Se il codice non funziona</p>
+            <p>Usa uno dei <strong>codici di recupero</strong> salvati quando hai attivato i due fattori. Se li hai persi insieme al telefono, scrivi a Giorgio: può azzerare i due fattori del tuo utente e te li fa riconfigurare.</p>
+        </div>
+
         {{-- Accesso a Fatture in Cloud --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num gray">🔑</span><p class="g-h">Entrare in Fatture in Cloud per i controlli</p></div>
