@@ -60,6 +60,7 @@
     .doc-sign img { max-height: 62px; max-width: 100%; }
     .doc-sign .who { margin-top: 6px; font-size: 10px; color: #4b5563; }
     .doc-sign .who strong { color: #111827; }
+    .doc-sign .doc-fill { border-bottom: 1px solid #d1d5db; margin-top: 12px; padding-bottom: 1px; font-size: 9px; color: #9ca3af; }
 
     .doc-audit { margin-top: 18px; font-size: 9px; color: #9ca3af; line-height: 1.4; }
     .doc-rejected { margin-top: 20px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; padding: 10px 12px; }
@@ -220,7 +221,15 @@
                     </div>
                 @else
                     <div class="box pending">Spazio riservato alla firma del cliente</div>
-                    <div class="who">{{ $client->name }}</div>
+                    {{-- Righe da compilare a penna: questo PDF si stampa e si
+                         firma anche su carta, e senza nome e qualifica scritti
+                         accanto alla firma non si sa chi ha sottoscritto. --}}
+                    <div class="who">
+                        <strong>{{ $client->name }}</strong>
+                        <div class="doc-fill">Nome e cognome</div>
+                        <div class="doc-fill">In qualità di</div>
+                        <div class="doc-fill">Data</div>
+                    </div>
                 @endif
             </td>
         </tr>
@@ -238,6 +247,33 @@
                 — indirizzo IP {{ $quote->signature_ip }}
             @endif
             — riferimento documento #{{ $quote->getKey() }}/{{ $quote->number }}.
+        </div>
+    @elseif ($quote->acceptanceWasRecorded())
+        {{-- Accettazione arrivata fuori dall'app: qui si dice come, da chi e chi
+             l'ha messa a verbale. È l'equivalente del blocco di tracciatura
+             della firma online, e non deve somigliargli più del dovuto. --}}
+        <div class="doc-audit">
+            @switch($quote->acceptanceMethod())
+                @case(Quote::METHOD_EMAIL)
+                    Accettazione comunicata per iscritto via email
+                    @break
+                @case(Quote::METHOD_PAPER)
+                    Accettazione sottoscritta su documento cartaceo
+                    @break
+                @default
+                    Accettazione comunicata a voce
+            @endswitch
+            da {{ $quote->acceptance_author ?: $client->name }}@if (filled($quote->acceptance_author_role)), {{ $quote->acceptance_author_role }}@endif,
+            in data {{ $quote->accepted_at?->format('d/m/Y') }}.
+            Registrata in {{ config('app.name') }}
+            @if ($quote->acceptanceRecordedBy)
+                da {{ $quote->acceptanceRecordedBy->name }}
+            @endif
+            il {{ $quote->acceptance_recorded_at?->format('d/m/Y H:i') }}
+            — riferimento documento #{{ $quote->getKey() }}/{{ $quote->number }}.
+            @if ($quote->needsFormalization())
+                <div style="margin-top: 3px;">Formalizzazione su documento firmato in corso.</div>
+            @endif
         </div>
     @endif
 </div>

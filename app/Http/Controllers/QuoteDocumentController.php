@@ -77,6 +77,7 @@ class QuoteDocumentController extends Controller
             'signer_role' => $data['signer_role'] ?? null,
             'signature_ip' => $request->ip(),
             'signature_user_agent' => substr((string) $request->userAgent(), 0, 500),
+            'acceptance_method' => Quote::METHOD_SIGNATURE,
             'rejected_at' => null,
             'rejection_reason' => null,
         ])->save();
@@ -119,14 +120,19 @@ class QuoteDocumentController extends Controller
     }
 
     /**
-     * Scarica il PDF: quello congelato se il preventivo è firmato, altrimenti
-     * una copia generata al momento (non firmata).
+     * Scarica il PDF: la scansione firmata su carta se c'è, altrimenti quello
+     * congelato all'accettazione, altrimenti una copia generata al momento.
      */
     public function pdf(Request $request, Quote $quote): Response
     {
         $this->authorizeAccess($request, $quote);
 
-        if ($quote->isSigned()) {
+        if ($quote->hasSignedCopy()) {
+            return Storage::disk(Quote::DOCUMENTS_DISK)
+                ->download($quote->signed_copy_path, $quote->signedCopyFileName());
+        }
+
+        if ($quote->isSigned() || $quote->pdf_path) {
             return Storage::disk(Quote::DOCUMENTS_DISK)
                 ->download(QuotePdf::ensureStored($quote), $quote->pdfFileName());
         }
@@ -136,6 +142,23 @@ class QuoteDocumentController extends Controller
             $quote->pdfFileName(),
             ['Content-Type' => 'application/pdf'],
         );
+    }
+
+    /**
+     * La prova allegata a un'accettazione registrata a mano (l'email salvata in
+     * PDF, la foto del foglio). Solo admin: è materiale interno, il cliente dal
+     * documento vede già come è stato accettato.
+     */
+    public function evidence(Request $request, Quote $quote): Response
+    {
+        abort_unless($request->user()?->isAdmin(), 403);
+        abort_unless((bool) $quote->acceptance_evidence_path, 404);
+
+        $disk = Storage::disk(Quote::DOCUMENTS_DISK);
+
+        abort_unless($disk->exists($quote->acceptance_evidence_path), 404);
+
+        return $disk->response($quote->acceptance_evidence_path);
     }
 
     /**

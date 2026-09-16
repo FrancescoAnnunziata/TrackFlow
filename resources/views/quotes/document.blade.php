@@ -158,14 +158,14 @@
             @php
                 $badge = match ($quote->status) {
                     Quote::STATUS_SENT => ['sent', 'In attesa di firma'],
-                    Quote::STATUS_ACCEPTED => ['accepted', 'Accettato e firmato'],
+                    Quote::STATUS_ACCEPTED => ['accepted', $quote->isSigned() ? 'Accettato e firmato' : 'Accettato'],
                     Quote::STATUS_INVOICED => ['accepted', 'Accettato e fatturato'],
                     Quote::STATUS_REJECTED => ['rejected', 'Rifiutato'],
                     default => ['other', 'Bozza'],
                 };
             @endphp
             <span class="badge {{ $badge[0] }}">{{ $badge[1] }}</span>
-            @if ($quote->isSigned())
+            @if ($quote->isSigned() || $quote->isAccepted())
                 <a class="btn btn-ghost btn-sm" href="{{ route('quote.pdf', $quote) }}">Scarica il PDF</a>
             @endif
             @if ($isAdmin)
@@ -262,15 +262,29 @@
                     <button type="submit" class="btn-danger">Rifiuta il preventivo</button>
                 </form>
             </div>
-        @elseif ($quote->isSigned())
+        @elseif ($quote->isAccepted())
             <div class="card">
                 <div class="done">
                     <div class="txt">
                         <h2>Preventivo accettato</h2>
                         <p class="sub" style="margin-bottom: 0;">
-                            Firmato da {{ $quote->signer_name }} il
-                            {{ $quote->accepted_at?->format('d/m/Y') }} alle {{ $quote->accepted_at?->format('H:i') }}.
-                            La copia in PDF è stata inviata via email a entrambe le parti.
+                            @if ($quote->isSigned())
+                                Firmato da {{ $quote->signer_name }} il
+                                {{ $quote->accepted_at?->format('d/m/Y') }} alle {{ $quote->accepted_at?->format('H:i') }}.
+                                La copia in PDF è stata inviata via email a entrambe le parti.
+                            @else
+                                {{-- Accettazione registrata a mano: qui non c'è
+                                     nessuna firma, e il testo non deve lasciar
+                                     credere il contrario. --}}
+                                Accettato da {{ $quote->acceptance_author ?: $quote->client->name }} il
+                                {{ $quote->accepted_at?->format('d/m/Y') }}
+                                @if ($quote->acceptanceMethodLabel())
+                                    — {{ mb_strtolower($quote->acceptanceMethodLabel()) }}
+                                @endif.
+                                @if ($quote->needsFormalization())
+                                    La formalizzazione su documento firmato è in corso.
+                                @endif
+                            @endif
                         </p>
                     </div>
                     <a class="btn btn-dark" href="{{ route('quote.pdf', $quote) }}">Scarica il PDF</a>

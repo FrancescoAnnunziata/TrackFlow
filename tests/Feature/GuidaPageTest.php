@@ -59,3 +59,12 @@ it('dice chi può scaricare quale estratto conto', function () {
         ->assertSee('Vivid Business', escape: false)
         ->assertSee('Chiedi a Giorgio', escape: false);
 });
+
+it('spiega come si registra un preventivo accettato fuori da TrackFlow', function () {
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('Registra accettazione', escape: false)
+        // I due punti che rendono la registrazione una prova e non un clic.
+        ->assertSee('Allega la prova', escape: false)
+        ->assertSee('Carica copia firmata', escape: false);
+});

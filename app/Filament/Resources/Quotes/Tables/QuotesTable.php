@@ -50,6 +50,14 @@ class QuotesTable
                     ->badge()
                     ->color(fn (string $state): string => QuoteForm::statusColor($state))
                     ->sortable(),
+                // Accettato ma senza niente di firmato agli atti: è il promemoria
+                // che il cartaceo promesso dal cliente non è ancora arrivato.
+                TextColumn::make('formalizzazione')
+                    ->label('Formalizzazione')
+                    ->state(fn (Quote $record): ?string => $record->needsFormalization() ? 'Da formalizzare' : null)
+                    ->badge()
+                    ->color('warning')
+                    ->placeholder('—'),
                 TextColumn::make('user.name')
                     ->label('Emesso da')
                     ->toggleable(),
@@ -68,6 +76,13 @@ class QuotesTable
                 SelectFilter::make('status')
                     ->label('Stato')
                     ->options(QuoteForm::statusOptions()),
+                Filter::make('da_formalizzare')
+                    ->label('Da formalizzare')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query
+                        ->whereIn('status', [Quote::STATUS_ACCEPTED, Quote::STATUS_INVOICED])
+                        ->whereNull('signature_path')
+                        ->whereNull('signed_copy_path')),
                 Filter::make('issue_date')
                     ->label('Data')
                     ->schema([

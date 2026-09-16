@@ -23,6 +23,19 @@ class Quote extends Model
     public const STATUS_INVOICED = 'invoiced';
 
     /**
+     * Come è arrivata l'accettazione. La firma online è l'unica che il cliente
+     * appone da sé: le altre tre le registra l'admin da pannello, ed è per
+     * questo che si portano dietro autore, prova allegata e chi le ha inserite.
+     */
+    public const METHOD_SIGNATURE = 'signature';
+
+    public const METHOD_EMAIL = 'email';
+
+    public const METHOD_VERBAL = 'verbal';
+
+    public const METHOD_PAPER = 'paper';
+
+    /**
      * Quanti giorni resta valido un magic link di approvazione.
      */
     public const MAGIC_LINK_DAYS = 14;
@@ -53,6 +66,14 @@ class Quote extends Model
         'signer_role',
         'signature_ip',
         'signature_user_agent',
+        'acceptance_method',
+        'acceptance_author',
+        'acceptance_author_role',
+        'acceptance_recorded_by',
+        'acceptance_recorded_at',
+        'acceptance_evidence_path',
+        'acceptance_note',
+        'signed_copy_path',
         'pdf_path',
         'rejected_at',
         'rejection_reason',
@@ -66,6 +87,7 @@ class Quote extends Model
         'reminders_sent' => 'integer',
         'document_viewed_at' => 'datetime',
         'accepted_at' => 'datetime',
+        'acceptance_recorded_at' => 'datetime',
         'rejected_at' => 'datetime',
         'estimated_hours' => 'decimal:1',
         'hourly_rate' => 'decimal:2',
@@ -91,6 +113,15 @@ class Quote extends Model
     public function acceptedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'accepted_by');
+    }
+
+    /**
+     * L'admin che ha registrato a mano un'accettazione arrivata fuori da
+     * TrackFlow (email, telefonata, foglio firmato).
+     */
+    public function acceptanceRecordedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'acceptance_recorded_by');
     }
 
     /**
@@ -152,6 +183,69 @@ class Quote extends Model
     }
 
     /**
+     * Come è arrivata l'accettazione. I preventivi firmati prima che esistesse
+     * il campo non ce l'hanno scritto: per loro vale la firma online.
+     */
+    public function acceptanceMethod(): ?string
+    {
+        return $this->acceptance_method ?? ($this->isSigned() ? self::METHOD_SIGNATURE : null);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function acceptanceMethodOptions(): array
+    {
+        return [
+            self::METHOD_EMAIL => 'Per email',
+            self::METHOD_VERBAL => 'A voce (telefono o di persona)',
+            self::METHOD_PAPER => 'Su carta, documento firmato',
+        ];
+    }
+
+    public function acceptanceMethodLabel(): ?string
+    {
+        return match ($this->acceptanceMethod()) {
+            self::METHOD_SIGNATURE => 'Firma online sul documento',
+            self::METHOD_EMAIL => 'Per email',
+            self::METHOD_VERBAL => 'A voce (telefono o di persona)',
+            self::METHOD_PAPER => 'Su carta, documento firmato',
+            default => null,
+        };
+    }
+
+    /**
+     * True se l'accettazione l'ha registrata un admin invece di arrivare dalla
+     * firma online del cliente.
+     */
+    public function acceptanceWasRecorded(): bool
+    {
+        $method = $this->acceptanceMethod();
+
+        return $method !== null && $method !== self::METHOD_SIGNATURE;
+    }
+
+    public function hasSignedCopy(): bool
+    {
+        return $this->signed_copy_path !== null;
+    }
+
+    public function isAccepted(): bool
+    {
+        return in_array($this->status, [self::STATUS_ACCEPTED, self::STATUS_INVOICED], true);
+    }
+
+    /**
+     * Accettato ma senza niente di firmato agli atti: né la firma online né la
+     * copia cartacea. È il caso del «procedi intanto, formalizziamo dopo», che
+     * senza un promemoria si dimentica.
+     */
+    public function needsFormalization(): bool
+    {
+        return $this->isAccepted() && ! $this->isSigned() && ! $this->hasSignedCopy();
+    }
+
+    /**
      * True se il cliente può ancora firmarlo o rifiutarlo.
      */
     public function awaitsDecision(): bool
@@ -194,5 +288,13 @@ class Quote extends Model
     public function pdfFileName(): string
     {
         return 'preventivo-'.Str::slug($this->number).'.pdf';
+    }
+
+    /**
+     * Nome della scansione firmata proposta al download.
+     */
+    public function signedCopyFileName(): string
+    {
+        return 'preventivo-'.Str::slug($this->number).'-firmato.pdf';
     }
 }

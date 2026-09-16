@@ -588,6 +588,23 @@
             <div class="g-callout g-warn"><strong>Usa sempre lo stesso mese</strong> in tutti gli export e per le fatture Fiscozen: il mese che hai appena riconciliato.</div>
         </div>
 
+        {{-- Preventivi: accettazione --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num gray">📝</span><p class="g-h">I preventivi: come si arriva ad «Accettato»</p></div>
+            <p>Il preventivo si invia al cliente dal menu <strong>Preventivi</strong> → <span class="g-kbd">Invia al cliente</span>: i referenti ricevono un'email con un link, aprono il documento, lo <strong>firmano a mano sullo schermo</strong> e lo stato passa da solo ad <strong>Accettato</strong>. Se non rispondono, partono due solleciti automatici (dopo 5 e dopo 10 giorni).</p>
+            <p class="g-sub">Quando il cliente accetta ma non usa il link</p>
+            <p>Capita spesso: il cliente risponde per email «autorizzato, procedi», oppure lo dice al telefono, oppure vuole firmare un foglio di carta. In quel caso <strong>non si aspetta la firma online</strong>, si registra l'accettazione:</p>
+            <ol class="g-ol">
+                <li>Menu <strong>Preventivi</strong> → apri il preventivo → <span class="g-kbd">Registra accettazione</span>.</li>
+                <li>Indica <strong>come è arrivata</strong> (email, a voce, su carta), <strong>chi ha autorizzato</strong> e in che qualità, e la <strong>data</strong>.</li>
+                <li><strong>Allega la prova</strong>: l'email salvata in PDF, o la foto del foglio. È quella che vale, non il pulsante.</li>
+            </ol>
+            <div class="g-callout g-info">Registrare l'accettazione <strong>ferma i solleciti</strong> e sblocca <span class="g-kbd">Genera fattura</span>. Resta scritto che l'accettazione l'ha inserita un admin e non l'ha firmata il cliente: sul documento e nel PDF compare come è arrivata, da chi e chi l'ha registrata.</div>
+            <p class="g-sub">Se la formalizzazione arriva dopo</p>
+            <p>Finché non c'è niente di firmato agli atti, il preventivo è segnato <strong>Da formalizzare</strong> — si vede nella colonna <em>Formalizzazione</em> dell'elenco e c'è il filtro omonimo per trovarli tutti. Quando torna il documento firmato su carta: <span class="g-kbd">Carica copia firmata</span>. Da quel momento è <strong>quella scansione</strong> la copia che fa fede, ed è lei che esce da <span class="g-kbd">Scarica il PDF</span>.</p>
+            <div class="g-callout g-warn"><strong>Da non fare:</strong> registrare un'accettazione che il cliente non ha dato per iscritto o a voce, per «portarsi avanti». Se non c'è una prova da allegare, chiedi a Giorgio prima.</div>
+        </div>
+
         {{-- Nota di credito --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num gray">↩</span><p class="g-h">Se serve stornare: nota di credito</p></div>

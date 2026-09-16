@@ -39,6 +39,7 @@ Route::middleware(QuoteMagicAccess::class)->group(function () {
     Route::post('/q/{quote}/firma', [QuoteDocumentController::class, 'sign'])->name('quote.sign');
     Route::post('/q/{quote}/rifiuto', [QuoteDocumentController::class, 'reject'])->name('quote.reject');
     Route::get('/q/{quote}/pdf', [QuoteDocumentController::class, 'pdf'])->name('quote.pdf');
+    Route::get('/q/{quote}/prova', [QuoteDocumentController::class, 'evidence'])->name('quote.evidence');
 });
 
 // Vecchio magic link, quello delle email già spedite: autenticava e rimbalzava

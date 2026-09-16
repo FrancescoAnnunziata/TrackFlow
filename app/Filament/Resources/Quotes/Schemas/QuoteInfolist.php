@@ -103,11 +103,67 @@ class QuoteInfolist
                             ->color('gray'),
                     ]),
 
+                // Accettazione arrivata fuori da TrackFlow e messa a mano da un
+                // admin: si vede chi ha autorizzato, come, e chi l'ha registrata,
+                // perché non la si scambi per una firma del cliente.
+                Section::make('Accettazione registrata')
+                    ->columns(2)
+                    ->visible(fn (Quote $record): bool => $record->acceptanceWasRecorded())
+                    ->components([
+                        TextEntry::make('acceptance_method')
+                            ->label('Come è arrivata')
+                            ->state(fn (Quote $record): ?string => $record->acceptanceMethodLabel())
+                            ->placeholder('—'),
+                        TextEntry::make('acceptance_author')
+                            ->label('Autorizzata da')
+                            ->formatStateUsing(fn (?string $state, Quote $record): string => trim(
+                                (string) $state.($record->acceptance_author_role ? " — {$record->acceptance_author_role}" : '')
+                            ))
+                            ->placeholder('—'),
+                        TextEntry::make('acceptance_note')
+                            ->label('Nota')
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+                        TextEntry::make('acceptance_evidence_path')
+                            ->label('Prova allegata')
+                            ->state(fn (Quote $record): string => $record->acceptance_evidence_path
+                                ? 'Apri il documento conservato'
+                                : 'nessuna prova allegata')
+                            ->url(fn (Quote $record): ?string => $record->acceptance_evidence_path
+                                ? route('quote.evidence', $record)
+                                : null)
+                            ->openUrlInNewTab()
+                            ->color(fn (Quote $record): string => $record->acceptance_evidence_path ? 'primary' : 'gray'),
+                        TextEntry::make('signed_copy_path')
+                            ->label('Copia firmata su carta')
+                            ->state(fn (Quote $record): string => $record->hasSignedCopy()
+                                ? 'Caricata — è la copia che fa fede'
+                                : 'DA FORMALIZZARE: manca il documento firmato')
+                            ->badge()
+                            ->color(fn (Quote $record): string => $record->hasSignedCopy() ? 'success' : 'warning'),
+                        TextEntry::make('acceptanceRecordedBy.name')
+                            ->label('Registrata in TrackFlow da')
+                            ->formatStateUsing(fn (?string $state, Quote $record): string => trim(
+                                (string) $state.($record->acceptance_recorded_at
+                                    ? ' il '.$record->acceptance_recorded_at->format('d/m/Y H:i')
+                                    : '')
+                            ))
+                            ->placeholder('—')
+                            ->columnSpanFull()
+                            ->size('xs')
+                            ->color('gray'),
+                    ]),
+
                 Section::make('Approvazione')
                     ->columns(2)
                     ->visible(fn (Quote $record): bool => in_array($record->status, [Quote::STATUS_ACCEPTED, Quote::STATUS_INVOICED], true))
                     ->components([
-                        TextEntry::make('acceptedBy.name')->label('Accettato da')->placeholder('—'),
+                        // Chi ha accettato: il referente che ha firmato online,
+                        // oppure il nome registrato a mano quando la firma non c'è.
+                        TextEntry::make('acceptedBy.name')
+                            ->label('Accettato da')
+                            ->state(fn (Quote $record): ?string => $record->acceptedBy?->name ?? $record->acceptance_author)
+                            ->placeholder('—'),
                         TextEntry::make('accepted_at')->label('Accettato il')->dateTime()->placeholder('—'),
                         TextEntry::make('invoice.number')
                             ->label('Fattura generata')

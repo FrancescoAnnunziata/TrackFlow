@@ -8,9 +8,15 @@ use App\Models\Invoice;
 use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\QuoteSubmittedNotification;
+use App\Services\Quotes\QuotePdf;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Pages\ViewRecord;
@@ -31,6 +37,8 @@ class ViewQuote extends ViewRecord
             $this->sendAction(),
             $this->resendAction(),
             $this->copyLinkAction(),
+            $this->recordAcceptanceAction(),
+            $this->uploadSignedCopyAction(),
             $this->generateInvoiceAction(),
             EditAction::make()
                 ->visible(fn (Quote $record): bool => auth()->user()->isAdmin()),
@@ -185,6 +193,144 @@ class ViewQuote extends ViewRecord
                 ->copyMessage('Link copiato')
                 ->extraAttributes(['class' => 'break-all']))
             ->all();
+    }
+
+    /**
+     * Admin: registra un'accettazione arrivata fuori da TrackFlow — per email,
+     * a voce, o su un foglio firmato.
+     *
+     * Serve perché il link con firma online non va sempre bene: capita che il
+     * cliente autorizzi per iscritto e rimandi la formalizzazione a un cartaceo.
+     * Senza questa azione il preventivo resterebbe «Inviato» e continuerebbe a
+     * ricevere i solleciti automatici di firma (vedi SendQuoteReminders).
+     *
+     * Resta scritto chi ha autorizzato, come, e chi l'ha registrata: un'accettazione
+     * messa a mano non deve poter passare per una firma del cliente.
+     */
+    private function recordAcceptanceAction(): Action
+    {
+        return Action::make('recordAcceptance')
+            ->label('Registra accettazione')
+            ->icon(Heroicon::OutlinedCheckBadge)
+            ->color('success')
+            ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->status === Quote::STATUS_SENT)
+            ->modalHeading('Registra l\'accettazione del cliente')
+            ->modalDescription('Da usare quando il cliente ha accettato fuori da TrackFlow. Allega la prova: è quella che vale, non il pulsante.')
+            ->modalSubmitActionLabel('Registra')
+            ->schema([
+                Select::make('acceptance_method')
+                    ->label('Come è arrivata')
+                    ->options(Quote::acceptanceMethodOptions())
+                    ->default(Quote::METHOD_EMAIL)
+                    ->required()
+                    ->selectablePlaceholder(false),
+                TextInput::make('acceptance_author')
+                    ->label('Chi ha autorizzato')
+                    ->placeholder('Nome e cognome')
+                    ->required()
+                    ->maxLength(120),
+                TextInput::make('acceptance_author_role')
+                    ->label('In che qualità')
+                    ->placeholder('es. Legale rappresentante, oppure: per conto del legale rappresentante')
+                    ->maxLength(120),
+                DateTimePicker::make('accepted_at')
+                    ->label('Accettato il')
+                    ->seconds(false)
+                    ->default(now())
+                    ->maxDate(now())
+                    ->required(),
+                FileUpload::make('acceptance_evidence_path')
+                    ->label('Prova da conservare')
+                    ->helperText('L\'email salvata in PDF, o una foto del foglio. Resta sul disco privato, non è pubblica.')
+                    ->disk(Quote::DOCUMENTS_DISK)
+                    ->directory(fn (Quote $record): string => 'quotes/'.$record->getKey())
+                    ->visibility('private')
+                    ->acceptedFileTypes(['application/pdf', 'image/png', 'image/jpeg', 'message/rfc822'])
+                    ->maxSize(10240),
+                Textarea::make('acceptance_note')
+                    ->label('Nota')
+                    ->placeholder('Es. accettato via email, formalizzazione su carta da far firmare al legale rappresentante.')
+                    ->rows(3),
+            ])
+            ->action(function (Quote $record, array $data) {
+                $record->forceFill([
+                    'status' => Quote::STATUS_ACCEPTED,
+                    'accepted_at' => $data['accepted_at'],
+                    // Nessun referente ha firmato: chi ha autorizzato sta nei
+                    // campi di testo, e accepted_by resta vuoto apposta.
+                    'accepted_by' => null,
+                    'acceptance_method' => $data['acceptance_method'],
+                    'acceptance_author' => $data['acceptance_author'],
+                    'acceptance_author_role' => $data['acceptance_author_role'] ?? null,
+                    'acceptance_recorded_by' => auth()->id(),
+                    'acceptance_recorded_at' => now(),
+                    'acceptance_evidence_path' => $data['acceptance_evidence_path'] ?? null,
+                    'acceptance_note' => $data['acceptance_note'] ?? null,
+                    'rejected_at' => null,
+                    'rejection_reason' => null,
+                ])->save();
+
+                // Congela il PDF adesso, con scritto dentro come è stata
+                // accettata: è la copia da mandare al cliente e da archiviare.
+                QuotePdf::store($record);
+
+                FilamentNotification::make()
+                    ->success()
+                    ->title('Accettazione registrata')
+                    ->body($record->needsFormalization()
+                        ? 'Il preventivo è accettato. Resta da formalizzare: quando torna il documento firmato, caricalo con «Carica copia firmata».'
+                        : 'Il preventivo è accettato.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Admin: carica la scansione del preventivo firmato su carta. Da lì in poi
+     * è quel file la copia che fa fede, ed è quello che esce da «Scarica il PDF».
+     */
+    private function uploadSignedCopyAction(): Action
+    {
+        return Action::make('uploadSignedCopy')
+            ->label(fn (Quote $record): string => $record->hasSignedCopy() ? 'Sostituisci la copia firmata' : 'Carica copia firmata')
+            ->icon(Heroicon::OutlinedPaperClip)
+            ->color(fn (Quote $record): string => $record->needsFormalization() ? 'warning' : 'gray')
+            ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->isAccepted())
+            ->modalHeading('Copia firmata su carta')
+            ->modalDescription('La scansione del documento firmato dal cliente. Una volta caricata è lei la copia che fa fede: «Scarica il PDF» restituisce questa.')
+            ->modalSubmitActionLabel('Carica')
+            ->schema([
+                FileUpload::make('signed_copy_path')
+                    ->label('Documento firmato')
+                    ->disk(Quote::DOCUMENTS_DISK)
+                    ->directory(fn (Quote $record): string => 'quotes/'.$record->getKey())
+                    ->visibility('private')
+                    ->acceptedFileTypes(['application/pdf', 'image/png', 'image/jpeg'])
+                    ->maxSize(20480)
+                    ->required(),
+                TextInput::make('acceptance_author')
+                    ->label('Chi ha firmato')
+                    ->placeholder('Nome e cognome')
+                    ->maxLength(120)
+                    ->default(fn (Quote $record): ?string => $record->acceptance_author),
+                TextInput::make('acceptance_author_role')
+                    ->label('In che qualità')
+                    ->placeholder('es. Legale rappresentante')
+                    ->maxLength(120)
+                    ->default(fn (Quote $record): ?string => $record->acceptance_author_role),
+            ])
+            ->action(function (Quote $record, array $data) {
+                $record->forceFill([
+                    'signed_copy_path' => $data['signed_copy_path'],
+                    'acceptance_author' => $data['acceptance_author'] ?: $record->acceptance_author,
+                    'acceptance_author_role' => $data['acceptance_author_role'] ?: $record->acceptance_author_role,
+                ])->save();
+
+                FilamentNotification::make()
+                    ->success()
+                    ->title('Copia firmata caricata')
+                    ->body('È questa ora la copia che fa fede: «Scarica il PDF» restituisce la scansione.')
+                    ->send();
+            });
     }
 
     /**
