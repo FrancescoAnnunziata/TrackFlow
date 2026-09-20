@@ -27,6 +27,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 
 /**
  * Importa in TrackFlow le fatture emesse fuori da Fatture in Cloud (Fiscozen,
@@ -58,10 +59,16 @@ class FattureEmessePdf extends Page implements HasForms
     /** @var array<string, mixed> */
     public array $data = [];
 
-    /** Chiave cache del job di estrazione in corso (null = nessuna estrazione). */
+    /**
+     * Chiave cache del job di estrazione in corso (null = nessuna estrazione).
+     * La genera estrai() e non deve poter arrivare dal client: sbloccata era una
+     * lettura (e una Cache::forget) di qualunque chiave della cache applicativa.
+     */
+    #[Locked]
     public ?string $extractKey = null;
 
     /** True mentre il job di estrazione è in corso: guida il polling nella view. */
+    #[Locked]
     public bool $extracting = false;
 
     public static function canAccess(): bool
@@ -220,7 +227,7 @@ class FattureEmessePdf extends Page implements HasForms
             return;
         }
 
-        $key = 'emesse-extract:'.auth()->id().':'.Str::uuid();
+        $key = self::cachePrefix().Str::uuid();
         Cache::put($key, ['status' => 'processing'], now()->addHour());
         ExtractIssuedInvoicesJob::dispatch($paths, $key, self::DISK);
 
@@ -236,9 +243,24 @@ class FattureEmessePdf extends Page implements HasForms
     /**
      * Interrogata in polling dalla view mentre l'estrazione è in corso.
      */
+    /** Prefisso delle chiavi di estrazione di chi è collegato adesso. */
+    private static function cachePrefix(): string
+    {
+        return 'emesse-extract:'.auth()->id().':';
+    }
+
     public function checkExtraction(): void
     {
         if (! $this->extracting || blank($this->extractKey)) {
+            return;
+        }
+
+        // Cintura e bretelle rispetto a #[Locked]: si legge e si cancella solo
+        // dentro lo spazio di chiavi dell'utente collegato.
+        if (! Str::startsWith($this->extractKey, self::cachePrefix())) {
+            $this->extracting = false;
+            $this->extractKey = null;
+
             return;
         }
 

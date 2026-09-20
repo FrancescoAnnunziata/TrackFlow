@@ -8,6 +8,7 @@ use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\Locked;
 
 class AssetScan extends Page
 {
@@ -26,7 +27,8 @@ class AssetScan extends Page
     /** Valore letto dal lettore barcode USB (digitato + invio). */
     public string $code = '';
 
-    /** True quando la ricerca non ha prodotto risultati. */
+    /** True quando la ricerca non ha prodotto risultati. La imposta search(). */
+    #[Locked]
     public bool $notFound = false;
 
     public static function canAccess(): bool

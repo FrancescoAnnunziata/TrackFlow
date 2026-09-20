@@ -13,8 +13,10 @@ use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Throwable;
 
 /**
@@ -34,6 +36,12 @@ class AssistenteAi extends Page
 
     protected string $view = 'filament.pages.assistente-ai';
 
+    /**
+     * Conversazione aperta. La decide il server (mount, openThread, send) e mai
+     * il payload: senza #[Locked] bastava un update su /livewire/update con un
+     * id qualsiasi per leggere e scrivere la chat di un altro utente.
+     */
+    #[Locked]
     public ?int $threadId = null;
 
     public string $draft = '';
@@ -62,13 +70,19 @@ class AssistenteAi extends Page
 
     public function mount(): void
     {
-        $this->threadId = AssistantThread::where('user_id', auth()->id())->latest('id')->value('id');
+        $this->threadId = $this->ownThreads()->latest('id')->value('id');
+    }
+
+    /** Thread dell'utente collegato: l'unico insieme da cui si può pescare. */
+    private function ownThreads(): Builder
+    {
+        return AssistantThread::where('user_id', auth()->id());
     }
 
     /** @return Collection<int, AssistantThread> */
     public function getThreadsProperty(): Collection
     {
-        return AssistantThread::where('user_id', auth()->id())->latest('id')->limit(30)->get();
+        return $this->ownThreads()->latest('id')->limit(30)->get();
     }
 
     /** Costo AI totale del mese (USD), tutte le funzioni AI incluse. */
@@ -84,7 +98,12 @@ class AssistenteAi extends Page
             return collect();
         }
 
-        return AssistantMessage::where('assistant_thread_id', $this->threadId)->orderBy('id')->get();
+        // Il filtro sul proprietario si rifà anche qui: la proprietà è bloccata,
+        // ma un id sbagliato può arrivare comunque da un'azione futura.
+        return AssistantMessage::where('assistant_thread_id', $this->threadId)
+            ->whereIn('assistant_thread_id', $this->ownThreads()->select('id'))
+            ->orderBy('id')
+            ->get();
     }
 
     public function newChat(): void
@@ -95,6 +114,9 @@ class AssistenteAi extends Page
 
     public function openThread(int $id): void
     {
+        // L'elenco mostra solo i thread propri: un id altrui qui è manomissione.
+        abort_unless($this->ownThreads()->whereKey($id)->exists(), 403);
+
         $this->threadId = $id;
     }
 
@@ -106,7 +128,7 @@ class AssistenteAi extends Page
         }
 
         $thread = $this->threadId
-            ? AssistantThread::find($this->threadId)
+            ? $this->ownThreads()->find($this->threadId)
             : AssistantThread::create([
                 'user_id' => auth()->id(),
                 'title' => Str::limit($text, 40),
@@ -147,14 +169,30 @@ class AssistenteAi extends Page
         }
     }
 
+    /**
+     * Messaggio della conversazione aperta, che dev'essere dell'utente collegato:
+     * le proposte si confermano solo dentro la propria chat.
+     */
+    private function ownMessage(int $messageId): ?AssistantMessage
+    {
+        if ($this->threadId === null) {
+            return null;
+        }
+
+        return AssistantMessage::whereKey($messageId)
+            ->where('assistant_thread_id', $this->threadId)
+            ->whereIn('assistant_thread_id', $this->ownThreads()->select('id'))
+            ->first();
+    }
+
     public function confirmProposal(int $messageId, string $actionId): void
     {
         if (! $this->canReconcile()) {
             return;
         }
 
-        $message = AssistantMessage::find($messageId);
-        if ($message === null || (int) $message->assistant_thread_id !== (int) $this->threadId) {
+        $message = $this->ownMessage($messageId);
+        if ($message === null) {
             return;
         }
 
@@ -258,8 +296,8 @@ class AssistenteAi extends Page
 
     public function cancelProposal(int $messageId, string $actionId): void
     {
-        $message = AssistantMessage::find($messageId);
-        if ($message === null || (int) $message->assistant_thread_id !== (int) $this->threadId) {
+        $message = $this->ownMessage($messageId);
+        if ($message === null) {
             return;
         }
 

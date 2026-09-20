@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Livewire\Attributes\Locked;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -32,6 +33,8 @@ class RiconciliazioniPassive extends Page
 
     public string $until;
 
+    /** Testo fisso della tabella vuota: lo decide il server, non il payload. */
+    #[Locked]
     public string $emptyMessage = 'Nessuna fattura passiva nel periodo selezionato.';
 
     public static function canAccess(): bool
