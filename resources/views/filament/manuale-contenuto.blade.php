@@ -81,7 +81,7 @@
                         <tr><td class="name">Fioravanti</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>A ore · 90 €/h · mensile</td></tr>
                         <tr><td class="name">Fedespedi</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>Forfait · mensile</td></tr>
                         <tr><td class="name">Alsea</td><td>Fatture in Cloud <span class="g-muted">(G8Labs)</span></td><td><span class="g-badge green">22%</span></td><td>A ore · 50 €/h · <strong>trimestrale anticipato</strong></td></tr>
-                        <tr><td class="name">Quisto</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A ore · 50 €/h · mensile</td></tr>
+                        <tr><td class="name">Quisto</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>Forfait · 4.000 €/mese · mensile</td></tr>
                         <tr><td class="name">Dolcitalia</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A ore · 60 €/h · mensile</td></tr>
                         <tr><td class="name">Qode SRL / Calzedonia</td><td>Fiscozen <span class="g-muted">(G. Giotto)</span></td><td><span class="g-badge purple">0%</span></td><td>A giornata · 290 €/gg · mensile</td></tr>
                     </tbody>
