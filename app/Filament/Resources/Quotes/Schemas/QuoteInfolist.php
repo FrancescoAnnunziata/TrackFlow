@@ -134,12 +134,19 @@ class QuoteInfolist
                                 : null)
                             ->openUrlInNewTab()
                             ->color(fn (Quote $record): string => $record->acceptance_evidence_path ? 'primary' : 'gray'),
+                        // Cliccabile quando c'è: è qui che si viene a cercarla
+                        // mesi dopo, e un badge e basta lasciava credere che
+                        // il file fosse entrato e non uscisse più.
                         TextEntry::make('signed_copy_path')
                             ->label('Copia firmata su carta')
                             ->state(fn (Quote $record): string => $record->hasSignedCopy()
-                                ? 'Caricata — è la copia che fa fede'
+                                ? 'Caricata — scaricala'
                                 : 'DA FORMALIZZARE: manca il documento firmato')
                             ->badge()
+                            ->url(fn (Quote $record): ?string => $record->hasSignedCopy()
+                                ? route('quote.pdf', $record)
+                                : null)
+                            ->openUrlInNewTab()
                             ->color(fn (Quote $record): string => $record->hasSignedCopy() ? 'success' : 'warning'),
                         TextEntry::make('acceptanceRecordedBy.name')
                             ->label('Registrata in TrackFlow da')

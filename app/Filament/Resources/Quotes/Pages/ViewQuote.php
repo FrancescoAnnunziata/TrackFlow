@@ -190,10 +190,20 @@ class ViewQuote extends ViewRecord
             ->url(fn (Quote $record): string => $record->documentUrl());
     }
 
+    /**
+     * Il pulsante dice cosa sta per uscire, perché quando c'è la scansione
+     * firmata è lei a uscire da qui e non il PDF generato.
+     *
+     * Chiamarlo sempre «Scarica il PDF» faceva cercare altrove la copia
+     * firmata appena caricata: non si immagina che sia dietro un pulsante che
+     * promette un'altra cosa.
+     */
     private function downloadPdfAction(): Action
     {
         return Action::make('downloadPdf')
-            ->label('Scarica il PDF')
+            ->label(fn (Quote $record): string => $record->hasSignedCopy()
+                ? 'Scarica la copia firmata'
+                : 'Scarica il PDF')
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('gray')
             ->url(fn (Quote $record): string => route('quote.pdf', $record));

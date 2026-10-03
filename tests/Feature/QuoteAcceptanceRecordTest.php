@@ -254,3 +254,39 @@ it('non offre l\'invio a mano su un preventivo già inviato, né al cliente', fu
     Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
         ->assertActionHidden('markSentByHand');
 });
+
+// La copia firmata esce dallo stesso pulsante del PDF, e per questo non si
+// trovava: prometteva un'altra cosa. Il nome del pulsante deve dire cosa esce.
+it('cambia nome al pulsante quando a uscire è la scansione firmata', function () {
+    Storage::fake(Quote::DOCUMENTS_DISK);
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+
+    ['admin' => $admin, 'quote' => $quote] = scenarioAccettazione();
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertSee('Scarica il PDF')
+        ->assertDontSee('Scarica la copia firmata');
+
+    $quote->forceFill([
+        'status' => Quote::STATUS_ACCEPTED,
+        'accepted_at' => now(),
+        'acceptance_method' => Quote::METHOD_PAPER,
+        'acceptance_author' => 'Marino',
+        'acceptance_recorded_by' => $admin->id,
+        'acceptance_recorded_at' => now(),
+        'signed_copy_path' => 'quotes/'.$quote->getKey().'/firmato.pdf',
+    ])->save();
+
+    Storage::disk(Quote::DOCUMENTS_DISK)->put('quotes/'.$quote->getKey().'/firmato.pdf', '%PDF-firmato');
+
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertSee('Scarica la copia firmata');
+
+    // E dal pulsante esce davvero la scansione, non il PDF generato.
+    $this->actingAs($admin)
+        ->get(route('quote.pdf', $quote))
+        ->assertOk()
+        ->assertDownload();
+});

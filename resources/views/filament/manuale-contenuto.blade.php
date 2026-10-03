@@ -695,7 +695,19 @@
             </ol>
             <div class="g-callout g-info">Registrare l'accettazione <strong>ferma i solleciti</strong> e sblocca <span class="g-kbd">Genera fattura</span>. Resta scritto che l'accettazione l'ha inserita un admin e non l'ha firmata il cliente: sul documento e nel PDF compare come è arrivata, da chi e chi l'ha registrata.</div>
             <p class="g-sub">Se la formalizzazione arriva dopo</p>
-            <p>Finché non c'è niente di firmato agli atti, il preventivo è segnato <strong>Da formalizzare</strong> — si vede nella colonna <em>Formalizzazione</em> dell'elenco e c'è il filtro omonimo per trovarli tutti. Quando torna il documento firmato su carta: <span class="g-kbd">Carica copia firmata</span>. Da quel momento è <strong>quella scansione</strong> la copia che fa fede, ed è lei che esce da <span class="g-kbd">Scarica il PDF</span>.</p>
+            <p>Finché non c'è niente di firmato agli atti, il preventivo è segnato <strong>Da formalizzare</strong> — si vede nella colonna <em>Formalizzazione</em> dell'elenco e c'è il filtro omonimo per trovarli tutti. Quando torna il documento firmato su carta: <span class="g-kbd">Carica copia firmata</span>. Da quel momento è <strong>quella scansione</strong> la copia che fa fede, e il pulsante in alto cambia nome in <span class="g-kbd">Scarica la copia firmata</span>: premendolo esce lei, non il PDF generato da TrackFlow.</p>
+            <p class="g-sub">Ritrovare i documenti mesi dopo</p>
+            <p>Sulla scheda del preventivo, nel riquadro <strong>«Accettazione registrata»</strong>, ci sono i due
+                documenti conservati — e <strong>si aprono cliccandoci sopra</strong>:</p>
+            <ul class="g-list">
+                <li><strong>Prova allegata</strong> → <em>«Apri il documento conservato»</em>: l'email o la foto che hai
+                    allegato quando hai registrato l'accettazione.</li>
+                <li><strong>Copia firmata su carta</strong> → <em>«Caricata — scaricala»</em>: la scansione firmata.
+                    Se invece è rossa e dice <em>DA FORMALIZZARE</em>, quel documento non è ancora arrivato.</li>
+            </ul>
+            <p class="g-muted">La <strong>prova allegata</strong> la vede <strong>solo chi è admin</strong>: il cliente,
+                dal suo link, non ci arriva. La <strong>copia firmata</strong> invece sì — è il suo stesso documento, ed
+                è quella che scarica anche lui.</p>
             <div class="g-callout g-warn"><strong>Da non fare:</strong> registrare un'accettazione che il cliente non ha dato per iscritto o a voce, per «portarsi avanti». Se non c'è una prova da allegare, chiedi a Giorgio prima.</div>
         </div>
 
