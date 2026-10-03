@@ -35,20 +35,11 @@ class ClaudeChatClient implements ChatClient
             $system[] = ['type' => 'text', 'text' => $systemContext];
         }
 
-        // Il ragionamento adattivo va chiesto per nome. Su claude-opus-5 è già
-        // attivo omettendo il parametro, ma su opus-4.8 e 4.7 omettere vuol dire
-        // NIENTE ragionamento: scrivendolo, cambiare ANTHROPIC_MODEL non spegne
-        // di nascosto la capacità su cui si basano le proposte di riconciliazione.
-        //
-        // maxTokens copre ragionamento + risposta nello stesso tetto: con 4096 e
-        // il ragionamento attivo una risposta lunga veniva troncata a metà, e il
-        // runner la restituiva come se fosse finita.
         $message = (new Client(apiKey: $apiKey))->messages->create(
-            maxTokens: 16000,
+            maxTokens: 4096,
             messages: $messages,
             model: $model,
             system: $system,
-            thinking: ['type' => 'adaptive'],
             tools: $tools,
         );
 
