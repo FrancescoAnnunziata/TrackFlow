@@ -8,6 +8,7 @@ use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -195,4 +196,61 @@ it('offre il caricamento della copia firmata solo dopo l\'accettazione', functio
 
     Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
         ->assertActionVisible('uploadSignedCopy');
+});
+
+// Il preventivo che da TrackFlow non si può spedire — cliente senza referenti in
+// anagrafica — restava in bozza per sempre: non accettabile, quindi non
+// fatturabile, anche con la copia firmata in mano. «Segna come inviato a mano»
+// prende atto che il documento è uscito lo stesso.
+it('segna come inviato a mano un preventivo che l\'app non può spedire', function () {
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+    Notification::fake();
+
+    ['admin' => $admin, 'quote' => $quote] = scenarioAccettazione(Quote::STATUS_DRAFT);
+
+    // È proprio il caso che blocca «Invia al cliente»: nessun referente.
+    User::where('client_id', $quote->client_id)->delete();
+    $quote->update(['sent_at' => null]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionHidden('recordAcceptance')
+        ->assertActionVisible('markSentByHand')
+        ->callAction(TestAction::make('markSentByHand'), [
+            'sent_at' => now()->subDays(6)->format('Y-m-d H:i:s'),
+        ]);
+
+    $quote->refresh();
+
+    expect($quote->status)->toBe(Quote::STATUS_SENT)
+        ->and($quote->sent_at)->not->toBeNull()
+        ->and($quote->reminders_sent)->toBe(0);
+
+    // Non è un invio: nessuna email, nessun magic link al cliente.
+    Notification::assertNothingSent();
+
+    // E senza referenti nemmeno i solleciti automatici hanno a chi andare.
+    $this->artisan(SendQuoteReminders::class)->assertSuccessful();
+    expect($quote->fresh()->reminders_sent)->toBe(0);
+
+    // Da qui in poi vale il percorso normale.
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionVisible('recordAcceptance');
+});
+
+it('non offre l\'invio a mano su un preventivo già inviato, né al cliente', function () {
+    Filament::setCurrentPanel(Filament::getPanel('app'));
+
+    ['admin' => $admin, 'contact' => $contact, 'quote' => $quote] = scenarioAccettazione();
+
+    $this->actingAs($admin);
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionHidden('markSentByHand');
+
+    $quote->update(['status' => Quote::STATUS_DRAFT]);
+
+    $this->actingAs($contact);
+    Livewire::test(ViewQuote::class, ['record' => $quote->getKey()])
+        ->assertActionHidden('markSentByHand');
 });

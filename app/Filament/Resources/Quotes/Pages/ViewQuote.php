@@ -35,6 +35,7 @@ class ViewQuote extends ViewRecord
             $this->openDocumentAction(),
             $this->downloadPdfAction(),
             $this->sendAction(),
+            $this->markSentByHandAction(),
             $this->resendAction(),
             $this->copyLinkAction(),
             $this->recordAcceptanceAction(),
@@ -60,6 +61,57 @@ class ViewQuote extends ViewRecord
             ->requiresConfirmation()
             ->modalDescription('Invia il preventivo via email a tutti i referenti del cliente, con un link di accesso per approvarlo.')
             ->action(fn (Quote $record) => $this->dispatchToClient($record));
+    }
+
+    /**
+     * Admin: prende atto che il preventivo è uscito da TrackFlow a mano — PDF
+     * scaricato e mandato per conto proprio.
+     *
+     * Serve perché «Invia al cliente» pretende i referenti in anagrafica: senza
+     * quelli il preventivo resta in bozza per sempre, e una bozza non si può
+     * accettare né fatturare. Succede di continuo con i clienti di cui non
+     * teniamo i contatti: il PDF glielo mandiamo noi, loro lo firmano, e in
+     * TrackFlow non c'era modo di dirlo.
+     *
+     * Non manda niente e non crea nessun magic link: sposta solo lo stato, così
+     * da lì in poi vale il percorso normale (Registra accettazione → Carica
+     * copia firmata → Genera fattura). La bozza resta non accettabile, che è la
+     * regola che vogliamo tenere: si accetta solo ciò che è stato emesso.
+     */
+    private function markSentByHandAction(): Action
+    {
+        return Action::make('markSentByHand')
+            ->label('Segna come inviato a mano')
+            ->icon(Heroicon::OutlinedEnvelopeOpen)
+            ->color('gray')
+            ->visible(fn (Quote $record): bool => auth()->user()->isAdmin() && $record->status === Quote::STATUS_DRAFT)
+            ->modalHeading('Preventivo inviato fuori da TrackFlow')
+            ->modalDescription('Da usare quando hai scaricato il PDF e l\'hai mandato tu. Non parte nessuna email e nessun link di firma: il preventivo passa a «Inviato» e da lì puoi registrarne l\'accettazione.')
+            ->modalSubmitActionLabel('Segna come inviato')
+            ->schema([
+                DateTimePicker::make('sent_at')
+                    ->label('Inviato il')
+                    ->helperText('La data in cui il documento è davvero uscito: è da lì che si contano i solleciti.')
+                    ->seconds(false)
+                    ->default(now())
+                    ->maxDate(now())
+                    ->required(),
+            ])
+            ->action(function (Quote $record, array $data): void {
+                $record->update([
+                    'status' => Quote::STATUS_SENT,
+                    'sent_at' => $data['sent_at'],
+                    'reminders_sent' => 0,
+                ]);
+
+                FilamentNotification::make()
+                    ->success()
+                    ->title('Preventivo segnato come inviato')
+                    ->body($record->client->contacts->isEmpty()
+                        ? 'Il cliente non ha referenti in anagrafica, quindi nessun sollecito automatico partirà.'
+                        : 'Attenzione: il cliente ha dei referenti, quindi i solleciti automatici di firma partiranno come al solito a 5 e 10 giorni da questa data.')
+                    ->send();
+            });
     }
 
     /**

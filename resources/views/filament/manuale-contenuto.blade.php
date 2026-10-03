@@ -669,6 +669,23 @@
         <div class="g-card">
             <div class="g-head"><span class="g-num gray">📝</span><p class="g-h">I preventivi: come si arriva ad «Accettato»</p></div>
             <p>Il preventivo si invia al cliente dal menu <strong>Preventivi</strong> → <span class="g-kbd">Invia al cliente</span>: i referenti ricevono un'email con un link, aprono il documento, lo <strong>firmano a mano sullo schermo</strong> e lo stato passa da solo ad <strong>Accettato</strong>. Se non rispondono, partono due solleciti automatici (dopo 5 e dopo 10 giorni).</p>
+            <p class="g-sub">Quando il preventivo glielo mandi tu</p>
+            <p><span class="g-kbd">Invia al cliente</span> funziona solo se il cliente ha dei <strong>referenti</strong>
+                in anagrafica: sono loro a ricevere l'email col link. Di clienti così non ne abbiamo tanti, e per gli
+                altri il preventivo esce <strong>a mano</strong> — <span class="g-kbd">Scarica il PDF</span> e lo mandi
+                tu dalla tua posta.</p>
+            <p>In quel caso, quando l'hai mandato, premi <span class="g-kbd">Segna come inviato a mano</span> e indica
+                <strong>la data in cui è uscito davvero</strong>. Non parte nessuna email e nessun link di firma: il
+                preventivo smette di essere una <strong>Bozza</strong> e passa a <strong>Inviato</strong>.</p>
+            <div class="g-callout g-warn">
+                <strong>Serve a questo:</strong> finché resta in bozza non puoi registrarne l'accettazione, e quindi non
+                puoi nemmeno generarci la fattura — anche se il cliente te l'ha già rimandato firmato. Segnalo come
+                inviato e il percorso normale si sblocca.
+            </div>
+            <p class="g-muted">Se quel cliente <em>ha</em> dei referenti, ricordati che da quel momento partono i
+                solleciti automatici a 5 e 10 giorni, come per i preventivi inviati dall'app. Se non ne ha, non parte
+                niente.</p>
+
             <p class="g-sub">Quando il cliente accetta ma non usa il link</p>
             <p>Capita spesso: il cliente risponde per email «autorizzato, procedi», oppure lo dice al telefono, oppure vuole firmare un foglio di carta. In quel caso <strong>non si aspetta la firma online</strong>, si registra l'accettazione:</p>
             <ol class="g-ol">
