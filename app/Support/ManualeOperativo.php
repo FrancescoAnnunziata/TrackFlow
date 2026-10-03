@@ -27,10 +27,14 @@ class ManualeOperativo
     private const CACHE_KEY = 'manuale-operativo-testo';
 
     /**
-     * Tetto di sicurezza: oggi il manuale sta sui 24.000 caratteri, quindi c'è
-     * abbondante margine. Serve perché il testo finisce in ogni chiamata
-     * all'assistente: se un giorno raddoppiasse, meglio troncarlo che far
-     * crescere in silenzio il costo di ogni conversazione.
+     * Tetto di sicurezza: oggi il manuale sta sui 33.000 caratteri, quindi il
+     * margine si è assottigliato — era sui 24.000 quando il tetto fu scelto.
+     * Serve perché il testo finisce in ogni chiamata all'assistente: se un
+     * giorno raddoppiasse, meglio troncarlo che far crescere in silenzio il
+     * costo di ogni conversazione. Attenzione però: il troncamento è muto e
+     * taglia dal fondo, dove stanno preventivi, note di credito e glossario.
+     * Se ci si avvicina, meglio alzare il tetto consapevolmente che scoprire
+     * a posteriori che l'assistente non legge più la coda del manuale.
      */
     private const MAX_CHARS = 40000;
 

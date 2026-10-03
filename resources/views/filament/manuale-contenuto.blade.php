@@ -309,6 +309,17 @@
                 <li><strong>Conto</strong> — la banca del file. <strong>Sceglilo per primo:</strong> precompila tutto il resto.</li>
                 <li><strong>File CSV o XLSX</strong> — il file scaricato dalla banca.</li>
             </ul>
+            <div class="g-callout g-info">
+                <strong>Se il file non è quello di sempre:</strong> sotto il campo del file c'è
+                <span class="g-kbd">Riconosci il formato dal file</span>. Caricalo e premilo: TrackFlow legge le prime
+                righe e <strong>compila da solo</strong> separatore, decimale, formato data e i nomi delle colonne.
+                Serve quando il tracciato non lo conosciamo — una banca nuova, o l'export della solita banca che è
+                cambiato — cioè proprio quando i campi precompilati dal conto non tornano.
+                <br><strong>Riempie il modulo e basta, non importa niente:</strong> quello che ha riconosciuto resta lì
+                sotto i tuoi occhi, lo correggi se ha sbagliato, e l'import parte solo quando premi
+                <span class="g-kbd">Importa</span>. Quindi provalo senza paura. Se dice che non ci è riuscito, compila i
+                campi a mano come sempre.
+            </div>
             <p class="g-sub" style="margin-top:.3rem">Riquadro «Formato file» <span class="g-muted">(come sono scritti numeri e date; precompilato)</span></p>
             <ul class="g-list">
                 <li><strong>Separatore</strong> — divide le colonne: <span class="g-kbd">;</span> (InBank) o <span class="g-kbd">,</span> (Vivid).</li>
@@ -596,6 +607,62 @@
             </div>
 
             <div class="g-callout g-warn"><strong>Usa sempre lo stesso mese</strong> in tutti gli export e per le fatture Fiscozen: il mese che hai appena riconciliato.</div>
+        </div>
+
+        {{-- E-commerce: corrispettivi --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num gray">🛒</span><p class="g-h">Gli incassi dell'e-commerce (corrispettivi)</p></div>
+            <p>Menu <strong>Controllo Finanziario → Corrispettivi e-commerce</strong>: c'è una riga per ogni giorno con
+                quanto ha incassato il negozio online. Sta sulla <strong>P.IVA personale di Giorgio</strong> (quella in
+                forfettario, la stessa dei clienti Fiscozen).</p>
+
+            <div class="g-callout g-ok">
+                <strong>Non devi farci niente.</strong> Ogni notte alle <strong>2:30</strong> TrackFlow si collega a
+                Shopify e riscrive i giorni da solo. Li trovi già lì: la pagina è da <strong>leggere</strong>, non da
+                compilare.
+            </div>
+
+            <p class="g-sub">A cosa serve</p>
+            <p>Il forfettario ha una <strong>soglia annua</strong>, e si calcola su <strong>fatture e vendite online
+                    insieme</strong>: né TrackFlow né Shopify, da soli, vedono il totale. Per questo gli incassi del
+                negozio stanno qui — e li ritrovi sommati alle fatture nella <strong>Dashboard finanziaria</strong>, che
+                è la pagina dove si guarda quanto manca alla soglia.</p>
+            <ul class="g-list">
+                <li><strong>Lordo</strong> — l'incassato del giorno, <strong>al lordo delle commissioni</strong> di
+                    Shopify e Stripe: nel forfettario i costi non si deducono, quindi qui non si tolgono.</li>
+                <li><strong>Resi</strong> — i rimborsi ai clienti di quel giorno.</li>
+                <li><strong>Netto</strong> = Lordo − Resi. <strong>È questo</strong> che conta per la soglia.</li>
+            </ul>
+
+            <div class="g-callout g-warn">
+                <strong>Non sono fatture e non si riconciliano.</strong> Il commercio elettronico non emette fattura né
+                corrispettivi telematici: qui non c'è niente da emettere, da inviare o da agganciare a un movimento
+                bancario. Non cercarli fra i documenti quando riconcili — non li troverai, ed è giusto così.
+            </div>
+
+            <p class="g-sub">Se un giorno manca o non torna</p>
+            <p>Può succedere che la sincronizzazione notturna salti un giro (Shopify irraggiungibile, internet giù). In
+                alto c'è <span class="g-kbd">Sincronizza da Shopify</span>: ti chiede <strong>quanti giorni</strong>
+                risincronizzare e li riscrive fino a oggi. Premerlo due volte non fa danni, riscrive gli stessi numeri.</p>
+            <div class="g-callout g-info">
+                <strong>Perché riscrive anche i giorni già fatti:</strong> un reso arriva <em>dopo</em> l'ordine, a volte
+                di parecchi giorni. Risincronizzare corregge il giorno a cui il reso appartiene, invece di lasciare in
+                giro un totale che non torna più. È anche il motivo per cui un numero di ieri può cambiare oggi: non è
+                un errore.
+            </div>
+
+            <p class="g-sub">Le righe messe a mano</p>
+            <p>Con <span class="g-kbd">Crea</span> si aggiunge una giornata a mano — serve solo per incassi che
+                <strong>non passano da Shopify</strong>. Lascia il campo <strong>Origine</strong> su
+                <strong>«Manuale»</strong>: così la sincronizzazione <strong>non la tocca mai</strong>. Se invece la
+                marchi «Shopify», la prima sincronizzazione che passa su quel giorno <strong>cancella quello che hai
+                    scritto</strong> e rimette i numeri del negozio.</p>
+
+            <div class="g-callout g-note">
+                <strong>Nel dubbio non correggere.</strong> Se un giorno ti sembra sbagliato, <strong>chiedi a
+                    Giorgio</strong>: quasi sempre è un reso che deve ancora arrivare, e una riga sistemata a mano verrà
+                comunque riscritta dalla sincronizzazione alla prossima passata.
+            </div>
         </div>
 
         {{-- Preventivi: accettazione --}}
