@@ -54,7 +54,7 @@ class AssistantRunner
             $turn = $this->ai->converse($this->staticSystemPrompt($canReconcile), $this->threadContext(), $messages, $schemas, $model);
 
             if (! $turn->wantsTools()) {
-                return ['content' => trim($turn->text) ?: 'Fatto.', 'steps' => $steps, 'actions' => $actions];
+                return ['content' => $this->finalText($turn), 'steps' => $steps, 'actions' => $actions];
             }
 
             // Rieccheggia i blocchi tool_use dell'assistant, poi esegui e rimanda i risultati.
@@ -89,6 +89,25 @@ class AssistantRunner
         }
 
         return ['content' => 'Ho raggiunto il limite di passaggi. Riprova a riformulare la richiesta.', 'steps' => $steps, 'actions' => $actions];
+    }
+
+    /**
+     * Testo finale del turno, col motivo dello stop quando non è una risposta
+     * completa. Senza questo, una risposta tagliata dal tetto di token o un
+     * rifiuto del modello tornavano all'utente con l'aria di essere la risposta
+     * definitiva: il punto in cui si smette di potersi fidare di quello che si
+     * legge, senza che niente lo segnali.
+     */
+    private function finalText(AssistantTurn $turn): string
+    {
+        $text = trim($turn->text);
+
+        return match ($turn->stopReason) {
+            'max_tokens' => ($text !== '' ? $text."\n\n" : '')
+                .'⚠️ La risposta è stata interrotta perché troppo lunga: quello che leggi sopra è incompleto. Chiedimi un periodo più breve o una cosa per volta.',
+            'refusal' => $text !== '' ? $text : 'Non posso rispondere a questa richiesta.',
+            default => $text ?: 'Fatto.',
+        };
     }
 
     /**

@@ -71,6 +71,7 @@ return [
         // chiamata AI. I moltiplicatori sono i fattori Anthropic sui token in
         // cache (~0.1x lettura, ~1.25x scrittura). Da tenere allineati ai listini.
         'pricing' => [
+            'claude-fable-5-1' => ['input' => 10.00, 'output' => 50.00],
             'claude-fable-5' => ['input' => 10.00, 'output' => 50.00],
             'claude-opus-5' => ['input' => 5.00, 'output' => 25.00],
             'claude-opus-4-8' => ['input' => 5.00, 'output' => 25.00],
