@@ -51,6 +51,25 @@ Attenzione al ruolo `accountant`: in TrackFlow non vede nessuna risorsa
 Filament, l'assistente è la sua unica finestra sui dati. Ogni tool di lettura
 che aggiungi allarga quello che il commercialista può vedere.
 
+### Buchi accettati (decisione esplicita di Giorgio, 2 ottobre 2026)
+
+Questi due non sono sviste: sono stati notati, discussi e lasciati così. Non
+«sistemarli» di iniziativa, e non riaprirli a ogni passaggio.
+
+- **L'assistente non legge i corrispettivi e-commerce.** Non esiste un tool su
+  `App\Models\Corrispettivo` e per ora va bene così. Conseguenza da tenere
+  presente quando si risponde a una domanda sul fatturato: l'assistente vede
+  solo le fatture, quindi il totale che conta per la soglia del forfettario
+  (fatture + vendite online) lui non ce l'ha. Vale soprattutto per il ruolo
+  `accountant`, che non ha nessun'altra finestra sui dati.
+- **L'API fatture da abbonamento resta fuori dal manuale.** Le bozze create da
+  `personal-ticketing` (vedi `docs/api-abbonamenti.md`, filtro «Da abbonamento,
+  non ancora su FIC» nell'elenco Fatture) non sono raccontate nella Guida: non
+  sono lavoro di Paola. La documentazione di quel pezzo è `docs/api-abbonamenti.md`
+  e basta quella.
+
+Il manuale invece **copre** i corrispettivi e-commerce: lì la regola vale piena.
+
 ## Come si esegue
 
 Artisan e i test girano nel container Sail, non sull'host:
