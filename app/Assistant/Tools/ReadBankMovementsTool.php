@@ -4,6 +4,7 @@ namespace App\Assistant\Tools;
 
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
+use App\Assistant\LinkDocumento;
 use App\Models\BankTransaction;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -62,13 +63,14 @@ class ReadBankMovementsTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (BankTransaction $t): string => sprintf(
-            '- id=%d | %s | € %s | %s | %s | %s',
+            '- id=%d | %s | € %s | %s | %s | %s | %s',
             $t->id,
             optional($t->booked_at)->format('d/m/Y') ?? '',
             number_format((float) $t->amount, 2, ',', '.'),
             $t->bankAccount->name ?? '—',
             mb_substr((string) $t->description, 0, 60),
             $t->reconciled ? 'riconciliato' : 'da riconciliare',
+            LinkDocumento::movimento($t->id),
         ))->implode("\n");
 
         return AssistantToolResult::ok("Movimenti ({$rows->count()}):\n".$lines, 'Movimenti bancari: '.$rows->count());

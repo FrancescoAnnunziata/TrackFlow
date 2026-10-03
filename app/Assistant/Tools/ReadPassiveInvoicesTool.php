@@ -4,6 +4,7 @@ namespace App\Assistant\Tools;
 
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
+use App\Assistant\LinkDocumento;
 use App\Models\PassiveInvoice;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -61,13 +62,14 @@ class ReadPassiveInvoicesTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (PassiveInvoice $p): string => sprintf(
-            '- id=%d | %s | %s | %s | € %s | %s',
+            '- id=%d | %s | %s | %s | € %s | %s | %s',
             $p->id,
             $p->number ?: '(s.n.)',
             optional($p->document_date)->format('d/m/Y') ?? '',
             $p->supplier->name ?? '—',
             number_format((float) $p->amount_gross, 2, ',', '.'),
             $p->payment_status === PassiveInvoice::STATUS_PAID ? 'pagata' : 'non pagata',
+            LinkDocumento::fatturaPassiva($p->id),
         ))->implode("\n");
 
         return AssistantToolResult::ok("Fatture passive ({$rows->count()}):\n".$lines, 'Fatture passive: '.$rows->count());

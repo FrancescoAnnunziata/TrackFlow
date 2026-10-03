@@ -4,6 +4,7 @@ namespace App\Assistant\Tools;
 
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
+use App\Assistant\LinkDocumento;
 use App\Models\Expense;
 use App\Models\Invoice;
 
@@ -60,12 +61,13 @@ class ReadInvoiceExpensesTool implements AssistantTool
                 : 'nessuna fattura passiva collegata';
 
             return sprintf(
-                '- spesa id=%d | %s | € %s | %s → %s',
+                '- spesa id=%d | %s | € %s | %s → %s | %s',
                 $e->id,
                 optional($e->date)->format('d/m/Y') ?? '',
                 number_format((float) $e->amount, 2, ',', '.'),
                 $e->supplier->name ?? ($e->notes ?? '—'),
                 $link,
+                LinkDocumento::spesa($e->id),
             );
         })->implode("\n");
 

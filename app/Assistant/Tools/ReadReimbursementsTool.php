@@ -4,6 +4,7 @@ namespace App\Assistant\Tools;
 
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
+use App\Assistant\LinkDocumento;
 use App\Models\Reimbursement;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -71,13 +72,14 @@ class ReadReimbursementsTool implements AssistantTool
             $residuo = round($r->total() - $r->reconciledAmount(), 2);
 
             return sprintf(
-                '- id=%d | %s | € %s totale | riconciliato € %s | residuo € %s | %s',
+                '- id=%d | %s | € %s totale | riconciliato € %s | residuo € %s | %s | %s',
                 $r->id,
                 optional($r->date)->format('d/m/Y') ?? '',
                 number_format($r->total(), 2, ',', '.'),
                 number_format($r->reconciledAmount(), 2, ',', '.'),
                 number_format($residuo, 2, ',', '.'),
                 str($r->notes ?: '')->limit(60)->value(),
+                LinkDocumento::rimborso($r->id),
             );
         })->implode("\n");
 

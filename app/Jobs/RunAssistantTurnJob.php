@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Assistant\AssistantRunner;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
+use Filament\Facades\Filament;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -57,6 +58,13 @@ class RunAssistantTurnJob implements ShouldQueue
         // costo con auth()->id(): senza questo, ogni chiamata dell'assistente
         // risulterebbe di nessuno e il conto per utente perderebbe i pezzi.
         Auth::onceUsingId($thread->user_id);
+
+        // I link ai documenti li costruiscono i tool con Resource::getUrl().
+        // Senza richiesta al pannello Filament ricade su quello predefinito e il
+        // link esce giusto comunque (c'è un test che lo verifica): lo dichiariamo
+        // qui perché il giorno che nasce un secondo pannello la scelta non sia
+        // implicita, e perché la coda è l'unico posto dove nessuno l'ha scelta.
+        Filament::setCurrentPanel(Filament::getPanel('app'));
 
         try {
             $result = $runner->run($thread);

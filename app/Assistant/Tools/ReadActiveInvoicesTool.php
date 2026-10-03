@@ -4,6 +4,7 @@ namespace App\Assistant\Tools;
 
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
+use App\Assistant\LinkDocumento;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -63,7 +64,7 @@ class ReadActiveInvoicesTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (Invoice $i): string => sprintf(
-            '- id=%d | %s | %s | %s | tot € %s | da incassare € %s | %s',
+            '- id=%d | %s | %s | %s | tot € %s | da incassare € %s | %s | %s',
             $i->id,
             $i->number ?: '(s.n.)',
             optional($i->issue_date)->format('d/m/Y') ?? '',
@@ -71,6 +72,7 @@ class ReadActiveInvoicesTool implements AssistantTool
             number_format($i->total(), 2, ',', '.'),
             number_format($i->amountToCollect(), 2, ',', '.'),
             $i->status,
+            LinkDocumento::fatturaAttiva($i->id),
         ))->implode("\n");
 
         return AssistantToolResult::ok("Fatture attive ({$rows->count()}):\n".$lines, 'Fatture attive: '.$rows->count());
