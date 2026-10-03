@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Assistant\AssistantRunner;
+use App\Jobs\RunAssistantTurnJob;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\BankTransaction;
@@ -149,24 +149,60 @@ class AssistenteAi extends Page
 
         $this->draft = '';
 
-        try {
-            $result = app(AssistantRunner::class)->run($thread->fresh());
-            AssistantMessage::create([
-                'assistant_thread_id' => $thread->id,
-                'role' => 'assistant',
-                'content' => $result['content'],
-                'status' => 'done',
-                'steps' => $result['steps'] ?: null,
-                'actions' => $result['actions'] ?: null,
-            ]);
-        } catch (Throwable $e) {
-            AssistantMessage::create([
-                'assistant_thread_id' => $thread->id,
-                'role' => 'assistant',
-                'content' => 'Errore: '.$e->getMessage(),
+        // Il turno va in coda: dentro la richiesta web un turno lungo sfondava
+        // il timeout e la pagina restava appesa. Il segnaposto 'pending' è
+        // quello che l'utente vede girare, ed è la riga che il job riempirà.
+        $placeholder = AssistantMessage::create([
+            'assistant_thread_id' => $thread->id,
+            'role' => 'assistant',
+            'content' => '',
+            'status' => 'pending',
+        ]);
+
+        RunAssistantTurnJob::dispatch($thread->id, $placeholder->id);
+    }
+
+    /**
+     * Oltre questo tempo una risposta in lavorazione si considera persa. È il
+     * timeout del job (10 minuti) più un margine: se il worker non gira, o è
+     * stato riavviato a metà turno, nessuno scriverebbe mai quel segnaposto.
+     */
+    private const ATTESA_MASSIMA_MINUTI = 12;
+
+    /** @return Builder<AssistantMessage> */
+    private function pendingReplies(): Builder
+    {
+        return AssistantMessage::where('assistant_thread_id', $this->threadId)
+            ->whereIn('assistant_thread_id', $this->ownThreads()->select('id'))
+            ->where('status', 'pending');
+    }
+
+    /**
+     * True finché c'è una risposta in lavorazione: guida il polling nella view,
+     * che così smette da sé appena il job ha scritto.
+     */
+    public function getAwaitingReplyProperty(): bool
+    {
+        return $this->threadId !== null && $this->pendingReplies()->exists();
+    }
+
+    /**
+     * Interrogata in polling mentre si aspetta. Il lavoro vero lo fa il job: qui
+     * si chiude solo l'attesa che non può più arrivare a destinazione, perché una
+     * pagina che gira a vuoto in silenzio è peggio di un errore scritto.
+     */
+    public function checkReply(): void
+    {
+        if ($this->threadId === null) {
+            return;
+        }
+
+        $this->pendingReplies()
+            ->where('created_at', '<', now()->subMinutes(self::ATTESA_MASSIMA_MINUTI))
+            ->update([
+                'content' => 'Non sono riuscito a rispondere: la richiesta è rimasta in sospeso troppo a lungo. Riprova.',
                 'status' => 'failed',
             ]);
-        }
     }
 
     /**

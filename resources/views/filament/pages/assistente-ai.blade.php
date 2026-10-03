@@ -91,6 +91,9 @@
                 @endif
 
                 @foreach ($this->messages as $message)
+                    {{-- Il segnaposto della risposta in lavorazione ha contenuto
+                         vuoto: lo mostra l'indicatore qui sotto, non una bolla. --}}
+                    @continue ($message->status === 'pending')
                     @if ($message->role === 'user')
                         <div class="aia-row user">
                             <div class="aia-bubble user">{{ $message->content }}</div>
@@ -162,12 +165,25 @@
                     @endif
                 @endforeach
 
-                <div class="aia-row ai" wire:loading wire:target="send">
-                    <div class="aia-bubble ai aia-think">
-                        <x-filament::loading-indicator class="h-4 w-4" />
-                        Sto lavorando…
+                {{-- Il turno gira in coda, quindi l'attesa non coincide piu' con
+                     la durata della richiesta: l'indicatore segue il segnaposto
+                     'pending' e il polling si spegne da se' quando il job ha
+                     scritto. wire:loading resta per il tempo dell'invio. --}}
+                @if ($this->awaitingReply)
+                    <div class="aia-row ai" wire:poll.3s="checkReply">
+                        <div class="aia-bubble ai aia-think">
+                            <x-filament::loading-indicator class="h-4 w-4" />
+                            Sto lavorando…
+                        </div>
                     </div>
-                </div>
+                @else
+                    <div class="aia-row ai" wire:loading wire:target="send">
+                        <div class="aia-bubble ai aia-think">
+                            <x-filament::loading-indicator class="h-4 w-4" />
+                            Sto lavorando…
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <form class="aia-composer" wire:submit="send">
