@@ -107,3 +107,14 @@ it('avvisa il modello che segnare come costo ha un prezzo fiscale', function () 
         ->toContain('IVA non si detrae')
         ->toContain('10-15');
 });
+
+it('porta nel prompt il fatto che le passive arrivano solo se registrate su Fatture in Cloud', function () {
+    // Il manuale è l'unica fonte da cui l'assistente sa questa cosa: se Paola
+    // gli chiede perché una fattura non c'è, la risposta giusta è "controlla le
+    // Spese da registrare", non "non è ancora arrivata".
+    $testo = app(ManualeOperativo::class)->perIlPrompt();
+
+    expect($testo)
+        ->toContain('Spese da registrare')
+        ->and($testo)->toContain('solo se lì risultano registrate');
+});

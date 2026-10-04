@@ -344,7 +344,7 @@
         {{-- Fase riconciliazione: intro --}}
         <div class="g-card">
             <p class="g-h">🔗 La fase di riconciliazione</p>
-            <p>Quando hai <strong>emesso tutte le attive</strong>, <strong>importato le passive</strong> da Fatture in Cloud e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»: riconciliare vuol dire <strong>collegare ogni movimento al documento che gli corrisponde</strong> (una fattura incassata, una fattura d'acquisto pagata).</p>
+            <p>Quando hai <strong>emesso tutte le attive</strong>, <strong>registrato le spese su Fatture in Cloud</strong> e <strong>importato le passive</strong> da lì, e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»: riconciliare vuol dire <strong>collegare ogni movimento al documento che gli corrisponde</strong> (una fattura incassata, una fattura d'acquisto pagata).</p>
             <p class="g-sub">L'ordine giusto — prima i documenti, poi i movimenti sciolti:</p>
             <ol class="g-steps g-overview" style="margin-top:.3rem">
                 <li><span class="g-num">6</span> Fatture <strong>attive</strong> → incassi (movimenti in <strong>entrata</strong>)</li>
@@ -384,12 +384,42 @@
         <div class="g-card">
             <div class="g-head"><span class="g-num alt">6b</span><p class="g-h">Da dove arrivano le fatture passive</p></div>
             <p>Le fatture d'acquisto (quelle che <em>riceviamo</em> dai fornitori) <strong>non si inseriscono a
-                mano</strong>: arrivano da sole da Fatture in Cloud.</p>
+                mano</strong>: arrivano da sole da Fatture in Cloud. Ma arrivano <strong>solo quelle che su Fatture
+                in Cloud risultano registrate</strong>, e registrarle è un lavoro tuo — il primo di tutti.</p>
             <div class="g-callout g-ok">
-                <strong>È automatico.</strong> Ogni <strong>tre ore</strong> TrackFlow si collega a Fatture in Cloud e
-                scarica le fatture d'acquisto e le note di credito ricevute. Se un fornitore non l'abbiamo ancora in
-                anagrafica, viene creato da solo con i dati che arrivano da Fatture in Cloud. Non devi fare nulla:
-                quando apri <strong>Controllo Finanziario → Fatture passive</strong>, le trovi già lì.
+                <strong>La parte automatica.</strong> Ogni <strong>tre ore</strong> TrackFlow si collega a Fatture in
+                Cloud e scarica le fatture d'acquisto e le note di credito <strong>registrate lì</strong>. Se un
+                fornitore non l'abbiamo ancora in anagrafica, viene creato da solo con i dati che arrivano da Fatture
+                in Cloud. Per queste non devi fare nulla: quando apri <strong>Controllo Finanziario → Fatture
+                passive</strong>, le trovi già lì.
+            </div>
+
+            <p class="g-sub">⚠️ Prima di tutto: le «Spese da registrare» su Fatture in Cloud</p>
+            <p>Una fattura che è <em>arrivata</em> su Fatture in Cloud ma che <strong>nessuno ha ancora
+                registrato</strong> resta in sospeso lì: per Fatture in Cloud non è ancora una spesa, quindi
+                TrackFlow non la vede e <strong>non te la importa</strong>. Non è un guasto e non è un ritardo:
+                non arriverà <u>mai</u>, finché non la registri tu.</p>
+            <div class="g-callout g-warn">
+                <strong>Quindi si comincia da qui, prima di toccare le fatture passive in TrackFlow:</strong>
+                <ol class="g-ol">
+                    <li>Vai su <strong>Fatture in Cloud</strong>, sezione <strong>Spese da registrare</strong>.</li>
+                    <li>Guarda l'elenco delle fatture passive <strong>ancora da registrare</strong>.</li>
+                    <li><strong>Registrale tutte</strong>, una per una.</li>
+                </ol>
+                Da quel momento TrackFlow le importa: da sole entro tre ore, o subito col pulsante
+                <span class="g-kbd">Importa da Fatture in Cloud</span> qui sotto. Se salti questo passaggio, poi in
+                fase di riconciliazione ti trovi dei pagamenti in uscita che non riesci ad agganciare a niente — e la
+                fattura che cerchi non è «sparita»: è ancora lì, da registrare.
+            </div>
+            <div class="g-callout g-info">
+                <strong>🔍 Quella pagina si vede male: rimpicciolisci con lo zoom.</strong> Alla dimensione normale la
+                sezione «Spese da registrare» mostra <strong>solo il totale</strong> e tiene nascoste le singole
+                righe. Per farle comparire devi <strong>allargare la visualizzazione rimpicciolendo</strong>:
+                <span class="g-kbd">⌘ −</span> su Mac, <span class="g-kbd">Ctrl −</span> su Windows, un paio di volte.
+                Sembra il contrario di quello che serve, ma è così: più piccolo → ci sta più larghezza → compaiono
+                le righe. <strong>Se vedi solo un totale, non hai ancora rimpicciolito abbastanza</strong> e rischi di
+                concludere che non c'è niente da registrare. Per tornare come prima: <span class="g-kbd">⌘ 0</span>
+                (o <span class="g-kbd">Ctrl 0</span>).
             </div>
             <p class="g-sub">Se ti serve subito, senza aspettare</p>
             <p>Capita: hai appena registrato una fattura su Fatture in Cloud e la vuoi qui adesso per riconciliare un
@@ -493,7 +523,7 @@
             </div>
 
             <div class="g-callout g-info">
-                <strong>2) È il pagamento di una fattura passiva che TrackFlow non ha.</strong> Una <strong>fattura passiva</strong> è una fattura che <em>noi</em> abbiamo ricevuto e pagato a un fornitore (hosting, software, servizi, acquisti…). TrackFlow le importa in automatico <strong>solo da Fatture in Cloud</strong>: se una fattura non è mai arrivata lì, in TrackFlow non c'è — ecco perché il movimento non trova nulla da agganciare.
+                <strong>2) È il pagamento di una fattura passiva che TrackFlow non ha.</strong> Una <strong>fattura passiva</strong> è una fattura che <em>noi</em> abbiamo ricevuto e pagato a un fornitore (hosting, software, servizi, acquisti…). TrackFlow le importa in automatico <strong>solo da Fatture in Cloud</strong>, e <strong>solo se lì risultano registrate</strong>. Quindi i motivi per cui in TrackFlow non c'è sono due: la fattura non è mai arrivata su Fatture in Cloud, <strong>oppure</strong> è arrivata ma è rimasta fra le <strong>«Spese da registrare»</strong> — e in quel caso esiste, basta registrarla (vedi passo <strong>6b</strong>). Prima di dare per mancante una fattura, controlla lì.
                 <br><strong>Come fare — recupera la fattura del fornitore:</strong>
                 <ul class="g-list">
                     <li>guarda nella <strong>tua email</strong>: spesso Giorgio te l'ha già inoltrata;</li>

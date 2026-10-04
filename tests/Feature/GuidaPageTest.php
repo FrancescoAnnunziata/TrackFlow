@@ -30,6 +30,18 @@ it('spiega da dove arrivano le fatture passive', function () {
         ->assertSee('tre ore', escape: false);
 });
 
+it('dice che l import automatico prende solo le spese registrate su Fatture in Cloud', function () {
+    // È il passaggio che, se manca, fa cercare per ore una fattura che è
+    // ferma su Fatture in Cloud: l'automatismo non la porta mai da solo.
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(Guida::class)
+        ->assertSee('Spese da registrare', escape: false)
+        ->assertSee('Registrale tutte', escape: false)
+        // E che quella pagina nasconde le righe se non si rimpicciolisce.
+        ->assertSee('rimpicciolisci con lo zoom', escape: false)
+        ->assertSee('solo il totale', escape: false);
+});
+
 it('spiega che le fatture estere vanno caricate a mano prima di riconciliare', function () {
     Livewire::actingAs(User::factory()->admin()->create())
         ->test(Guida::class)
