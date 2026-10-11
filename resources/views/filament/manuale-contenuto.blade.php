@@ -533,12 +533,16 @@
             </div>
 
             <div class="g-callout g-info">
-                <strong>3) È un F24 (tasse e contributi).</strong> Le uscite con causale <strong>«DELEGA F24»</strong> (o pagamenti all'Agenzia delle Entrate) non hanno una fattura. Si chiudono con <span class="g-kbd">Segna come costo</span>, importo del movimento, scegliendo il <strong>Conto</strong> giusto:
+                <strong>3) È un F24 (tasse e contributi).</strong> Le uscite con causale <strong>«DELEGA F24»</strong> (o pagamenti all'Agenzia delle Entrate) non hanno una fattura. Si chiudono con <span class="g-kbd">Segna come costo</span>, importo del movimento, scegliendo il <strong>Conto</strong> giusto.
+                <br>Gli F24 che arrivano sono di quattro tipi:
                 <ul class="g-list tight" style="margin-top:.4rem">
-                    <li><strong>«Imposte e tasse»</strong> → se sono ritenute, imposte o contributi (è un costo vero);</li>
-                    <li><strong>«IVA»</strong> → se è la <strong>liquidazione IVA</strong> (il versamento periodico dell'IVA).</li>
+                    <li><strong>Uno all'anno, molto grosso</strong> — le imposte dell'<strong>anno precedente</strong> → Conto <strong>«Imposte e tasse»</strong>;</li>
+                    <li><strong>Uno ogni trimestre</strong> — la <strong>liquidazione IVA</strong> (il versamento periodico dell'IVA) → Conto <strong>«IVA»</strong>;</li>
+                    <li><strong>Uno al mese</strong> — ritenute e contributi sulla <strong>busta paga di Giorgio Giotto come amministratore</strong> → Conto <strong>«Imposte e tasse»</strong>;</li>
+                    <li><strong>Uno per il pagamento di Annunziata</strong> (prestazione occasionale) — la ritenuta sul suo compenso → Conto <strong>«Imposte e tasse»</strong>. Per riconoscerlo, guarda la <strong>ricevuta di prestazione occasionale</strong> che Annunziata ha firmato quel mese: c'è scritto l'importo che va allo Stato, ed è quello dell'F24.</li>
                 </ul>
-                Dalla sola causale spesso non si capisce di che F24 si tratti: nel dubbio <strong>chiedi a Giorgio</strong> se è IVA o imposte.
+                In pratica: <strong>solo quello trimestrale dell'IVA</strong> va su «IVA», tutti gli altri su «Imposte e tasse». Dalla sola causale non sempre si capisce di quale si tratti: nel dubbio <strong>chiedi a Giorgio</strong>.
+                <br><strong>Per vedere a quale costo è collegato un F24 già chiuso:</strong> apri il movimento dall'elenco <strong>Movimenti bancari</strong> e premi il pulsante verde <span class="g-kbd">Riconciliazione</span> in alto: mostra il documento collegato (il costo, con il suo Conto e la descrizione) e il link per aprirlo.
             </div>
 
             <div class="g-callout g-info">
