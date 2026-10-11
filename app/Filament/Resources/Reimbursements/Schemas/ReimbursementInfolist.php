@@ -41,9 +41,9 @@ class ReimbursementInfolist
                     ->visible(fn (Reimbursement $record): bool => self::imageAttachments($record) !== [])
                     ->columnSpanFull(),
                 TextEntry::make('pdf_attachments')
-                    ->label('Allegati (PDF)')
+                    ->label('Allegati (documenti)')
                     ->state(fn (Reimbursement $record): string => collect(self::pdfAttachments($record))
-                        ->map(fn (string $path): string => '<a href="'.e(Storage::disk('public')->url($path)).'" target="_blank" style="text-decoration:underline;">Apri PDF</a>')
+                        ->map(fn (string $path): string => '<a href="'.e(Storage::disk('public')->url($path)).'" target="_blank" style="text-decoration:underline;">Apri '.e(str_ends_with(strtolower($path), '.pdf') ? 'PDF' : basename($path)).'</a>')
                         ->implode('<br>'))
                     ->html()
                     ->visible(fn (Reimbursement $record): bool => self::pdfAttachments($record) !== [])
@@ -64,9 +64,18 @@ class ReimbursementInfolist
     private static function imageAttachments(Reimbursement $record): array
     {
         return collect($record->attachments ?? [])
-            ->reject(fn (string $path): bool => str_ends_with(strtolower($path), '.pdf'))
+            ->filter(fn (string $path): bool => self::isImage($path))
             ->values()
             ->all();
+    }
+
+    /**
+     * Le immagini si mostrano in anteprima; tutto il resto (PDF, l'Excel di
+     * una nota spese importata) si apre con un link.
+     */
+    private static function isImage(string $path): bool
+    {
+        return in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'gif'], true);
     }
 
     /**
@@ -75,7 +84,7 @@ class ReimbursementInfolist
     private static function pdfAttachments(Reimbursement $record): array
     {
         return collect($record->attachments ?? [])
-            ->filter(fn (string $path): bool => str_ends_with(strtolower($path), '.pdf'))
+            ->reject(fn (string $path): bool => self::isImage($path))
             ->values()
             ->all();
     }

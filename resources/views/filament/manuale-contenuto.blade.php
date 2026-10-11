@@ -555,7 +555,14 @@
                     <li>sul movimento premi <span class="g-kbd">Riconcilia</span>, apri <em>«Oppure scegli manualmente»</em>, Tipo documento <strong>«Rimborso spese»</strong>, scegli quello del periodo e conferma;</li>
                     <li>la piccola <strong>commissione da −0,50 €</strong> abbinata al bonifico si chiude a parte con <span class="g-kbd">Segna come costo</span>, Conto <strong>«Commissioni bancarie»</strong>.</li>
                 </ul>
-                Se il <strong>documento «Rimborso spese» del mese non esiste ancora</strong>, va creato prima dal menu <strong>Rimborsi spese</strong> (se non sai come, chiedi a Giorgio).
+                Se il <strong>documento «Rimborso spese» del mese non esiste ancora</strong>, va creato prima. Per le <strong>note spese dei km di Giorgio</strong> (i file Excel <em>«RIMB. Ago 2026.xlsx»</em> e simili) non serve compilarlo a mano:
+                <ul class="g-list tight" style="margin-top:.4rem">
+                    <li>menu <strong>Rimborsi spese</strong> → <span class="g-kbd">Importa note spese (Excel)</span>;</li>
+                    <li>scegli <strong>di chi sono</strong> le note (Giorgio Giotto) e carica <strong>uno o più file</strong> insieme;</li>
+                    <li>per ogni mese che manca TrackFlow crea il rimborso, con dentro il costo dei km e quello delle eventuali altre spese, e allega l'Excel. I mesi <strong>già presenti si saltano</strong>, quindi ricaricare un file già importato non fa danni.</li>
+                </ul>
+                Alla fine un riquadro dice cosa è stato creato, cosa saltato e cosa no. Un file viene rifiutato se il <strong>nome dice un mese e l'intestazione del foglio un altro</strong> (succede quando il modello si copia senza aggiornare la riga «HA EFFETTUATO NEL MESE DI…»), se è la nota di un'altra persona o se il totale non torna: va corretto l'Excel e ricaricato. Le <strong>altre spese</strong> della nota (non i km) finiscono con Conto <strong>«Altro»</strong>: controlla dal menu <strong>Costi</strong> se va cambiato.
+                <br>Per un rimborso che non viene da una nota Excel, crealo a mano dal menu <strong>Rimborsi spese</strong> (se non sai come, chiedi a Giorgio).
             </div>
 
             <div class="g-callout g-danger">
