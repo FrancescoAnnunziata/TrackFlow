@@ -6,6 +6,7 @@ use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
 use App\Assistant\LinkDocumento;
 use App\Models\BankTransaction;
+use App\Models\Reconciliation;
 use Illuminate\Database\Eloquent\Builder;
 
 class ReadBankMovementsTool implements AssistantTool
@@ -18,7 +19,9 @@ class ReadBankMovementsTool implements AssistantTool
     public function description(): string
     {
         return 'Legge i movimenti bancari con filtri. Usalo per cercare un movimento (es. un addebito da riconciliare), '
-            .'o per elencare le uscite/entrate non ancora riconciliate. Restituisce id, data, importo, conto, descrizione e stato.';
+            .'o per elencare le uscite/entrate non ancora riconciliate. Restituisce id, data, importo, conto, descrizione e stato; '
+            .'per i movimenti riconciliati anche i documenti collegati (fattura, fattura passiva, costo con il suo Conto, '
+            .'rimborso spese), con la quota, l\'id e il link. Usalo per sapere a cosa è stato chiuso un movimento, es. un F24.';
     }
 
     public function inputSchema(): array
@@ -43,7 +46,7 @@ class ReadBankMovementsTool implements AssistantTool
         $limit = max(1, min(100, (int) ($input['limit'] ?? 25)));
 
         $rows = BankTransaction::query()
-            ->with('bankAccount')
+            ->with(['bankAccount', 'reconciliations.reconcilable'])
             ->when(filled($input['search'] ?? null), fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('description', 'like', '%'.$input['search'].'%')
                 ->orWhere('counterparty', 'like', '%'.$input['search'].'%')))
@@ -71,8 +74,23 @@ class ReadBankMovementsTool implements AssistantTool
             mb_substr((string) $t->description, 0, 60),
             $t->reconciled ? 'riconciliato' : 'da riconciliare',
             LinkDocumento::movimento($t->id),
-        ))->implode("\n");
+        ).$this->documentiCollegati($t))->implode("\n");
 
         return AssistantToolResult::ok("Movimenti ({$rows->count()}):\n".$lines, 'Movimenti bancari: '.$rows->count());
+    }
+
+    /**
+     * Righe con i documenti a cui il movimento è riconciliato: senza, l'assistente
+     * sa che un F24 è chiuso ma non a quale costo, né con quale Conto.
+     */
+    private function documentiCollegati(BankTransaction $t): string
+    {
+        return $t->reconciliations->map(fn (Reconciliation $r): string => sprintf(
+            "\n    collegato a: %s | € %s | id=%s | %s",
+            BankTransaction::describeReconcilable($r->reconcilable),
+            number_format((float) $r->amount, 2, ',', '.'),
+            $r->reconcilable?->getKey() ?? '—',
+            LinkDocumento::documento($r->reconcilable),
+        ))->implode('');
     }
 }

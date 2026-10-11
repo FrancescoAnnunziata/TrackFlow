@@ -134,7 +134,11 @@ class BankTransaction extends Model
             ->all();
     }
 
-    private static function describeReconcilable(?Model $doc): string
+    /**
+     * Etichetta leggibile di un documento riconciliabile. La usano la finestra
+     * «Riconciliazione» del movimento e l'assistente, così dicono la stessa cosa.
+     */
+    public static function describeReconcilable(?Model $doc): string
     {
         return match (true) {
             $doc instanceof Invoice => sprintf(
@@ -144,7 +148,7 @@ class BankTransaction extends Model
                 $doc->client->name ?? '—',
             ),
             $doc instanceof PassiveInvoice => sprintf('Fattura passiva %s — %s', $doc->number, $doc->supplier->name ?? '—'),
-            $doc instanceof Costo => sprintf('Costo — %s', $doc->description),
+            $doc instanceof Costo => sprintf('Costo — %s (Conto: %s)', $doc->description, $doc->category ?: '—'),
             $doc instanceof Reimbursement => sprintf('Rimborso spese %s — %s', $doc->date?->format('d/m/Y') ?? '', $doc->notes ?? ''),
             $doc instanceof Expense => sprintf('Spesa — %s', $doc->conto ?? $doc->notes ?? ''),
             $doc === null => 'Documento non disponibile',

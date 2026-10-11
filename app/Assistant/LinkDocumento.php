@@ -3,10 +3,17 @@
 namespace App\Assistant;
 
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
+use App\Filament\Resources\Costi\CostoResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource;
 use App\Filament\Resources\Reimbursements\ReimbursementResource;
+use App\Models\Costo;
+use App\Models\Expense;
+use App\Models\Invoice;
+use App\Models\PassiveInvoice;
+use App\Models\Reimbursement;
+use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
@@ -46,6 +53,28 @@ class LinkDocumento
     public static function spesa(int $id): string
     {
         return self::costruisci(ExpenseResource::class, 'view', $id);
+    }
+
+    public static function costo(int $id): string
+    {
+        // I costi non hanno la pagina di sola lettura.
+        return self::costruisci(CostoResource::class, 'edit', $id);
+    }
+
+    /**
+     * Link al documento qualunque sia il suo tipo (es. quello a cui è
+     * riconciliato un movimento). Stringa vuota per un tipo che non conosce.
+     */
+    public static function documento(?Model $doc): string
+    {
+        return match (true) {
+            $doc instanceof Invoice => self::fatturaAttiva($doc->id),
+            $doc instanceof PassiveInvoice => self::fatturaPassiva($doc->id),
+            $doc instanceof Costo => self::costo($doc->id),
+            $doc instanceof Reimbursement => self::rimborso($doc->id),
+            $doc instanceof Expense => self::spesa($doc->id),
+            default => '',
+        };
     }
 
     /**

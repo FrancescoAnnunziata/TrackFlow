@@ -5,6 +5,7 @@ use App\Assistant\Tools\ReadBankMovementsTool;
 use App\Assistant\Tools\ReadPassiveInvoicesTool;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
+use App\Models\Costo;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use Filament\Facades\Filament;
@@ -50,6 +51,27 @@ it('mette il link accanto a ogni movimento bancario', function () {
     expect($esito->content)
         ->toContain('id='.$mov->id)
         ->toContain('/bank-transactions/'.$mov->id);
+});
+
+it('di un movimento riconciliato dice a quale costo è collegato, con Conto e link', function () {
+    $conto = BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank']);
+    $mov = BankTransaction::create([
+        'bank_account_id' => $conto->id, 'booked_at' => '2026-09-16', 'amount' => -812.40,
+        'direction' => 'out', 'description' => 'DELEGA UNIFICATA F24', 'dedup_hash' => 'f24a',
+    ]);
+    $costo = Costo::create([
+        'date' => '2026-09-16', 'description' => 'Ritenute busta paga agosto',
+        'category' => Costo::CATEGORY_TAXES, 'amount' => 812.40, 'vat_amount' => 0,
+        'bank_transaction_id' => $mov->id,
+    ]);
+    $costo->reconciliations()->create(['bank_transaction_id' => $mov->id, 'amount' => 812.40, 'matched_by' => 'manual']);
+
+    $esito = app(ReadBankMovementsTool::class)->run(['search' => 'F24']);
+
+    expect($esito->content)
+        ->toContain('collegato a: Costo — Ritenute busta paga agosto (Conto: Imposte e tasse)')
+        ->toContain('id='.$costo->id)
+        ->toContain('/costos/'.$costo->id.'/edit');
 });
 
 it('il link si costruisce anche senza pannello corrente, come in coda', function () {
