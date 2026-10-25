@@ -501,11 +501,15 @@ fi
 # La backdoor di medbooks di febbraio 2026 stava in un public/index.php
 # modificato. Il sito e' un checkout git, quindi un file aggiunto o cambiato
 # dopo il deploy compare in git status. Esclusi: quello che il deploy rigenera
-# da se' (asset, file di Filament, cache) e storage/.
+# da se' (asset, file di Filament, cache, node_modules, vendor) e storage/. I
+# file nuovi contano solo se sono codice: un backup o un file di dati lasciato
+# nella cartella del sito non e' un'intrusione, un .php nuovo si'.
 # ------------------------------------------------------------------------------
 if [ -d "$APP_DIR/.git" ]; then
   drift=$(git -C "$APP_DIR" status --porcelain --untracked-files=all 2>/dev/null \
-    | grep -vE '^.. (public/build/|public/(js|css)/filament/|public/storage$|storage(/|$)|bootstrap/cache/)' | head -10)
+    | grep -vE '^.. (public/build/|public/(js|css)/filament/|public/storage$|storage(/|$)|bootstrap/cache/)' \
+    | grep -vE '(^.. |/)(node_modules|vendor)/' \
+    | awk 'substr($0,1,2) != "??" || $0 ~ /\.(php[0-9]?|phtml|phar|pht|sh|py|pl|js)$/' | head -10)
   if [ -n "$drift" ]; then
     emit HIGH code_drift "Codice in esecuzione diverso dal commit deployato: $(echo "$drift" | sed 's/^ *//' | tr '\n' ';')"
   else
