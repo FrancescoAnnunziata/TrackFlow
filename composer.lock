@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0ce993cd86db9e914afcdca999d6e2bc",
+    "content-hash": "a9a01b40eab0f1b626880ac79240f17b",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -73,16 +73,16 @@
         },
         {
             "name": "anthropic-ai/sdk",
-            "version": "v0.59.0",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/anthropics/anthropic-sdk-php.git",
-                "reference": "2698b1b821f02b552ce22032ba18af70f650e3d1"
+                "reference": "d138392e1b80f1f66f3018cd863c5a679e613186"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/anthropics/anthropic-sdk-php/zipball/2698b1b821f02b552ce22032ba18af70f650e3d1",
-                "reference": "2698b1b821f02b552ce22032ba18af70f650e3d1",
+                "url": "https://api.github.com/repos/anthropics/anthropic-sdk-php/zipball/d138392e1b80f1f66f3018cd863c5a679e613186",
+                "reference": "d138392e1b80f1f66f3018cd863c5a679e613186",
                 "shasum": ""
             },
             "require": {
@@ -127,14 +127,14 @@
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "MIT"
+                "Apache-2.0"
             ],
             "description": "Anthropic PHP SDK",
             "support": {
                 "issues": "https://github.com/anthropics/anthropic-sdk-php/issues",
-                "source": "https://github.com/anthropics/anthropic-sdk-php/tree/v0.59.0"
+                "source": "https://github.com/anthropics/anthropic-sdk-php/tree/v1.1.0"
             },
-            "time": "2026-10-15T19:39:53+00:00"
+            "time": "2026-10-21T21:49:18+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
