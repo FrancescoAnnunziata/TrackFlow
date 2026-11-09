@@ -46,6 +46,12 @@ class IntegrationDocument
         ];
     }
 
+    /** True se è una fattura elettronica leggibile, di qualunque tipo. */
+    public static function readable(string $xml): bool
+    {
+        return preg_match('/<TipoDocumento>\s*TD\d{2}\s*<\/TipoDocumento>/', $xml) === 1;
+    }
+
     private static function first(\SimpleXMLElement $doc, string $name, ?string $parent = null): ?string
     {
         $path = $parent !== null

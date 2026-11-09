@@ -176,7 +176,9 @@ class ImportFicPassiveInvoices extends Command
     private function integrationOf(array $doc): ?array
     {
         $text = mb_strtolower(Arr::get($doc, 'description', '').' '.Arr::get($doc, 'items_list.0.name', ''));
-        $saysIntegration = str_contains($text, 'integrativ') || str_contains($text, 'autofattura');
+        // La frase intera, non «integrativ»: «contributo integrativo» è la voce
+        // della cassa previdenziale sulle fatture dei professionisti italiani.
+        $saysIntegration = str_contains($text, 'documento integrativo') || str_contains($text, 'autofattura');
         $foreign = Arr::get($doc, 'entity.address_province') === 'EE'
             || ! in_array(Arr::get($doc, 'entity.country'), [null, '', 'Italia'], true);
 
@@ -188,8 +190,10 @@ class ImportFicPassiveInvoices extends Command
         if ($url !== '') {
             try {
                 $response = Http::timeout(20)->get($url);
-                if ($response->successful() && ($parsed = IntegrationDocument::parse($response->body())) !== null) {
-                    return $parsed;
+                // XML letto: decide lui, in un senso o nell'altro. La descrizione
+                // serve solo quando l'XML non c'è o non si legge.
+                if ($response->successful() && IntegrationDocument::readable($response->body())) {
+                    return IntegrationDocument::parse($response->body());
                 }
             } catch (Throwable) {
                 // si ricade sulla descrizione

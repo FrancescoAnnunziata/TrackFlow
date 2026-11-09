@@ -28,11 +28,25 @@ class IntegrationLinker
             return null;
         }
 
+        $date = $integration->integrates_date?->toDateString();
+        $wanted = trim($integration->integrates_number);
+
         $candidates = $this->originals()
-            ->whereRaw('LOWER(TRIM(number)) = ?', [mb_strtolower(trim($integration->integrates_number))])
+            ->whereRaw('LOWER(TRIM(number)) = ?', [mb_strtolower($wanted)])
             ->get();
 
-        $original = $this->pick($candidates, $integration->integrates_date?->toDateString());
+        // Il commercialista può aver scritto solo la parte numerica («70743» per
+        // «MEILI-70743»). Qui il numero da solo è debole, quindi deve tornare
+        // anche la data della fattura.
+        if ($candidates->isEmpty() && $date !== null && ($digits = self::digits($wanted)) !== '') {
+            $candidates = $this->originals()
+                ->where('number', 'like', '%'.$digits)
+                ->whereDate('document_date', $date)
+                ->get()
+                ->filter(fn (PassiveInvoice $p): bool => self::digits($p->number) === $digits);
+        }
+
+        $original = $this->pick($candidates, $date);
 
         if ($original !== null) {
             $integration->forceFill([
@@ -57,11 +71,14 @@ class IntegrationLinker
         }
 
         $linked = 0;
+        $digits = self::digits($original->number);
         $pending = PassiveInvoice::conIntegrazioni()
             ->whereNotNull('integration_type')
             ->whereNull('integrates_id')
-            ->whereRaw('LOWER(TRIM(integrates_number)) = ?', [mb_strtolower(trim($original->number))])
-            ->get();
+            ->whereNotNull('integrates_number')
+            ->get()
+            ->filter(fn (PassiveInvoice $i): bool => mb_strtolower(trim($i->integrates_number)) === mb_strtolower(trim($original->number))
+                || ($digits !== '' && self::digits($i->integrates_number) === $digits));
 
         foreach ($pending as $integration) {
             if ($this->link($integration)?->is($original)) {
@@ -70,6 +87,11 @@ class IntegrationLinker
         }
 
         return $linked;
+    }
+
+    private static function digits(?string $value): string
+    {
+        return preg_replace('/\D/', '', (string) $value) ?? '';
     }
 
     /** Le fatture che un'integrazione può integrare: estere, caricate a mano. */

@@ -194,3 +194,47 @@ it('still imports an ordinary foreign e-invoice as a passive invoice', function 
 
     expect(PassiveInvoice::where('fic_document_id', 443690289)->value('integration_type'))->toBeNull();
 });
+
+it('links when the accountant wrote only the numeric part of the number', function () {
+    User::factory()->admin()->create();
+    $meili = Supplier::create(['name' => 'Meilisearch', 'vat_number' => 'FR88844156364', 'country_iso' => 'FR']);
+    $originale = PassiveInvoice::create([
+        'supplier_id' => $meili->id, 'number' => 'MEILI-70743', 'type' => 'expense', 'document_date' => '2026-04-05',
+        'amount_net' => 26.06, 'amount_vat' => 0, 'amount_gross' => 26.06, 'currency' => 'EUR',
+        'payment_status' => PassiveInvoice::STATUS_PAID, 'imported' => false, 'attachment' => 'passive-attachments/m.pdf',
+    ]);
+    fakeIntegrazioneFic(xmlFattura('TD17', '70743', '2026-04-05'), [
+        'invoice_number' => '10/UE', 'amount_net' => 26.06, 'amount_vat' => 5.73, 'amount_gross' => 31.79,
+        'entity' => ['name' => 'MEILISEARCH', 'vat_number' => '88844156364', 'address_province' => 'EE', 'country' => 'Francia'],
+    ]);
+
+    importa();
+
+    expect(PassiveInvoice::conIntegrazioni()->where('fic_document_id', 443690289)->value('integrates_id'))->toBe($originale->id);
+});
+
+it('does not take «contributo integrativo» on an Italian invoice for an integration', function () {
+    User::factory()->admin()->create();
+    fakeIntegrazioneFic(xmlFattura('TD01', null), [
+        'invoice_number' => '40', 'description' => 'Consulenza fiscale',
+        'entity' => ['name' => 'Studio Rossi', 'vat_number' => '01234567890', 'country' => 'Italia'],
+        'items_list' => [
+            ['name' => 'Consulenza', 'qty' => 1, 'net_price' => 500, 'vat' => ['value' => 22]],
+            ['name' => 'Contributo integrativo 4%', 'qty' => 1, 'net_price' => 20, 'vat' => ['value' => 22]],
+        ],
+    ]);
+
+    importa();
+
+    expect(PassiveInvoice::where('number', '40')->value('integration_type'))->toBeNull();
+});
+
+it('trusts a readable XML over the description', function () {
+    User::factory()->admin()->create();
+    // Descrizione da integrazione, ma l'XML dice fattura ordinaria: vince l'XML.
+    fakeIntegrazioneFic(xmlFattura('TD01', null), ['invoice_number' => '41']);
+
+    importa();
+
+    expect(PassiveInvoice::where('number', '41')->value('integration_type'))->toBeNull();
+});
