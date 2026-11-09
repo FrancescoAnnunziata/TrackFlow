@@ -64,6 +64,11 @@ it('does not make the controller an admin outside finance', function () {
 });
 
 it('lets the controller reach the Fatture in Cloud connection', function () {
+    config()->set('services.fic', [
+        'client_id' => 'x', 'client_secret' => 'y', 'redirect' => 'z',
+        'base_url' => 'https://api-v2.fattureincloud.it', 'scopes' => 's',
+    ]);
+
     $this->actingAs(User::factory()->create(['role' => 'controller']))
         ->get('/fic/connect')
         ->assertRedirect();
