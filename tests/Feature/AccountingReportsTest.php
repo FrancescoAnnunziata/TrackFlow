@@ -144,7 +144,9 @@ it('shows credit notes as negative rows that reduce the registro total', functio
 });
 
 it('references the giustificativo per origin in the registro acquisti', function () {
-    $supplier = Supplier::create(['name' => 'Anthropic']);
+    // Estera = fornitore con sede fuori dall'Italia; l'altra arriva da FiC.
+    $supplier = Supplier::create(['name' => 'Anthropic', 'country_iso' => 'US']);
+    $italiano = Supplier::create(['name' => 'Fornitore italiano']);
     // Estera con PDF locale.
     PassiveInvoice::create([
         'supplier_id' => $supplier->id, 'number' => 'INV-8', 'type' => 'expense', 'document_date' => '2026-06-05',
@@ -153,7 +155,7 @@ it('references the giustificativo per origin in the registro acquisti', function
     ]);
     // FiC (PDF su Fatture in Cloud).
     PassiveInvoice::create([
-        'supplier_id' => $supplier->id, 'number' => 'GCITD777', 'type' => 'expense', 'document_date' => '2026-06-06',
+        'supplier_id' => $italiano->id, 'number' => 'GCITD777', 'type' => 'expense', 'document_date' => '2026-06-06',
         'amount_net' => 50, 'amount_vat' => 11, 'amount_gross' => 61, 'category' => 'Servizi',
         'payment_status' => 'not_paid', 'fic_document_id' => 424242,
     ]);

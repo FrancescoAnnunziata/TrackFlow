@@ -100,9 +100,10 @@ it('lists passive invoices with bank payment or reimbursement label', function (
 });
 
 it('marks the giustificativo per document origin in the passive export', function () {
-    $supplier = Supplier::create(['name' => 'Fornitore']);
+    $supplier = Supplier::create(['name' => 'Fornitore estero', 'country_iso' => 'IE']);
+    $italiano = Supplier::create(['name' => 'Fornitore italiano']);
 
-    // Estera: caricata a mano con PDF, niente FiC.
+    // Estera: fornitore fuori dall'Italia, caricata a mano con PDF.
     $estera = PassiveInvoice::create([
         'supplier_id' => $supplier->id, 'number' => 'INV-9', 'type' => 'expense', 'document_date' => '2026-02-01',
         'amount_net' => 100, 'amount_vat' => 0, 'amount_gross' => 100, 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
@@ -110,7 +111,7 @@ it('marks the giustificativo per document origin in the passive export', functio
     ]);
     // FiC: importata, PDF su Fatture in Cloud.
     $fic = PassiveInvoice::create([
-        'supplier_id' => $supplier->id, 'number' => 'GCITD123', 'type' => 'expense', 'document_date' => '2026-02-02',
+        'supplier_id' => $italiano->id, 'number' => 'GCITD123', 'type' => 'expense', 'document_date' => '2026-02-02',
         'amount_net' => 50, 'amount_vat' => 11, 'amount_gross' => 61, 'payment_status' => PassiveInvoice::STATUS_NOT_PAID,
         'fic_document_id' => 999888,
     ]);

@@ -453,7 +453,10 @@ class Invoice extends Model
             $atts = $expense->attachaments ?? [];
             $links = collect($atts)
                 ->map(fn (string $path, int $i): string => sprintf(
-                    '<a href="%s">%s%s</a>',
+                    // In una scheda nuova: Fatture in Cloud mostra le note dentro un
+                    // riquadro incorporato, e aperto lì dentro il giustificativo
+                    // viene bloccato («Connessione negata»), vedi X-Frame-Options.
+                    '<a href="%s" target="_blank" rel="noopener">%s%s</a>',
                     e(Storage::disk('public')->url($path)),
                     str_ends_with(strtolower($path), '.pdf') ? 'PDF' : 'foto',
                     count($atts) > 1 ? ' '.($i + 1) : '',

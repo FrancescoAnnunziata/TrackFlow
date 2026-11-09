@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Suppliers\Schemas;
 
+use App\Support\Paesi;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -51,9 +52,13 @@ class SupplierForm
                         TextInput::make('address_province')
                             ->label('Provincia')
                             ->maxLength(8),
-                        TextInput::make('country')
+                        Select::make('country_iso')
                             ->label('Paese')
-                            ->default('Italia'),
+                            ->helperText('Decide se le sue fatture sono estere (e quindi nell\'export per l\'esterometro).')
+                            ->options(Paesi::opzioni())
+                            ->searchable()
+                            ->default('IT')
+                            ->required(),
                     ]),
                 Section::make('Contatti')
                     ->columns(2)

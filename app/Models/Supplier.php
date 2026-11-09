@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Paesi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -28,6 +29,25 @@ class Supplier extends Model
         'fic_entity_id',
         'notes',
     ];
+
+    /**
+     * Il paese si sceglie per codice ISO: il nome leggibile lo segue da sé, così
+     * i due campi non possono più divergere (era «Hong Kong» con ISO «IT»).
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Supplier $supplier): void {
+            if ($supplier->isDirty('country_iso') && ($nome = Paesi::nome($supplier->country_iso)) !== null) {
+                $supplier->country = $nome;
+            }
+        });
+    }
+
+    /** True se il fornitore ha sede fuori dall'Italia. */
+    public function isForeign(): bool
+    {
+        return filled($this->country_iso) && strtoupper($this->country_iso) !== 'IT';
+    }
 
     public function passiveInvoices(): HasMany
     {

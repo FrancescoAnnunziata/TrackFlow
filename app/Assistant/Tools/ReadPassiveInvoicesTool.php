@@ -6,6 +6,8 @@ use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
 use App\Assistant\LinkDocumento;
 use App\Models\PassiveInvoice;
+use App\Services\Reporting\DocumentReference;
+use App\Support\Paesi;
 use Illuminate\Database\Eloquent\Builder;
 
 class ReadPassiveInvoicesTool implements AssistantTool
@@ -18,7 +20,9 @@ class ReadPassiveInvoicesTool implements AssistantTool
     public function description(): string
     {
         return 'Legge le fatture passive (documenti d\'acquisto/costi ricevuti dai fornitori) con filtri. '
-            .'Usalo per trovare la fattura passiva che un movimento in uscita ha pagato. Restituisce id, numero, data, fornitore, totale e stato pagamento.';
+            .'Usalo per trovare la fattura passiva che un movimento in uscita ha pagato. Restituisce id, numero, data, fornitore, totale e stato pagamento. '
+            .'Con only_foreign=true dà le fatture estere (fornitore fuori dall\'Italia, non arrivate da Fatture in Cloud): '
+            .'sono quelle dell\'Elenco fatture estere che si manda al commercialista per l\'esterometro.';
     }
 
     public function inputSchema(): array
@@ -33,6 +37,7 @@ class ReadPassiveInvoicesTool implements AssistantTool
                 'max_amount' => ['type' => 'number', 'description' => 'Totale massimo'],
                 'from_date' => ['type' => 'string', 'description' => 'Data documento dal (YYYY-MM-DD)'],
                 'until_date' => ['type' => 'string', 'description' => 'Data documento al (YYYY-MM-DD)'],
+                'only_foreign' => ['type' => 'boolean', 'description' => 'true = solo fatture estere (come l\'Elenco fatture estere)'],
                 'limit' => ['type' => 'integer', 'description' => 'Massimo risultati (default 25, max 100)'],
             ],
         ];
@@ -53,6 +58,10 @@ class ReadPassiveInvoicesTool implements AssistantTool
             ->when(filled($input['max_amount'] ?? null), fn (Builder $q) => $q->where('amount_gross', '<=', (float) $input['max_amount']))
             ->when(filled($input['from_date'] ?? null), fn (Builder $q) => $q->whereDate('document_date', '>=', $input['from_date']))
             ->when(filled($input['until_date'] ?? null), fn (Builder $q) => $q->whereDate('document_date', '<=', $input['until_date']))
+            // Stessa regola di DocumentReference::isForeignDocument e dell'Elenco fatture estere.
+            ->when((bool) ($input['only_foreign'] ?? false), fn (Builder $q) => $q
+                ->whereNull('fic_document_id')
+                ->whereHas('supplier', fn (Builder $s) => $s->whereNotNull('country_iso')->where('country_iso', '!=', 'IT')))
             ->orderByDesc('document_date')
             ->limit($limit)
             ->get();
@@ -66,7 +75,7 @@ class ReadPassiveInvoicesTool implements AssistantTool
             $p->id,
             $p->number ?: '(s.n.)',
             optional($p->document_date)->format('d/m/Y') ?? '',
-            $p->supplier->name ?? '—',
+            ($p->supplier->name ?? '—').(DocumentReference::isForeignDocument($p) ? ' (estera, '.(Paesi::nome($p->supplier->country_iso) ?? $p->supplier->country_iso).')' : ''),
             number_format((float) $p->amount_gross, 2, ',', '.'),
             $p->payment_status === PassiveInvoice::STATUS_PAID ? 'pagata' : 'non pagata',
             LinkDocumento::fatturaPassiva($p->id),

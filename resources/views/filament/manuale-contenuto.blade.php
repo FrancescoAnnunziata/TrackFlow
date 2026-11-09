@@ -471,8 +471,8 @@
                     insieme</strong>.</li>
                 <li>In alto <span class="g-kbd">Estrai dati dai PDF</span>. Ci mette qualche secondo per documento:
                     l'elaborazione va avanti da sola, aspetta che compaia la tabella.</li>
-                <li>Nel riquadro <strong>«2. Rivedi i dati estratti»</strong> controlla riga per riga: fornitore, data,
-                    numero, importi, conto.</li>
+                <li>Nel riquadro <strong>«2. Rivedi i dati estratti»</strong> controlla riga per riga: fornitore,
+                    <strong>paese del fornitore</strong>, data, numero, importi, conto.</li>
                 <li>Quando è tutto giusto, <span class="g-kbd">Crea fatture passive</span>. Le fatture nascono in
                     <strong>Fatture passive</strong> con il <strong>PDF già allegato</strong> come giustificativo, e da
                     lì le riconcilii come tutte le altre (passo 7).</li>
@@ -494,6 +494,14 @@
                 (te lo dice: «già presenti»). Il riconoscimento però funziona su <strong>fornitore + numero</strong>:
                 se il campo <strong>Numero</strong> è rimasto <u>vuoto</u> perché sul PDF non c'era, il controllo non
                 può scattare e la fattura verrebbe creata due volte. Se vedi il numero vuoto, compilalo tu.
+            </div>
+            <div class="g-callout g-warn">
+                <strong>Il paese del fornitore non è un dettaglio.</strong> È quello che decide se la fattura è
+                <strong>estera</strong> e quindi se finisce nell'elenco per l'esterometro che mandi ad Anna (passo 9).
+                Guarda l'<strong>indirizzo di chi emette la fattura</strong>, non il prefisso della partita IVA:
+                Anthropic, per esempio, ha una partita IVA irlandese ma fattura dagli <strong>Stati Uniti</strong>.
+                Se il fornitore è italiano (Microsoft Srl, uno studio di Brescia…) scegli <strong>Italia</strong>: la
+                fattura si carica lo stesso, ma non viene contata fra le estere.
             </div>
         </div>
 
@@ -631,8 +639,20 @@
                     <li><strong>Riconc. fatture passive</strong> → esporta.</li>
                     <li><strong>Registro acquisti</strong> → esporta.</li>
                     <li><strong>Prima nota</strong> → esporta.</li>
+                    <li><strong>Elenco fatture estere</strong> → esporta. Contiene le fatture dei fornitori esteri del
+                        periodo, ognuna col <strong>link al PDF</strong>: ad Anna servono per l'esterometro.</li>
                 </ol>
-                <p style="margin-top:.5rem">Allega <strong>tutti e quattro</strong> i file a una mail e inviala ad <strong>Anna Messa</strong>.</p>
+                <p style="margin-top:.5rem">Allega <strong>tutti e cinque</strong> i file a una mail e inviala ad <strong>Anna Messa</strong>.</p>
+                <div class="g-callout g-info" style="margin-top:.6rem">
+                    In ogni pagina il periodo si sceglie con i campi <strong>Dal</strong> e <strong>Al</strong>. Di norma è il
+                    mese, ma se Anna chiede un recupero di più mesi (per esempio «tutte le estere da giugno») basta
+                    allargare le date nell'<strong>Elenco fatture estere</strong> ed esportare.
+                </div>
+                <div class="g-callout g-note" style="margin-top:.6rem">
+                    Se nell'elenco manca una fattura estera, o ce n'è una italiana, il motivo è quasi sempre il
+                    <strong>paese del fornitore</strong>: si corregge da <strong>Fornitori</strong>, aprendo il fornitore e
+                    cambiando il campo <strong>Paese</strong>. L'elenco si aggiorna da solo.
+                </div>
             </div>
 
             <div class="g-block purple">

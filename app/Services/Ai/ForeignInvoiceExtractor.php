@@ -39,7 +39,7 @@ class ForeignInvoiceExtractor
 
     /**
      * @return array{
-     *   supplier_name: string, supplier_vat: ?string, number: ?string,
+     *   supplier_name: string, supplier_vat: ?string, supplier_country_iso: ?string, number: ?string,
      *   document_date: ?string, amount_net: float, amount_vat: float,
      *   amount_gross: float, currency: string, category: ?string, description: ?string,
      *   is_credit_note: bool
@@ -90,6 +90,10 @@ class ForeignInvoiceExtractor
 
         - "supplier_name": ragione sociale del FORNITORE (chi emette la fattura), stringa.
         - "supplier_vat": partita IVA / VAT del fornitore, stringa oppure null.
+        - "supplier_country_iso": paese della sede del fornitore che emette la fattura,
+          codice ISO a due lettere (es. "US", "IE", "FR"), oppure null. Conta l'indirizzo
+          del fornitore, non il prefisso della partita IVA: un'azienda di San Francisco
+          con un numero IVA irlandese è "US".
         - "number": numero della fattura, stringa oppure null.
         - "document_date": data della fattura in formato "YYYY-MM-DD", oppure null.
         - "amount_net": imponibile (numero, punto come separatore decimale).
@@ -145,6 +149,7 @@ class ForeignInvoiceExtractor
         return [
             'supplier_name' => trim((string) ($data['supplier_name'] ?? '')),
             'supplier_vat' => $this->stringOrNull($data['supplier_vat'] ?? null),
+            'supplier_country_iso' => $this->countryOrNull($data['supplier_country_iso'] ?? null),
             'number' => $this->stringOrNull($data['number'] ?? null),
             'document_date' => $this->stringOrNull($data['document_date'] ?? null),
             'amount_net' => round((float) ($data['amount_net'] ?? 0), 2),
@@ -155,6 +160,13 @@ class ForeignInvoiceExtractor
             'description' => $this->stringOrNull($data['description'] ?? null),
             'is_credit_note' => (bool) ($data['is_credit_note'] ?? false),
         ];
+    }
+
+    private function countryOrNull(mixed $value): ?string
+    {
+        $iso = strtoupper(trim((string) $value));
+
+        return preg_match('/^[A-Z]{2}$/', $iso) === 1 ? $iso : null;
     }
 
     private function stringOrNull(mixed $value): ?string

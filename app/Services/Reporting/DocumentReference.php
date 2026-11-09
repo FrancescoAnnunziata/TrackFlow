@@ -70,15 +70,28 @@ class DocumentReference
     }
 
     /**
-     * True se è una fattura passiva estera: caricata a mano con PDF e senza
-     * corrispettivo su Fatture in Cloud (le domestiche arrivano da FiC).
+     * True se è una fattura passiva estera: fornitore con sede fuori dall'Italia
+     * e documento NON arrivato da Fatture in Cloud.
+     *
+     * Le due condizioni servono entrambe:
+     *  - il paese, perché da Fatture estere sono passate anche fatture italiane
+     *    (Microsoft Srl, studi professionali) arrivate prima di FiC;
+     *  - «non da FiC», perché quello che arriva dallo SdI con un fornitore estero
+     *    non è la fattura estera: sono le integrazioni che il commercialista
+     *    emette per l'esterometro (numeri «N/UE»), o fatture elettroniche
+     *    italiane di una sede secondaria (AWS EMEA SARL, con IVA al 22%).
      */
     public static function isForeignPassive(?Model $doc): bool
     {
         return $doc instanceof PassiveInvoice
             && ! $doc->isCreditNote()
-            && filled($doc->attachment)
-            && blank($doc->fic_document_id);
+            && self::isForeignDocument($doc);
+    }
+
+    /** Come isForeignPassive, ma vale anche per le note di credito. */
+    public static function isForeignDocument(PassiveInvoice $doc): bool
+    {
+        return blank($doc->fic_document_id) && (bool) $doc->supplier?->isForeign();
     }
 
     private static function isOnFic(?Model $doc): bool

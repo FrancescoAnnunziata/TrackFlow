@@ -6,6 +6,7 @@ use App\Jobs\ExtractForeignInvoicesJob;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Ai\ForeignInvoiceExtractor;
+use App\Support\Paesi;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -109,6 +110,11 @@ class FattureEstere extends Page implements HasForms
                                 Hidden::make('attachment'),
                                 TextInput::make('supplier_name')->label('Fornitore')->required()->columnSpan(2),
                                 TextInput::make('supplier_vat')->label('P.IVA'),
+                                Select::make('supplier_country_iso')->label('Paese del fornitore')
+                                    ->helperText('Dove ha sede chi emette la fattura. Se è Italia, la fattura non è estera.')
+                                    ->options(Paesi::opzioni())
+                                    ->searchable()
+                                    ->required(),
                                 TextInput::make('number')->label('Numero'),
                                 DatePicker::make('document_date')->label('Data')->required(),
                                 Select::make('category')->label('Conto')
@@ -251,7 +257,7 @@ class FattureEstere extends Page implements HasForms
         $skipped = 0;
 
         foreach ($rows as $row) {
-            $supplier = $this->resolveSupplier((string) $row['supplier_name'], $row['supplier_vat'] ?? null);
+            $supplier = $this->resolveSupplier((string) $row['supplier_name'], $row['supplier_vat'] ?? null, $row['supplier_country_iso'] ?? null);
 
             // Idempotenza: salta se esiste già una passiva stesso fornitore+numero.
             $exists = PassiveInvoice::where('supplier_id', $supplier->id)
@@ -316,22 +322,38 @@ class FattureEstere extends Page implements HasForms
             ->send();
     }
 
-    private function resolveSupplier(string $name, ?string $vat): Supplier
+    /**
+     * Il paese scelto in revisione vince su quello in anagrafica: è stato appena
+     * letto sulla fattura da una persona, mentre l'anagrafica può essere ancora
+     * il default «Italia» di un fornitore creato prima che il campo esistesse.
+     */
+    private function resolveSupplier(string $name, ?string $vat, ?string $countryIso): Supplier
     {
         $vat = trim((string) $vat);
-        if ($vat !== '' && $supplier = Supplier::where('vat_number', $vat)->first()) {
-            return $supplier;
+        $countryIso = filled($countryIso) ? strtoupper($countryIso) : null;
+
+        $supplier = $vat !== '' ? Supplier::where('vat_number', $vat)->first() : null;
+        $supplier ??= Supplier::whereRaw('LOWER(name) = ?', [mb_strtolower(trim($name))])->first();
+
+        if ($supplier === null) {
+            return Supplier::create([
+                'name' => trim($name),
+                'vat_number' => $vat ?: null,
+                'country_iso' => $countryIso ?? 'IT',
+            ]);
         }
 
-        $supplier = Supplier::whereRaw('LOWER(name) = ?', [mb_strtolower(trim($name))])->first();
-        if ($supplier !== null) {
-            if ($vat !== '' && blank($supplier->vat_number)) {
-                $supplier->update(['vat_number' => $vat]);
-            }
-
-            return $supplier;
+        $changes = [];
+        if ($vat !== '' && blank($supplier->vat_number)) {
+            $changes['vat_number'] = $vat;
+        }
+        if ($countryIso !== null && $countryIso !== $supplier->country_iso) {
+            $changes['country_iso'] = $countryIso;
+        }
+        if ($changes !== []) {
+            $supplier->update($changes);
         }
 
-        return Supplier::create(['name' => trim($name), 'vat_number' => $vat ?: null]);
+        return $supplier;
     }
 }

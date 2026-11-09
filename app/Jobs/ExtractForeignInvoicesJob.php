@@ -62,6 +62,7 @@ class ExtractForeignInvoicesJob implements ShouldQueue
                     'attachment' => $path,
                     'supplier_name' => $d['supplier_name'],
                     'supplier_vat' => $d['supplier_vat'],
+                    'supplier_country_iso' => $d['supplier_country_iso'] ?? null,
                     'number' => $d['number'],
                     'document_date' => $d['document_date'],
                     'category' => $d['category'],
