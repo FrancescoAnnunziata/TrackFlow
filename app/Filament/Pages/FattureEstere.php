@@ -6,6 +6,7 @@ use App\Jobs\ExtractForeignInvoicesJob;
 use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Ai\ForeignInvoiceExtractor;
+use App\Services\Fic\IntegrationLinker;
 use App\Support\Paesi;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -293,7 +294,7 @@ class FattureEstere extends Page implements HasForms
                 }
             }
 
-            PassiveInvoice::create([
+            $invoice = PassiveInvoice::create([
                 'supplier_id' => $supplier->id,
                 'number' => $row['number'],
                 // Le note di credito stornano il costo: tipo dedicato (conta negativo).
@@ -310,6 +311,8 @@ class FattureEstere extends Page implements HasForms
                 'imported' => false,
                 'attachment' => $row['attachment'] ?? null,
             ]);
+            // Se il commercialista ha già emesso l'integrazione, ora ha a chi attaccarsi.
+            app(IntegrationLinker::class)->linkPendingTo($invoice);
             $created++;
         }
 

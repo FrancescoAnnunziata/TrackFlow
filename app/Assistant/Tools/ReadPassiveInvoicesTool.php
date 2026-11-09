@@ -48,7 +48,7 @@ class ReadPassiveInvoicesTool implements AssistantTool
         $limit = max(1, min(100, (int) ($input['limit'] ?? 25)));
 
         $rows = PassiveInvoice::query()
-            ->with('supplier')
+            ->with(['supplier', 'integrations'])
             ->when(filled($input['supplier'] ?? null), fn (Builder $q) => $q->whereHas('supplier', fn (Builder $s) => $s->where('name', 'like', '%'.$input['supplier'].'%')))
             ->when(filled($input['search'] ?? null), fn (Builder $q) => $q->where('number', 'like', '%'.$input['search'].'%'))
             ->when(array_key_exists('paid', $input) && $input['paid'] !== null, fn (Builder $q) => (bool) $input['paid']
@@ -75,7 +75,9 @@ class ReadPassiveInvoicesTool implements AssistantTool
             $p->id,
             $p->number ?: '(s.n.)',
             optional($p->document_date)->format('d/m/Y') ?? '',
-            ($p->supplier->name ?? '—').(DocumentReference::isForeignDocument($p) ? ' (estera, '.(Paesi::nome($p->supplier->country_iso) ?? $p->supplier->country_iso).')' : ''),
+            ($p->supplier->name ?? '—')
+                .(DocumentReference::isForeignDocument($p) ? ' (estera, '.(Paesi::nome($p->supplier->country_iso) ?? $p->supplier->country_iso).')' : '')
+                .($p->integrations->isNotEmpty() ? ' [integrata con '.$p->integrations->pluck('number')->implode(', ').']' : ''),
             number_format((float) $p->amount_gross, 2, ',', '.'),
             $p->payment_status === PassiveInvoice::STATUS_PAID ? 'pagata' : 'non pagata',
             LinkDocumento::fatturaPassiva($p->id),

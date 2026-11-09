@@ -6,10 +6,14 @@ use App\Models\PassiveInvoice;
 use App\Models\Supplier;
 use App\Services\Fic\FicClient;
 use App\Services\Fic\FicException;
+use App\Services\Fic\IntegrationDocument;
+use App\Services\Fic\IntegrationLinker;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Throwable;
 
 /**
  * Importa i documenti ricevuti (fatture passive/spese) da Fatture in Cloud
@@ -79,7 +83,12 @@ class ImportFicPassiveInvoices extends Command
      */
     private function importOne(array $doc, string $type, bool $createSuppliers): bool
     {
-        $supplier = $this->resolveSupplier((array) Arr::get($doc, 'entity', []), $createSuppliers);
+        $integration = $this->integrationOf($doc);
+
+        // L'integrazione si attacca al fornitore della fattura che integra (lo
+        // fissa IntegrationLinker); qui serve solo un fornitore valido per
+        // salvarla, anche se non ancora collegata.
+        $supplier = $this->resolveSupplier((array) Arr::get($doc, 'entity', []), $createSuppliers || $integration !== null);
 
         if ($supplier === null) {
             return false;
@@ -100,8 +109,10 @@ class ImportFicPassiveInvoices extends Command
             $number = ($base !== '' ? $base : (string) $doc['id']).'/'.$year;
         }
 
-        return DB::transaction(function () use ($doc, $type, $supplier, $number): bool {
-            $passive = PassiveInvoice::updateOrCreate(
+        return DB::transaction(function () use ($doc, $type, $supplier, $number, $integration): bool {
+            // conIntegrazioni: il documento potrebbe essere già un'integrazione
+            // (nascosta dallo scope) e va aggiornato, non ricreato.
+            $passive = PassiveInvoice::conIntegrazioni()->updateOrCreate(
                 ['fic_document_id' => (int) $doc['id']],
                 [
                     'supplier_id' => $supplier->id,
@@ -115,8 +126,15 @@ class ImportFicPassiveInvoices extends Command
                     'category' => Arr::get($doc, 'category'),
                     'fic_document_token' => Arr::get($doc, 'token'),
                     'imported' => true,
+                    'integration_type' => $integration['type'] ?? null,
+                    'integrates_number' => $integration['number'] ?? null,
+                    'integrates_date' => $integration['date'] ?? null,
                 ],
             );
+
+            if ($integration !== null && $passive->integrates_id === null) {
+                app(IntegrationLinker::class)->link($passive);
+            }
 
             $passive->items()->delete();
 
@@ -140,6 +158,45 @@ class ImportFicPassiveInvoices extends Command
 
             return true;
         });
+    }
+
+    /**
+     * Se il documento è un'integrazione dell'esterometro (TD17/18/19) ne
+     * restituisce tipo e fattura collegata, leggendoli dall'XML.
+     *
+     * L'XML si scarica solo per i documenti che possono esserlo: fornitore
+     * estero (FiC scrive provincia «EE») o descrizione da integrazione. Se l'XML
+     * non si legge ma la descrizione è inequivocabile, resta un'integrazione di
+     * tipo non noto («INT»): meglio fuori dai costi senza collegamento che dentro
+     * due volte.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array{type: string, number: ?string, date: ?string}|null
+     */
+    private function integrationOf(array $doc): ?array
+    {
+        $text = mb_strtolower(Arr::get($doc, 'description', '').' '.Arr::get($doc, 'items_list.0.name', ''));
+        $saysIntegration = str_contains($text, 'integrativ') || str_contains($text, 'autofattura');
+        $foreign = Arr::get($doc, 'entity.address_province') === 'EE'
+            || ! in_array(Arr::get($doc, 'entity.country'), [null, '', 'Italia'], true);
+
+        if (! Arr::get($doc, 'e_invoice') || (! $saysIntegration && ! $foreign)) {
+            return null;
+        }
+
+        $url = html_entity_decode((string) Arr::get($doc, 'attachment_url', ''));
+        if ($url !== '') {
+            try {
+                $response = Http::timeout(20)->get($url);
+                if ($response->successful() && ($parsed = IntegrationDocument::parse($response->body())) !== null) {
+                    return $parsed;
+                }
+            } catch (Throwable) {
+                // si ricade sulla descrizione
+            }
+        }
+
+        return $saysIntegration ? ['type' => 'INT', 'number' => null, 'date' => null] : null;
     }
 
     /**

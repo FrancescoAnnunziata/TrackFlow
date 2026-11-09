@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,6 +41,10 @@ class PassiveInvoice extends Model
         'imported',
         'notes',
         'attachment',
+        'integration_type',
+        'integrates_number',
+        'integrates_date',
+        'integrates_id',
     ];
 
     protected $casts = [
@@ -49,8 +54,48 @@ class PassiveInvoice extends Model
         'amount_vat' => 'decimal:2',
         'amount_gross' => 'decimal:2',
         'original_amount' => 'decimal:2',
+        'integrates_date' => 'date',
         'imported' => 'boolean',
     ];
+
+    /** Nome dello scope che tiene fuori le integrazioni dell'esterometro. */
+    public const SCOPE_SENZA_INTEGRAZIONI = 'senza_integrazioni';
+
+    /**
+     * Le integrazioni dell'esterometro (TD17/18/19) non sono fatture da pagare né
+     * costi: sono la dichiarazione dell'IVA su una fattura estera già registrata.
+     * Fuori da tutto per default (elenchi, riconciliazione, registro, IVA,
+     * conto economico, assistente); si vedono solo attaccate alla fattura che
+     * integrano, o chiedendole esplicitamente con withoutGlobalScope.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(self::SCOPE_SENZA_INTEGRAZIONI, fn (Builder $q) => $q->whereNull($q->qualifyColumn('integration_type')));
+    }
+
+    /** Query che include anche le integrazioni. */
+    public static function conIntegrazioni(): Builder
+    {
+        return static::withoutGlobalScope(self::SCOPE_SENZA_INTEGRAZIONI);
+    }
+
+    public function isIntegration(): bool
+    {
+        return filled($this->integration_type);
+    }
+
+    /** La fattura estera che questa integrazione integra. */
+    public function integrates(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'integrates_id');
+    }
+
+    /** Le integrazioni emesse dal commercialista per questa fattura estera. */
+    public function integrations(): HasMany
+    {
+        return $this->hasMany(self::class, 'integrates_id')
+            ->withoutGlobalScope(self::SCOPE_SENZA_INTEGRAZIONI);
+    }
 
     public function supplier(): BelongsTo
     {

@@ -60,7 +60,7 @@ it('lists foreign suppliers only, credit notes included and negative', function 
     expect($meili[4])->toBe('Francia')->and($meili[5])->toBe('UE')->and($meili[6])->toBe('FR88844156364');
     expect($tailscale[4])->toBe('Stati Uniti')->and($tailscale[5])->toBe('Extra-UE');
     expect($tailscale[7])->toBe('USD')->and($tailscale[8])->toBe(8.3)->and($tailscale[11])->toBe(7.17);
-    expect($tailscale[12])->toContain('/storage/passive-attachments/')->toEndWith('.pdf');
+    expect($tailscale[13])->toContain('/storage/passive-attachments/')->toEndWith('.pdf');
     expect($nota[2])->toBe('Nota di credito')->and($nota[11])->toBe(-10.0);
 });
 

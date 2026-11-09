@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PassiveInvoices\Schemas;
 
+use App\Models\PassiveInvoice;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -46,7 +47,26 @@ class PassiveInvoiceInfolist
                             ]),
                     ])
                     ->visible(fn ($record): bool => $record->items()->exists()),
+                Section::make('Esterometro')
+                    ->description('Integrazione emessa dal commercialista per questa fattura estera. Non è un costo né un documento da pagare: l\'IVA che porta si compensa da sola.')
+                    ->components([
+                        TextEntry::make('integrazioni')
+                            ->label('Integrata con')
+                            ->state(fn (PassiveInvoice $record): string => self::integrations($record)),
+                    ])
+                    ->visible(fn (PassiveInvoice $record): bool => $record->integrations()->exists()),
                 TextEntry::make('notes')->label('Note')->placeholder('-')->columnSpanFull(),
             ]);
+    }
+
+    private static function integrations(PassiveInvoice $record): string
+    {
+        return $record->integrations->map(fn (PassiveInvoice $i): string => sprintf(
+            '%s del %s (%s), IVA € %s',
+            $i->number,
+            $i->document_date?->format('d/m/Y') ?? '?',
+            $i->integration_type,
+            number_format((float) $i->amount_vat, 2, ',', '.'),
+        ))->implode(' · ');
     }
 }

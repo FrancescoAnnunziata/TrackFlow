@@ -66,11 +66,33 @@
                         <tr class="font-bold border-t-2 border-gray-300 dark:border-white/20">
                             <td class="px-3 py-2" colspan="11">{{ count($table['rows']) }} documenti — totale in euro</td>
                             <td class="px-3 py-2 text-right tabular-nums whitespace-nowrap">{{ number_format($table['totale'], 2, ',', '.') }}</td>
-                            <td></td>
+                            <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 @endif
             </table>
         </div>
     </x-filament::section>
+
+    @php($orfane = app(\App\Services\Reporting\FattureEstereBuilder::class)->unlinkedIntegrations())
+    @if ($orfane !== [])
+        <x-filament::section>
+            <x-slot name="heading">Integrazioni senza fattura estera ({{ count($orfane) }})</x-slot>
+            <x-slot name="description">
+                Il commercialista ha emesso l'integrazione, ma in TrackFlow la fattura estera che integra non c'è
+                (o non si riconosce). Caricala da «Fatture estere» con lo stesso numero: l'integrazione si collega da sola.
+            </x-slot>
+            <ul class="text-sm list-disc pl-5 space-y-1">
+                @foreach ($orfane as $i)
+                    <li>
+                        {{ $i->number }} del {{ $i->document_date?->format('d/m/Y') }} —
+                        {{ $i->supplier?->name }} —
+                        integra la fattura <strong>{{ $i->integrates_number ?? 'non indicata' }}</strong>
+                        @if ($i->integrates_date) del {{ $i->integrates_date->format('d/m/Y') }} @endif
+                        (imponibile € {{ number_format((float) $i->amount_net, 2, ',', '.') }})
+                    </li>
+                @endforeach
+            </ul>
+        </x-filament::section>
+    @endif
 </x-filament-panels::page>

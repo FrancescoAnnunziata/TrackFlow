@@ -32,6 +32,7 @@ class FattureEstereBuilder
         'Imponibile (EUR)',
         'IVA (EUR)',
         'Totale (EUR)',
+        'Integrazione',
         'Link al PDF',
     ];
 
@@ -39,7 +40,7 @@ class FattureEstereBuilder
     public const NUMERIC_COLUMNS = [8, 9, 10, 11];
 
     /** Colonna del link (per renderla cliccabile nell'anteprima). */
-    public const LINK_COLUMN = 12;
+    public const LINK_COLUMN = 13;
 
     /**
      * @return array{headings: array<int, string>, rows: array<int, array<int, mixed>>, totale: float}
@@ -50,7 +51,7 @@ class FattureEstereBuilder
         $totale = 0.0;
 
         $invoices = PassiveInvoice::query()
-            ->with('supplier')
+            ->with(['supplier', 'integrations'])
             ->whereBetween('document_date', [$from, $to])
             // Stessa regola di DocumentReference::isForeignDocument, in SQL.
             ->whereNull('fic_document_id')
@@ -78,11 +79,30 @@ class FattureEstereBuilder
                 round($sign * (float) $p->amount_net, 2),
                 round($sign * (float) $p->amount_vat, 2),
                 $gross,
+                // Già integrata dal commercialista? Così vede a colpo d'occhio cosa manca.
+                $p->integrations->map(fn (PassiveInvoice $i): string => $i->number.' del '.$i->document_date?->format('d/m/Y'))->implode(', '),
                 DocumentReference::attachmentUrl($p) ?? '',
             ];
         }
 
         return ['headings' => self::HEADINGS, 'rows' => $rows, 'totale' => round($totale, 2)];
+    }
+
+    /**
+     * Integrazioni arrivate da FiC che non si sono potute collegare: di solito
+     * la fattura estera non è ancora stata caricata da Fatture estere.
+     *
+     * @return array<int, PassiveInvoice>
+     */
+    public function unlinkedIntegrations(): array
+    {
+        return PassiveInvoice::conIntegrazioni()
+            ->with('supplier')
+            ->whereNotNull('integration_type')
+            ->whereNull('integrates_id')
+            ->orderBy('document_date')
+            ->get()
+            ->all();
     }
 
     public function export(CarbonInterface $from, CarbonInterface $to, string $format = 'xlsx'): BinaryFileResponse

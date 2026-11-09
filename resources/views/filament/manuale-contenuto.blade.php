@@ -503,6 +503,16 @@
                 Se il fornitore è italiano (Microsoft Srl, uno studio di Brescia…) scegli <strong>Italia</strong>: la
                 fattura si carica lo stesso, ma non viene contata fra le estere.
             </div>
+            <div class="g-callout g-info">
+                <strong>Le integrazioni di Anna non sono fatture nuove.</strong> Per ogni fattura estera Anna emette un
+                «documento integrativo» (con numeri tipo <em>16/UE</em>) che arriva su Fatture in Cloud col nome del
+                fornitore estero. TrackFlow lo riconosce e <strong>lo attacca alla fattura estera che hai caricato</strong>:
+                non compare fra le fatture passive, non va riconciliato e non conta come costo. Lo vedi aprendo la
+                fattura estera, nel riquadro <strong>«Esterometro»</strong>.
+                <br>Se Anna emette l'integrazione <strong>prima</strong> che tu abbia caricato la fattura estera, va bene
+                lo stesso: in fondo all'<strong>Elenco fatture estere</strong> compare fra le «Integrazioni senza fattura
+                estera» con il numero che le manca. Caricala da qui con quel numero e si collega da sola.
+            </div>
         </div>
 
         {{-- STEP 7 passive --}}
@@ -640,7 +650,8 @@
                     <li><strong>Registro acquisti</strong> → esporta.</li>
                     <li><strong>Prima nota</strong> → esporta.</li>
                     <li><strong>Elenco fatture estere</strong> → esporta. Contiene le fatture dei fornitori esteri del
-                        periodo, ognuna col <strong>link al PDF</strong>: ad Anna servono per l'esterometro.</li>
+                        periodo, ognuna col <strong>link al PDF</strong>: ad Anna servono per l'esterometro. La colonna
+                        <strong>Integrazione</strong> dice quali ha già integrato lei.</li>
                 </ol>
                 <p style="margin-top:.5rem">Allega <strong>tutti e cinque</strong> i file a una mail e inviala ad <strong>Anna Messa</strong>.</p>
                 <div class="g-callout g-info" style="margin-top:.6rem">
