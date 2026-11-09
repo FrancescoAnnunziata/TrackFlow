@@ -45,7 +45,7 @@ class InvoiceResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->isAdmin();
+        return auth()->user()->canManageFinance();
     }
 
     public static function getRelations(): array

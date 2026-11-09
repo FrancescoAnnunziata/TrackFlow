@@ -73,7 +73,7 @@ class FattureEmessePdf extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->canManageFinance();
     }
 
     public function mount(): void

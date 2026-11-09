@@ -36,7 +36,7 @@ class ListPassiveInvoices extends ListRecords
             ->label('Importa da Fatture in Cloud')
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('gray')
-            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->visible(fn (): bool => auth()->user()->canManageFinance())
             ->modalHeading('Importa fatture passive da Fatture in Cloud')
             ->modalSubmitActionLabel('Importa')
             ->schema([

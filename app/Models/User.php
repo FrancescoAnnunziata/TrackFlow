@@ -158,6 +158,21 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->role === 'accountant';
     }
 
+    /** Controller: gestisce l'area finanziaria come un admin, ma non progetti, ore e utenti. */
+    public function isController(): bool
+    {
+        return $this->role === 'controller';
+    }
+
+    /**
+     * Chi può gestire l'area finanziaria: admin e controller. Usato dai gate di
+     * fatture, banche, costi, report e dall'assistente.
+     */
+    public function canManageFinance(): bool
+    {
+        return $this->isAdmin() || $this->isController();
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return true;

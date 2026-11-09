@@ -33,9 +33,9 @@ class AssistantRunner
      */
     public function run(AssistantThread $thread): array
     {
-        // Solo gli admin (owner) possono far proporre riconciliazioni; il
-        // commercialista (ruolo accountant) ha solo i tool di lettura.
-        $canReconcile = (bool) optional($thread->user)->isAdmin();
+        // Admin e controller riconciliano anche a mano, quindi l'assistente può
+        // proporlo a loro; il commercialista (accountant) ha solo i tool di lettura.
+        $canReconcile = (bool) optional($thread->user)->canManageFinance();
 
         $registry = $this->toolRegistry($canReconcile);
         $schemas = array_map(fn (AssistantTool $t): array => [

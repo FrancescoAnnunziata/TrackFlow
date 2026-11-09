@@ -50,7 +50,7 @@ class ClientsTable
                     // dal motore a prescindere dal provider. L'invio automatico a
                     // Fatture in Cloud resta un'altra cosa (solo per i clienti FIC);
                     // i clienti Fiscozen generano qui la bozza e la ricreano a mano.
-                    ->visible(fn (Client $record): bool => auth()->user()->isAdmin())
+                    ->visible(fn (Client $record): bool => auth()->user()->canManageFinance())
                     ->modalHeading('Genera fattura del periodo')
                     ->modalSubmitActionLabel('Genera')
                     ->schema([

@@ -21,7 +21,10 @@ class UserInfolist
                     ->label('Ruolo')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'admin' => 'Admin',
+                        'controller' => 'Controller',
                         'member' => 'Membro',
+                        'client' => 'Cliente',
+                        'accountant' => 'Commercialista',
                         default => $state,
                     }),
                 TextEntry::make('created_at')

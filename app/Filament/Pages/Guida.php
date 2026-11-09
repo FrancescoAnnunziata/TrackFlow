@@ -26,6 +26,6 @@ class Guida extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->canManageFinance();
     }
 }

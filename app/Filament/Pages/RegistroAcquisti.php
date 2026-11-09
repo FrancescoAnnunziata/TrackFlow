@@ -35,7 +35,7 @@ class RegistroAcquisti extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->canManageFinance();
     }
 
     public function mount(): void

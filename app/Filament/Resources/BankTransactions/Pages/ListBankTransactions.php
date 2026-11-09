@@ -46,7 +46,7 @@ class ListBankTransactions extends ListRecords
             ->label('Auto-riconcilia')
             ->icon(Heroicon::OutlinedSparkles)
             ->color('gray')
-            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->visible(fn (): bool => auth()->user()->canManageFinance())
             ->modalHeading('Auto-riconciliazione movimenti')
             ->modalDescription('Aggancia in automatico solo i movimenti con match sicuro (importo esatto e unico, o miglior candidato sopra soglia). Tutto il resto resta da riconciliare a mano. Non crea abbinamenti dubbi.')
             ->modalSubmitActionLabel('Riconcilia')
@@ -93,7 +93,7 @@ class ListBankTransactions extends ListRecords
             ->label('Importa movimenti')
             ->icon(Heroicon::OutlinedArrowUpTray)
             ->color('gray')
-            ->visible(fn (): bool => auth()->user()->isAdmin())
+            ->visible(fn (): bool => auth()->user()->canManageFinance())
             ->modalHeading('Importa movimenti da CSV/XLSX')
             ->modalSubmitActionLabel('Importa')
             ->schema([

@@ -47,7 +47,7 @@ class AssistenteAi extends Page
     public string $draft = '';
 
     /**
-     * Chi lavora sulla contabilità (admin) e il commercialista (accountant, in
+     * Chi lavora sulla contabilità (admin e controller) e il commercialista (accountant, in
      * sola lettura). I clienti no: vedono solo le proprie cose e la chat legge
      * tutti i conti dell'azienda.
      *
@@ -59,13 +59,16 @@ class AssistenteAi extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && ($user->isAdmin() || $user->isAccountant());
+        return $user !== null && ($user->canManageFinance() || $user->isAccountant());
     }
 
-    /** Chi può eseguire azioni (confermare riconciliazioni): solo gli admin. */
+    /**
+     * Chi può eseguire azioni (confermare riconciliazioni): chi le fa anche a
+     * mano dall'interfaccia, cioè admin e controller.
+     */
     private function canReconcile(): bool
     {
-        return (bool) auth()->user()?->isAdmin();
+        return (bool) auth()->user()?->canManageFinance();
     }
 
     public function mount(): void

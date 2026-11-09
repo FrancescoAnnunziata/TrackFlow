@@ -37,7 +37,7 @@ class ControlloFinanziario extends Dashboard
 
     public static function canAccess(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->canManageFinance();
     }
 
     public static function getRoutePath(Panel $panel): string
