@@ -25,7 +25,8 @@ class ReadReimbursementsTool implements AssistantTool
     {
         return 'Legge i documenti "Rimborso spese" (rimborsi a un dipendente/amministratore per spese anticipate). '
             .'Usalo per trovare il documento Rimborso a cui riconciliare un bonifico di rimborso in uscita. '
-            .'Restituisce id, data, note, totale, quota già riconciliata e residuo da coprire. Per riconciliare, '
+            .'Restituisce id, data, note, totale, quota già riconciliata, residuo da coprire e gli allegati '
+            .'(numerati: per leggerli usa read_reimbursement_attachment). Per riconciliare, '
             .'usa propose_reconciliation con type "reimbursement".';
     }
 
@@ -72,17 +73,35 @@ class ReadReimbursementsTool implements AssistantTool
             $residuo = round($r->total() - $r->reconciledAmount(), 2);
 
             return sprintf(
-                '- id=%d | %s | € %s totale | riconciliato € %s | residuo € %s | %s | %s',
+                '- id=%d | %s | € %s totale | riconciliato € %s | residuo € %s | %s | %s | %s',
                 $r->id,
                 optional($r->date)->format('d/m/Y') ?? '',
                 number_format($r->total(), 2, ',', '.'),
                 number_format($r->reconciledAmount(), 2, ',', '.'),
                 number_format($residuo, 2, ',', '.'),
                 str($r->notes ?: '')->limit(60)->value(),
+                self::allegati($r),
                 LinkDocumento::rimborso($r->id),
             );
         })->implode("\n");
 
         return AssistantToolResult::ok("Rimborsi spese ({$rows->count()}):\n".$lines, 'Rimborsi: '.$rows->count());
+    }
+
+    /**
+     * «allegati: 1) pdf, 2) jpg» oppure «nessun allegato». Il nome sul disco è
+     * casuale (lo genera l'upload), quindi conta solo il formato; il numero è
+     * quello che si passa a read_reimbursement_attachment.
+     */
+    private static function allegati(Reimbursement $r): string
+    {
+        $allegati = array_values((array) ($r->attachments ?? []));
+        if ($allegati === []) {
+            return 'nessun allegato';
+        }
+
+        return 'allegati: '.collect($allegati)
+            ->map(fn (string $p, int $i): string => ($i + 1).') '.strtolower(pathinfo($p, PATHINFO_EXTENSION)))
+            ->implode(', ');
     }
 }
