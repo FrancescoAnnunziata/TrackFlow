@@ -14,6 +14,7 @@ use App\Assistant\Tools\ReadReimbursementAttachmentTool;
 use App\Assistant\Tools\ReadReimbursementsTool;
 use App\Models\AssistantThread;
 use App\Support\ManualeOperativo;
+use App\Support\StileDiScrittura;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Throwable;
@@ -180,6 +181,9 @@ class AssistantRunner
         if ($manuale !== '') {
             $common .= "\n\n".$manuale;
         }
+
+        // Il registro dei testi: uguale per tutti, e statico come il resto.
+        $common .= "\n\n".StileDiScrittura::blocco();
 
         if (! $canReconcile) {
             return $common."\n\n".<<<'PROMPT'
