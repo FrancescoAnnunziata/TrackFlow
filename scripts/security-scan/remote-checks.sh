@@ -448,9 +448,13 @@ fi
 # supervisorctl vuole root, quindi guardiamo il processo e la coda: entrambi
 # leggibili dall'utente forge.
 # ------------------------------------------------------------------------------
-qw=$(pgrep -f 'artisan queue:work' 2>/dev/null | wc -l | tr -d ' ')
+# Sulla stessa macchina girano i worker di altre app (medbooks, quisto, ...):
+# contare un qualsiasi "artisan queue:work" darebbe OK anche con quello di
+# TrackFlow morto. Si cerca solo quello che parte dalla cartella del sito.
+SITE_ROOT="${APP_DIR%/current}"
+qw=$(pgrep -f "${SITE_ROOT}/[^ ]*artisan queue:work" 2>/dev/null | wc -l | tr -d ' ')
 if [ "${qw:-0}" -gt 0 ]; then
-  emit OK queue_worker "Worker della coda in esecuzione ($qw processi)"
+  emit OK queue_worker "Worker della coda di TrackFlow in esecuzione ($qw processi)"
 else
   emit WARN queue_worker "NESSUN worker della coda in esecuzione: i job non vengono lavorati (supervisorctl status / Forge > Daemons)"
 fi

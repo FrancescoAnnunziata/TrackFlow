@@ -62,8 +62,18 @@ fi
 # ---- derive SMTP settings from the app's .env when not already provided ------
 # (handy in local/server mode: reuse the application's mail credentials)
 envget() {
-  grep -E "^$1=" "$2" 2>/dev/null | head -1 | cut -d= -f2- \
-    | sed -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+  local v ref depth=0
+  v="$(grep -E "^$1=" "$2" 2>/dev/null | head -1 | cut -d= -f2- \
+    | sed -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+  # Laravel's .env allows references such as MAIL_FROM_NAME="${APP_NAME}".
+  # Resolve them against the same file, otherwise the literal "${APP_NAME}"
+  # ends up as the sender name. Bounded to avoid loops on circular refs.
+  while [[ "$v" =~ \$\{([A-Za-z_][A-Za-z0-9_]*)\} ]] && [ $depth -lt 5 ]; do
+    ref="${BASH_REMATCH[1]}"
+    v="${v//\$\{$ref\}/$(envget "$ref" "$2")}"
+    depth=$((depth + 1))
+  done
+  printf '%s' "$v"
 }
 if [ -z "${SMTP_HOST:-}" ] && [ -r "$APP_ENV_FILE" ]; then
   SMTP_HOST="$(envget MAIL_HOST "$APP_ENV_FILE")"
