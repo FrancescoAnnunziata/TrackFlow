@@ -16,8 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 
-class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery
+class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -28,6 +30,13 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
      * mettono fra gli attributi nascosti in serializzazione.
      */
     use InteractsWithAppAuthentication, InteractsWithAppAuthenticationRecovery;
+
+    /**
+     * Passkey (impronta, Face ID, chiave di sicurezza): valgono come secondo
+     * fattore al posto del codice, oppure da sole per entrare senza password.
+     * Vedi AppPanelProvider e la pagina SicurezzaAccesso.
+     */
+    use PasskeyAuthenticatable;
 
     /**
      * Cache per-richiesta degli ID cliente associati (vedi allClientIds()).

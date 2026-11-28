@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +33,13 @@ class AppServiceProvider extends ServiceProvider
     {
         // L'assistente AI parla con Claude tramite questo contratto (fake nei test).
         $this->app->bind(ChatClient::class, ClaudeChatClient::class);
+
+        // Le rotte delle passkey le registra il plugin Filament dentro il
+        // pannello. Quelle di laravel/passkeys hanno gli stessi percorsi (il
+        // pannello sta su «/») e, registrate dopo, prenderebbero il loro posto:
+        // il login con passkey finirebbe fuori da Filament, senza i suoi
+        // controlli sull'accesso al pannello.
+        Passkeys::ignoreRoutes();
     }
 
     /**

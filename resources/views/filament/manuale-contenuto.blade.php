@@ -234,9 +234,12 @@
         {{-- Accesso a TrackFlow --}}
         <div class="g-card">
             <div class="g-head"><span class="g-num gray">🔐</span><p class="g-h">Entrare in TrackFlow</p></div>
-            <p>Si entra con email, password e il <strong>codice a sei cifre</strong> dell'app di autenticazione (i due fattori sono obbligatori per chi lavora in TrackFlow; i clienti ne sono esclusi).</p>
+            <p>Si entra con email, password e il <strong>codice a sei cifre</strong> dell'app di autenticazione (i due fattori sono obbligatori per chi lavora in TrackFlow; i clienti ne sono esclusi). In alternativa c'è la passkey, spiegata qui sotto.</p>
             <p>Sulla schermata di accesso c'è <strong>«Ricorda questo dispositivo per 7 giorni»</strong>: spuntandola, su quel computer o telefono per una settimana non vengono più chiesti né password né codice. Passati i sette giorni l'accesso va rifatto per intero — <strong>succede una volta a settimana, non tutti i giorni</strong>.</p>
             <div class="g-callout g-warn"><strong>Spuntala solo su un dispositivo tuo.</strong> Su un computer condiviso o prestato, no: per una settimana chiunque lo usi entrerebbe in TrackFlow senza sapere né la password né il codice.</div>
+            <p class="g-sub">Più comodo: la passkey</p>
+            <p>Invece del codice puoi usare una <strong>passkey</strong>: l'impronta, il volto o il PIN del computer o del telefono. Si aggiunge una volta sola: dal menu in alto a destra (il tuo nome) apri <strong>«Sicurezza dell'accesso»</strong>, premi <span class="g-kbd">Aggiungi una passkey</span> e conferma con l'impronta o il PIN. L'app di autenticazione resta attiva come ripiego.</p>
+            <p>Da quel momento, sulla schermata di accesso premi <span class="g-kbd">Accedi con passkey</span>: niente password e niente codice. La passkey vale solo sul dispositivo dove l'hai creata (o su quelli che la sincronizzano, come iPhone e Mac con lo stesso account Apple): su un altro computer si entra come prima, con password e codice.</p>
             <p class="g-sub">Se il codice non funziona</p>
             <p>Usa uno dei <strong>codici di recupero</strong> salvati quando hai attivato i due fattori. Se li hai persi insieme al telefono, scrivi a Giorgio: può azzerare i due fattori del tuo utente e te li fa riconfigurare.</p>
         </div>

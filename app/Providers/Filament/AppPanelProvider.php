@@ -2,9 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use AdriaanZon\FilamentPasskeys\FilamentPasskeysPlugin;
+use AdriaanZon\FilamentPasskeys\PasskeyAuthentication;
 use App\Filament\Pages\Auth\ChangePassword;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\NotificationPreferences;
+use App\Filament\Pages\Auth\SicurezzaAccesso;
 use App\Filament\Widgets\AssetStatsOverview;
 use App\Http\Middleware\MustChangePassword;
 use App\Http\Middleware\ReauthenticateWeekly;
@@ -58,11 +61,25 @@ class AppPanelProvider extends PanelProvider
             // isRequired: non su APP_ENV=local, altrimenti ogni test in
             // locale richiede il codice TOTP. In staging/produzione resta
             // obbligatorio senza eccezioni.
+            //
+            // Passkey (impronta, Face ID, chiave di sicurezza) come alternativa
+            // al codice: chi ne ha una può usarla come secondo fattore dopo la
+            // password, oppure entrare direttamente con il pulsante «Accedi con
+            // passkey» del login (passwordlessLogin). Una passkey vale da sola
+            // due fattori, quindi soddisfa anche l'obbligo qui sotto. L'app di
+            // autenticazione resta: è il ripiego se la passkey non c'è (altro
+            // computer, dispositivo perso).
+            // Le passkey sono legate al dominio di APP_URL: se cambia il
+            // dominio di produzione vanno registrate di nuovo.
             ->multiFactorAuthentication([
                 AppAuthentication::make()
                     ->brandName('TrackFlow')
                     ->recoverable(),
+                PasskeyAuthentication::make(),
             ], isRequired: ! app()->environment('local'))
+            ->plugin(FilamentPasskeysPlugin::make()->passwordlessLogin())
+            // Dove ciascuno gestisce app di autenticazione e passkey.
+            ->profile(SicurezzaAccesso::class, isSimple: false)
             ->multiFactorAuthenticationRequiredMiddlewareName(RequireTwoFactorExceptClients::class)
             // Voce nel menu utente per cambiare password dall'app.
             ->userMenuItems([
