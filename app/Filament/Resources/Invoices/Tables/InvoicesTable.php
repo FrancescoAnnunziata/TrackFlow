@@ -90,6 +90,12 @@ class InvoicesTable
                         default => 'gray',
                     })
                     ->sortable(),
+                TextColumn::make('paid_at')
+                    ->label('Pagata il')
+                    ->date('d/m/Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
                 IconColumn::make('reconciled')
                     ->label('Incassata')
                     ->state(fn (Invoice $record): bool => $record->reconciliations()->exists())

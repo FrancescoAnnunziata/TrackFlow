@@ -126,7 +126,7 @@ it('computes forfettario revenue and estimated taxes on the configured params', 
     $inv = Invoice::create([
         'user_id' => User::factory()->admin()->create()->id, 'client_id' => $client->id,
         'number' => '1/2026', 'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',
-        'vat_rate' => 0, 'status' => 'sent',
+        'vat_rate' => 0, 'status' => 'sent', 'paid_at' => '2026-03-20',
     ]);
     InvoiceItem::create(['invoice_id' => $inv->id, 'name' => 'Consulenza', 'qty' => 1, 'net_price' => 5000, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
 
@@ -141,6 +141,56 @@ it('computes forfettario revenue and estimated taxes on the configured params', 
     expect($f['inps'])->toBe($inps);
     expect($f['imposta'])->toBe($imposta);
     expect($f['tasse_totali'])->toBe(round($inps + $imposta, 2));
+});
+
+function pivaInvoice(Client $client, string $number, string $date, float $net, array $extra = []): Invoice
+{
+    $inv = Invoice::create($extra + [
+        'user_id' => User::factory()->admin()->create()->id, 'client_id' => $client->id,
+        'number' => $number, 'issue_date' => $date, 'period_from' => $date, 'period_to' => $date,
+        'vat_rate' => 0, 'status' => 'sent',
+    ]);
+    InvoiceItem::create(['invoice_id' => $inv->id, 'name' => 'Voce', 'qty' => 1, 'net_price' => $net, 'vat_kind' => InvoiceItem::VAT_STANDARD]);
+
+    return $inv;
+}
+
+it('conta le fatture della P.IVA per cassa, per imponibile e con le note di credito in negativo', function () {
+    $client = Client::create(['name' => 'Cliente P.IVA', 'invoicing_provider' => Client::PROVIDER_FISCOZEN]);
+
+    // Emessa a dicembre 2025, pagata a gennaio 2026: conta nel 2026.
+    pivaInvoice($client, '19/2025', '2025-12-20', 1000, ['paid_at' => '2026-01-10']);
+    // Emessa con IVA per errore, pagata: conta l'imponibile (1300), non i 1586.
+    $conIva = pivaInvoice($client, '1/2026', '2026-01-05', 1300, ['vat_rate' => 22, 'paid_at' => '2026-02-13']);
+    // Stornata con rimborso: la nota di credito toglie l'imponibile.
+    pivaInvoice($client, 'NC/3/2026', '2026-05-03', 1300, [
+        'vat_rate' => 22, 'type' => Invoice::TYPE_CREDIT_NOTE, 'related_invoice_id' => $conIva->id, 'paid_at' => '2026-05-18',
+    ]);
+    // Riemessa senza IVA e pagata.
+    pivaInvoice($client, '11bis/2026', '2026-03-31', 1300, ['paid_at' => '2026-02-13']);
+    // Emessa e stornata senza che nessuno abbia pagato: non muove l'incassato.
+    $stornata = pivaInvoice($client, '24/2026', '2026-08-01', 4170);
+    pivaInvoice($client, 'NC/4/2026', '2026-08-01', 4170, ['type' => Invoice::TYPE_CREDIT_NOTE, 'related_invoice_id' => $stornata->id]);
+    // Emessa e non ancora pagata.
+    pivaInvoice($client, '36/2026', '2026-10-31', 6800);
+
+    $f = app(FinancialOverviewBuilder::class)->forfettario(2026);
+
+    expect($f['fatture_anno'])->toBe(2300.0)               // 1000 + 1300 - 1300 + 1300
+        ->and($f['months'][0]['fatture'])->toBe(1000.0)    // gennaio
+        ->and($f['months'][1]['fatture'])->toBe(2600.0)    // febbraio
+        ->and($f['months'][4]['fatture'])->toBe(-1300.0)   // maggio, rimborso
+        ->and($f['emesso_anno'])->toBe(8100.0)             // 1300 - 1300 + 1300 + 4170 - 4170 + 6800
+        ->and($f['da_incassare'])->toBe(6800.0);
+});
+
+it('segna pagata la fattura quando si compila la data di incasso', function () {
+    $client = Client::create(['name' => 'Cliente P.IVA', 'invoicing_provider' => Client::PROVIDER_FISCOZEN]);
+    $inv = pivaInvoice($client, '5/2026', '2026-02-07', 432);
+
+    $inv->update(['paid_at' => '2026-02-20']);
+
+    expect($inv->fresh()->status)->toBe('paid');
 });
 
 it('reports snapshot liquidity, credits and debts', function () {

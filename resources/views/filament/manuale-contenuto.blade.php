@@ -216,7 +216,11 @@
                     <li><strong>Ricrea la stessa fattura a mano su Fiscozen</strong>, con <strong>IVA 0%</strong>.</li>
                     <li><strong>Ricordati di INVIARLA su Fiscozen</strong>: crearla e basta non basta — va spedita, altrimenti resta bozza e non parte.</li>
                     <li>Torna in TrackFlow, scrivi a mano il <strong>Numero</strong> dato da Fiscozen e porta lo <strong>Stato</strong> a <strong>Inviata</strong>.</li>
+                    <li>Quando Giorgio ti conferma che il bonifico è arrivato, apri la fattura con <em>Modifica</em> e compila <strong>Pagata il</strong> con la data del bonifico. Lo stato passa da solo a <strong>Pagata</strong>.</li>
                 </ol>
+                <div class="g-callout g-warn" style="margin-top:.7rem">
+                    <strong>La data «Pagata il» conta per la soglia del forfettario.</strong> Il conto della P.IVA non è in TrackFlow, quindi qui non c'è <span class="g-kbd">Registra incasso</span>: la data si scrive a mano. Una fattura senza data non entra nell'incassato della Dashboard finanziaria. Per una nota di credito il campo si chiama <strong>Rimborsata il</strong>: si compila solo se al cliente sono stati restituiti dei soldi.
+                </div>
                 <div class="g-callout g-note" style="margin-top:.7rem">
                     <strong>💡 Scorciatoia:</strong> su Fiscozen apri la fattura del <strong>periodo precedente</strong> dello stesso cliente e usa <strong>«Duplica»</strong>: ritrovi i dati già compilati (intestatario, voci, IVA 0%), aggiorni solo importi, date e numero.
                 </div>
@@ -738,6 +742,10 @@
                     insieme</strong>: né TrackFlow né Shopify, da soli, vedono il totale. Per questo gli incassi del
                 negozio stanno qui — e li ritrovi sommati alle fatture nella <strong>Dashboard finanziaria</strong>, che
                 è la pagina dove si guarda quanto manca alla soglia.</p>
+            <p>La soglia si conta <strong>per cassa</strong>: le fatture entrano nel mese in cui sono state
+                <strong>pagate</strong> (campo <strong>Pagata il</strong>), non in quello in cui sono state emesse, e le note di
+                credito rimborsate si sottraggono. Sotto la barra la dashboard mostra anche il <strong>fatturato dell'anno</strong>
+                e quanto è <strong>ancora da incassare</strong>: servono a vedere in anticipo dove arriverà la soglia.</p>
             <ul class="g-list">
                 <li><strong>Lordo</strong> — l'incassato del giorno, <strong>al lordo delle commissioni</strong> di
                     Shopify e Stripe: nel forfettario i costi non si deducono, quindi qui non si tolgono.</li>
@@ -838,7 +846,7 @@
             <p class="g-sub">Gli stati della fattura</p>
             <div class="g-status"><span class="g-badge gray">Bozza</span><span>appena generata, non ancora inviata. Modificabile liberamente.</span></div>
             <div class="g-status"><span class="g-badge amber">Inviata</span><span>emessa su Fatture in Cloud, in attesa di incasso.</span></div>
-            <div class="g-status"><span class="g-badge green">Pagata</span><span>incassata (movimento bancario collegato).</span></div>
+            <div class="g-status"><span class="g-badge green">Pagata</span><span>incassata: movimento bancario collegato oppure, per i clienti Fiscozen, data «Pagata il» compilata.</span></div>
         </div>
 
         {{-- Cosa non si fa --}}

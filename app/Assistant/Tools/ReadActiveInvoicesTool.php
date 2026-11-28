@@ -64,7 +64,7 @@ class ReadActiveInvoicesTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (Invoice $i): string => sprintf(
-            '- id=%d | %s | %s | %s | tot € %s | da incassare € %s | %s | %s',
+            '- id=%d | %s | %s | %s | tot € %s | da incassare € %s | %s%s | %s',
             $i->id,
             $i->number ?: '(s.n.)',
             optional($i->issue_date)->format('d/m/Y') ?? '',
@@ -72,6 +72,8 @@ class ReadActiveInvoicesTool implements AssistantTool
             number_format($i->total(), 2, ',', '.'),
             number_format($i->amountToCollect(), 2, ',', '.'),
             $i->status,
+            // Data di incasso scritta a mano (clienti della P.IVA personale).
+            $i->paid_at ? ' il '.$i->paid_at->format('d/m/Y') : '',
             LinkDocumento::fatturaAttiva($i->id),
         ))->implode("\n");
 

@@ -30,6 +30,7 @@ class Invoice extends Model
         'hourly_rate',
         'vat_rate',
         'status',
+        'paid_at',
         'notes',
         'subject',
         'ei_payment_method',
@@ -44,6 +45,7 @@ class Invoice extends Model
 
     protected $casts = [
         'issue_date' => 'date',
+        'paid_at' => 'date',
         'period_from' => 'date',
         'period_to' => 'date',
         'hourly_rate' => 'decimal:2',
@@ -51,6 +53,17 @@ class Invoice extends Model
         'fic_sent_at' => 'datetime',
         'imported' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // Con la data di incasso la fattura è pagata: evita che resti
+        // «Inviata» quando qualcuno compila solo la data.
+        static::saving(function (Invoice $invoice): void {
+            if ($invoice->paid_at !== null && ! $invoice->isCreditNote() && $invoice->status === 'sent') {
+                $invoice->status = 'paid';
+            }
+        });
+    }
 
     /**
      * True se la fattura è già stata creata su Fatture in Cloud.

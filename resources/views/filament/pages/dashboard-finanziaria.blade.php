@@ -199,7 +199,7 @@
     {{-- ==================== GIORGIO GIOTTO — FORFETTARIO ==================== --}}
     <x-filament::section>
         <x-slot name="heading">Giorgio Giotto — P.IVA forfettaria</x-slot>
-        <x-slot name="description">Il forfettario tassa l'incassato (non il fatturato) e non deduce i costi. Include le vendite dell'e-commerce, al lordo delle commissioni.</x-slot>
+        <x-slot name="description">Il forfettario tassa l'incassato e non deduce i costi. Le fatture contano nel mese in cui sono state pagate, per l'imponibile e al netto dei rimborsi. Include le vendite dell'e-commerce, al lordo delle commissioni.</x-slot>
 
         {{-- Semaforo limite annuo --}}
         @php
@@ -213,10 +213,13 @@
             </div>
             <div class="fd-bartrack"><div class="fd-bar" style="width:{{ $perc }}%; background:{{ $barColor }};"></div></div>
             <div class="fd-sub" style="margin-top:.4rem;">
-                Fatture {{ $eur($f['fatture_anno']) }} · e-commerce {{ $eur($f['corrispettivi_anno']) }}
+                Fatture incassate {{ $eur($f['fatture_anno']) }} · e-commerce {{ $eur($f['corrispettivi_anno']) }}
+            </div>
+            <div class="fd-sub">
+                Fatturato {{ $year }} al netto delle note di credito {{ $eur($f['emesso_anno']) }} · ancora da incassare {{ $eur($f['da_incassare']) }}
             </div>
             @if ($perc >= 90)
-                <div class="fd-sub fd-neg" style="margin-top:.4rem;">Attenzione: vicino alla soglia — se la superi rischi di uscire dal regime forfettario.</div>
+                <div class="fd-sub fd-neg" style="margin-top:.4rem;">Attenzione: l'incassato è vicino alla soglia. Oltre il limite si esce dal regime forfettario.</div>
             @endif
         </div>
 
@@ -248,7 +251,7 @@
         <div class="fd-tablewrap" style="margin-top:1.25rem;">
             <table class="fd-table">
                 <thead>
-                    <tr><th>Mese</th><th>Fatture</th><th>E-commerce</th><th>Incassato</th></tr>
+                    <tr><th>Mese</th><th>Fatture incassate</th><th>E-commerce</th><th>Incassato</th></tr>
                 </thead>
                 <tbody>
                     @foreach ($f['months'] as $row)
@@ -272,7 +275,7 @@
         </div>
 
         <p class="fd-sub" style="margin-top:.75rem;">
-            Tieni aggiornate qui le fatture Fiscozen perché i numeri siano corretti. Stime indicative, non sostituiscono il commercialista.
+            I numeri sono corretti solo se ogni fattura della P.IVA ha la data «Pagata il». Una fattura senza data non entra nell'incassato. Stime indicative, non sostituiscono il commercialista.
         </p>
     </x-filament::section>
 </x-filament-panels::page>
