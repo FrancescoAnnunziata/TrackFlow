@@ -3,8 +3,8 @@
 namespace App\Services\Reconciliation;
 
 use App\Models\BankTransaction;
-use App\Models\Client;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use Illuminate\Database\Eloquent\Model;
@@ -68,10 +68,9 @@ class MatchSuggestionService
         return Invoice::with('client', 'creditNotes.items')
             ->where('status', '!=', 'paid')
             ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
-            // Le fatture ai clienti Fiscozen (P.IVA forfettaria) non passano dai
-            // nostri conti: non sono mai un target di riconciliazione, né automatica
-            // né suggerita.
-            ->whereRelation('client', 'invoicing_provider', '!=', Client::PROVIDER_FISCOZEN)
+            // Solo documenti dello stesso titolare del conto: le fatture della
+            // P.IVA personale non si incassano sui conti di G8 Labs.
+            ->where('emittente_id', $this->emittenteDel($transaction))
             ->whereBetween('issue_date', [
                 $transaction->booked_at->copy()->subDays(self::WINDOW_DAYS),
                 $transaction->booked_at->copy()->addDays(self::WINDOW_DAYS),
@@ -96,6 +95,7 @@ class MatchSuggestionService
         $to = $transaction->booked_at->copy()->addDays(self::WINDOW_DAYS);
 
         $passive = PassiveInvoice::with('supplier')
+            ->where('emittente_id', $this->emittenteDel($transaction))
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
             ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->whereNull('reimbursement_id')
             ->whereBetween('document_date', [$from, $to])
@@ -140,6 +140,12 @@ class MatchSuggestionService
         // si chiude con "Segna come costo". In entrambi i casi agganciare la
         // spesa al movimento conterebbe lo stesso denaro due volte, e il legame
         // col cliente lo tiene già la spesa per conto suo (riaddebito in art. 15).
+
+        // Costi della società: non si propongono per i movimenti di un altro
+        // emittente (es. il conto della P.IVA personale).
+        if ($this->emittenteDel($transaction) !== Emittente::principale()->id) {
+            $costi = collect();
+        }
 
         return $passive->concat($costi);
     }
@@ -213,6 +219,7 @@ class MatchSuggestionService
         $to = $transaction->booked_at->copy()->addDays(self::FUZZY_DAYS);
 
         return PassiveInvoice::with('supplier')
+            ->where('emittente_id', $this->emittenteDel($transaction))
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
             ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->whereNull('reimbursement_id')
             ->whereBetween('document_date', [$from, $to])
@@ -236,6 +243,14 @@ class MatchSuggestionService
      * True se almeno un token "significativo" (≥4 caratteri) del nome fornitore
      * compare nel testo del movimento.
      */
+    /**
+     * Titolare del conto del movimento: i candidati devono essere suoi.
+     */
+    private function emittenteDel(BankTransaction $transaction): int
+    {
+        return Emittente::idDi($transaction);
+    }
+
     private function nameInHaystack(string $name, string $haystack): bool
     {
         if ($haystack === '' || trim($name) === '') {

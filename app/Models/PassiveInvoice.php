@@ -22,6 +22,7 @@ class PassiveInvoice extends Model
     public const TYPE_CREDIT_NOTE = 'passive_credit_note';
 
     protected $fillable = [
+        'emittente_id',
         'supplier_id',
         'fic_document_id',
         'fic_document_token',
@@ -71,6 +72,33 @@ class PassiveInvoice extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(self::SCOPE_SENZA_INTEGRAZIONI, fn (Builder $q) => $q->whereNull($q->qualifyColumn('integration_type')));
+
+        // Oggi le passive arrivano tutte da Fatture in Cloud, cioè a G8 Labs.
+        static::creating(function (PassiveInvoice $invoice): void {
+            $invoice->emittente_id ??= Emittente::principale()->id;
+        });
+    }
+
+    /**
+     * Destinatario della fattura: G8 Labs o la P.IVA personale.
+     */
+    public function emittente(): BelongsTo
+    {
+        return $this->belongsTo(Emittente::class);
+    }
+
+    /**
+     * Solo le passive della società: registro acquisti, IVA, prima nota e
+     * conto economico di G8 Labs non devono vedere quelle della P.IVA.
+     */
+    public function scopeDellEmittente(Builder $query, int $emittenteId): Builder
+    {
+        return $query->where($query->qualifyColumn('emittente_id'), $emittenteId);
+    }
+
+    public function scopeDellaSocieta(Builder $query): Builder
+    {
+        return $query->where($query->qualifyColumn('emittente_id'), Emittente::principale()->id);
     }
 
     /** Query che include anche le integrazioni. */

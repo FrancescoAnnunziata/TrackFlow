@@ -95,11 +95,14 @@
             <div class="g-head"><span class="g-num">1</span><p class="g-h">Prima di iniziare: il cliente</p></div>
             <p>Una fattura nasce dai dati del cliente. Menu <strong>Clienti</strong> → apri il cliente → sezione <strong>Fatturazione</strong>. Verifica:</p>
             <ul class="g-list">
-                <li><strong>Provider fatturazione</strong> = <em>Fatture in Cloud</em> (solo questi sono fatturabili da TrackFlow; Fiscozen/Altro no).</li>
+                <li><strong>Emittente</strong>: chi fattura il cliente. <em>G8 Labs · Fatture in Cloud</em> per i clienti della società, che si fatturano da TrackFlow; <em>Giorgio Giotto · Fiscozen</em> per quelli della P.IVA personale, che si fatturano fuori.</li>
                 <li><strong>Modello</strong> (A ore / A giornata / Forfait), <strong>Periodicità</strong> e <strong>Timing</strong>: decidono come vengono calcolate le righe.</li>
                 <li>Le <strong>tariffe</strong> (oraria, giornaliera o forfait) e l'<strong>IVA (%)</strong>.</li>
                 <li>Nei <strong>Dati fiscali</strong>: almeno <strong>P.IVA</strong> <em>oppure</em> <strong>Codice Fiscale</strong>. Senza, l'invio a Fatture in Cloud si blocca.</li>
             </ul>
+            <div class="g-callout g-note" style="margin-top:.6rem">
+                Ragione sociale, P.IVA, indirizzo e IBAN di <strong>G8 Labs</strong> e della <strong>P.IVA di Giorgio</strong> stanno nella pagina <strong>Emittenti</strong> (gruppo <em>Impostazioni</em>): sono le intestazioni dei preventivi e delle fatture. Lì si vedono anche il canale di invio e il regime fiscale di ogni anno. Si cambiano solo su indicazione di Giorgio.
+            </div>
             <div class="g-callout g-info">Se il cliente è già a posto (fattura ricorrente), salta al passo 2.</div>
         </div>
 
@@ -352,6 +355,7 @@
         <div class="g-card">
             <p class="g-h">🔗 La fase di riconciliazione</p>
             <p>Quando hai <strong>emesso tutte le attive</strong>, <strong>registrato le spese su Fatture in Cloud</strong> e <strong>importato le passive</strong> da lì, e <strong>caricato i movimenti bancari</strong>, si «chiude il cerchio»: riconciliare vuol dire <strong>collegare ogni movimento al documento che gli corrisponde</strong> (una fattura incassata, una fattura d'acquisto pagata).</p>
+            <div class="g-callout g-warn">Un movimento si collega solo a documenti dello <strong>stesso emittente</strong>: un bonifico arrivato su un conto di G8 Labs non può chiudere una fattura della P.IVA di Giorgio, e viceversa. Gli elenchi propongono solo i documenti compatibili e TrackFlow rifiuta gli abbinamenti sbagliati, anche quelli proposti dall'assistente.</div>
             <p class="g-sub">L'ordine giusto — prima i documenti, poi i movimenti sciolti:</p>
             <ol class="g-steps g-overview" style="margin-top:.3rem">
                 <li><span class="g-num">6</span> Fatture <strong>attive</strong> → incassi (movimenti in <strong>entrata</strong>)</li>

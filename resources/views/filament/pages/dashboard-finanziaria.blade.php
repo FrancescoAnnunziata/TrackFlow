@@ -201,6 +201,12 @@
         <x-slot name="heading">Giorgio Giotto — P.IVA forfettaria</x-slot>
         <x-slot name="description">Il forfettario tassa l'incassato e non deduce i costi. Le fatture contano nel mese in cui sono state pagate, per l'imponibile e al netto dei rimborsi. Include le vendite dell'e-commerce, al lordo delle commissioni.</x-slot>
 
+        @unless ($f['regime_forfettario'])
+            <div class="fd-card fd-sub" style="margin-bottom:1rem;">
+                Nel {{ $year }} la P.IVA personale non era in regime forfettario: soglia e stima delle tasse non si applicano a quell'anno.
+            </div>
+        @endunless
+
         {{-- Semaforo limite annuo --}}
         @php
             $perc = min(100, (float) $f['perc_limite']);

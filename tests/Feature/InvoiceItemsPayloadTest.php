@@ -13,7 +13,7 @@ function makeItemsInvoice(): Invoice
 {
     $client = Client::create([
         'name' => 'Fedespedi',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'vat_number' => '01234567890',
         'vat_rate' => 22,
         'consulting_label' => 'Consulenza digitale',
@@ -110,7 +110,7 @@ it('always sends the SDI payment method on e-invoices, from client or config def
     config(['services.fic.e_invoice' => true, 'services.fic.ei_payment_method' => 'MP05']);
 
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Fioravanti', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $client = Client::create(['name' => 'Fioravanti', 'emittente_id' => emittenteSocieta()->id, 'vat_rate' => 22]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id,
         'issue_date' => '2026-08-01', 'period_from' => '2026-07-01', 'period_to' => '2026-07-31',
@@ -132,7 +132,7 @@ it('omits ei_data on paper documents', function () {
     config(['services.fic.e_invoice' => false]);
 
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Cartacea', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $client = Client::create(['name' => 'Cartacea', 'emittente_id' => emittenteSocieta()->id, 'vat_rate' => 22]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id,
         'issue_date' => '2026-08-01', 'period_from' => '2026-07-01', 'period_to' => '2026-07-31',

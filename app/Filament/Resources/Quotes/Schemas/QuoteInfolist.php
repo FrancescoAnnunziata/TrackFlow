@@ -20,9 +20,9 @@ class QuoteInfolist
                         TextEntry::make('number')->label('Numero'),
                         TextEntry::make('issue_date')->label('Data')->date(),
                         TextEntry::make('client.name')->label('Cliente'),
-                        TextEntry::make('issuer_key')
+                        TextEntry::make('emittente.nome')
                             ->label('Intestazione')
-                            ->state(fn (Quote $record): string => $record->emittente()->nome()),
+                            ->state(fn (Quote $record): string => $record->emittente?->nome ?? '—'),
                         TextEntry::make('status')
                             ->label('Stato')
                             ->formatStateUsing(fn (string $state): string => QuoteForm::statusOptions()[$state] ?? $state)

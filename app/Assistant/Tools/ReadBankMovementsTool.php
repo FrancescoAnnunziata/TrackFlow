@@ -36,6 +36,7 @@ class ReadBankMovementsTool implements AssistantTool
                 'max_amount' => ['type' => 'number', 'description' => 'Importo massimo (valore assoluto)'],
                 'from_date' => ['type' => 'string', 'description' => 'Data dal (YYYY-MM-DD)'],
                 'until_date' => ['type' => 'string', 'description' => 'Data al (YYYY-MM-DD)'],
+                'emittente' => ['type' => 'string', 'enum' => ['g8labs', 'giorgio'], 'description' => 'Solo movimenti dei conti di un emittente: g8labs = G8 Labs S.r.l., giorgio = P.IVA personale di Giorgio'],
                 'limit' => ['type' => 'integer', 'description' => 'Massimo risultati (default 25, max 100)'],
             ],
         ];
@@ -46,7 +47,8 @@ class ReadBankMovementsTool implements AssistantTool
         $limit = max(1, min(100, (int) ($input['limit'] ?? 25)));
 
         $rows = BankTransaction::query()
-            ->with(['bankAccount', 'reconciliations.reconcilable'])
+            ->with(['bankAccount.emittente', 'reconciliations.reconcilable'])
+            ->when(filled($input['emittente'] ?? null), fn (Builder $q) => $q->whereRelation('bankAccount.emittente', 'chiave', $input['emittente']))
             ->when(filled($input['search'] ?? null), fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('description', 'like', '%'.$input['search'].'%')
                 ->orWhere('counterparty', 'like', '%'.$input['search'].'%')))
@@ -66,11 +68,12 @@ class ReadBankMovementsTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (BankTransaction $t): string => sprintf(
-            '- id=%d | %s | € %s | %s | %s | %s | %s',
+            '- id=%d | %s | € %s | %s (%s) | %s | %s | %s',
             $t->id,
             optional($t->booked_at)->format('d/m/Y') ?? '',
             number_format((float) $t->amount, 2, ',', '.'),
             $t->bankAccount->name ?? '—',
+            $t->bankAccount?->emittente?->nome ?? '—',
             mb_substr((string) $t->description, 0, 60),
             $t->reconciled ? 'riconciliato' : 'da riconciliare',
             LinkDocumento::movimento($t->id),

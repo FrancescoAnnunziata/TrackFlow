@@ -226,30 +226,23 @@ it('intesta il documento a g8labs di default e all\'intestazione scelta altrimen
         ->assertSee('g8labs srl unipersonale')
         ->assertDontSee('Giorgio Giotto');
 
-    $quote->update(['issuer_key' => 'giorgio']);
+    $quote->update(['emittente_id' => emittentePiva()->id]);
 
     $this->actingAs($contact)
         ->get(route('quote.document', $quote))
         ->assertOk()
         ->assertSee('Giorgio Giotto')
         ->assertDontSee('g8labs srl unipersonale');
-
-    // Un'intestazione non più configurata non rompe i documenti vecchi.
-    $quote->update(['issuer_key' => 'sparita']);
-
-    $this->actingAs($contact)
-        ->get(route('quote.document', $quote))
-        ->assertOk()
-        ->assertSee('g8labs srl unipersonale');
 });
 
 it('stampa solo i dati compilati dell\'intestazione', function () {
     ['contact' => $contact, 'quote' => $quote] = quoteScenario();
 
-    // Senza P.IVA configurata la riga non deve comparire...
+    // Senza P.IVA compilata la riga non deve comparire...
+    emittenteSocieta()->update(['partita_iva' => null]);
     $this->actingAs($contact)->get(route('quote.document', $quote))->assertDontSee('P.IVA IT9');
 
-    config()->set('azienda.emittenti.g8labs.partita_iva', 'IT99999999999');
+    emittenteSocieta()->update(['partita_iva' => 'IT99999999999']);
 
     // ...con la P.IVA compilata, sì.
     $this->actingAs($contact)->get(route('quote.document', $quote))->assertSee('P.IVA IT99999999999');

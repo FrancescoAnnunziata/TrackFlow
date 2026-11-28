@@ -156,6 +156,15 @@ class BankTransaction extends Model
         };
     }
 
+    /**
+     * Movimenti dei conti di un emittente: si riconciliano solo con i suoi
+     * documenti.
+     */
+    public function scopeDellEmittente(Builder $query, int $emittenteId): Builder
+    {
+        return $query->whereRelation('bankAccount', 'emittente_id', $emittenteId);
+    }
+
     public function scopeUnreconciled(Builder $query): Builder
     {
         return $query->where('reconciled', false);

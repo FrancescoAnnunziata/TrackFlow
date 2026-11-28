@@ -4,16 +4,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Intestazioni disponibili sui documenti
+    | Intestazioni (dismesse)
     |--------------------------------------------------------------------------
     |
-    | Chi emette il preventivo si sceglie dal form del preventivo stesso: di
-    | default la società, in alternativa la persona fisica. Di ogni intestazione
-    | compare solo ciò che è compilato: i campi vuoti spariscono dal documento.
+    | Le intestazioni ora stanno nella tabella `emittenti` e si modificano
+    | dalla pagina Emittenti. Questo blocco lo legge soltanto la migrazione
+    | 2026_11_28_140000_create_emittenti_table, una volta, per copiare i dati
+    | del .env di produzione. Va tolto, insieme alle variabili G8LABS_* e
+    | GIORGIO_* del .env, dopo il deploy che crea la tabella.
     |
     */
-
-    'default' => env('EMITTENTE_DEFAULT', 'g8labs'),
 
     'emittenti' => [
 
@@ -60,8 +60,7 @@ return [
     | Condizioni stampate sul preventivo
     |--------------------------------------------------------------------------
     |
-    | Valgono per tutte le intestazioni; una singola intestazione può
-    | sovrascriverle aggiungendo una chiave 'condizioni' al proprio blocco.
+    | Valgono per tutte le intestazioni.
     |
     */
 

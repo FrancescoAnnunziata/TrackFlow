@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Emittente;
 use Tests\TestCase;
 
 /*
@@ -43,7 +44,14 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/** G8 Labs: l'emittente principale, creato dalla migrazione. */
+function emittenteSocieta(): Emittente
 {
-    // ..
+    return Emittente::principale();
+}
+
+/** La P.IVA personale di Giorgio, creata dalla migrazione. */
+function emittentePiva(): Emittente
+{
+    return Emittente::where('chiave', 'giorgio')->firstOrFail();
 }

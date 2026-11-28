@@ -47,7 +47,7 @@ it('infers the conto from keywords', function () {
 });
 
 it('itemizes a re-charge line when parsed amounts match the total', function () {
-    $client = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $client = Client::create(['name' => 'Cliente FiC', 'emittente_id' => emittenteSocieta()->id]);
     $user = User::factory()->admin()->create();
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '5/2026',
@@ -68,7 +68,7 @@ it('itemizes a re-charge line when parsed amounts match the total', function () 
 });
 
 it('falls back to a single lump expense when detail is absent (Vedi note)', function () {
-    $client = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $client = Client::create(['name' => 'Cliente FiC', 'emittente_id' => emittenteSocieta()->id]);
     $user = User::factory()->admin()->create();
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '6/2026',
@@ -88,7 +88,7 @@ it('falls back to a single lump expense when detail is absent (Vedi note)', func
 });
 
 it('uses invoice notes for the detail when the line points to them', function () {
-    $client = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $client = Client::create(['name' => 'Cliente FiC', 'emittente_id' => emittenteSocieta()->id]);
     $user = User::factory()->admin()->create();
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '10/2026',
@@ -109,7 +109,7 @@ it('uses invoice notes for the detail when the line points to them', function ()
 
 it('rolls back only the expenses it created, leaving others intact', function () {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $client = Client::create(['name' => 'Cliente FiC', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => 'X1',
         'issue_date' => '2026-05-01', 'period_from' => '2026-05-01', 'period_to' => '2026-05-01',
@@ -134,7 +134,7 @@ it('skips invoices that already have linked expenses and non-FiC clients', funct
     $user = User::factory()->admin()->create();
 
     // Cliente Fiscozen: da ignorare.
-    $fiscozen = Client::create(['name' => 'Cliente Fiscozen', 'invoicing_provider' => 'fiscozen']);
+    $fiscozen = Client::create(['name' => 'Cliente Fiscozen', 'emittente_id' => emittentePiva()->id]);
     $inv1 = Invoice::create([
         'user_id' => $user->id, 'client_id' => $fiscozen->id, 'number' => 'F1',
         'issue_date' => '2026-05-01', 'period_from' => '2026-05-01', 'period_to' => '2026-05-01',
@@ -143,7 +143,7 @@ it('skips invoices that already have linked expenses and non-FiC clients', funct
     $inv1->items()->create(['name' => 'Rimborsi spese', 'qty' => 1, 'net_price' => 50, 'vat_kind' => 'art15', 'line_kind' => 'consulting', 'sort' => 0]);
 
     // Cliente FiC ma con spesa già collegata: da ignorare.
-    $fic = Client::create(['name' => 'Cliente FiC', 'invoicing_provider' => 'fatture_in_cloud']);
+    $fic = Client::create(['name' => 'Cliente FiC', 'emittente_id' => emittenteSocieta()->id]);
     $inv2 = Invoice::create([
         'user_id' => $user->id, 'client_id' => $fic->id, 'number' => 'C1',
         'issue_date' => '2026-05-02', 'period_from' => '2026-05-02', 'period_to' => '2026-05-02',

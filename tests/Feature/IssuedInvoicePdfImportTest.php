@@ -41,7 +41,7 @@ function extractedRow(int $clientId, array $overrides = []): array
 
 function fiscozenClient(string $name = 'Quisto'): Client
 {
-    return Client::create(['name' => $name, 'invoicing_provider' => Client::PROVIDER_FISCOZEN, 'vat_rate' => 0]);
+    return Client::create(['name' => $name, 'emittente_id' => emittentePiva()->id, 'vat_rate' => 0]);
 }
 
 it('creates an issued invoice with its lines, attachment and no VAT', function () {
@@ -253,7 +253,7 @@ it('says who assigns the invoice number, depending on the client', function () {
     $this->actingAs($user);
 
     $fiscozen = fiscozenClient();
-    $fic = Client::create(['name' => 'Fedespedi', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $fic = Client::create(['name' => 'Fedespedi', 'emittente_id' => emittenteSocieta()->id, 'vat_rate' => 22]);
 
     $make = fn (Client $client): Invoice => Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id,

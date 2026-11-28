@@ -20,7 +20,7 @@ it('opens the documents modal for ricavi and costi matching the builder', functi
     $this->actingAs($user);
 
     // --- Ricavi: fattura attiva FiC di gennaio + una bozza (esclusa). ---
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $fattura = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '1/2026',
         'issue_date' => '2026-01-10', 'period_from' => '2026-01-01', 'period_to' => '2026-01-31',

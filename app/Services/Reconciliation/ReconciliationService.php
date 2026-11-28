@@ -93,7 +93,9 @@ class ReconciliationService
         $covered = $document->reconciledAmount() + $tolerance >= $target;
 
         if ($document instanceof Invoice) {
-            if ($covered) {
+            // Con la data di incasso scritta a mano (P.IVA personale) la fattura
+            // resta pagata anche senza movimenti collegati.
+            if ($covered || $document->paid_at !== null) {
                 $document->status = 'paid';
             } elseif ($document->status === 'paid') {
                 $document->status = 'sent';

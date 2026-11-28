@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\Client;
+use App\Models\Emittente;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\User;
@@ -171,9 +172,8 @@ class SubscriptionInvoiceImporter
             'email' => $customer['email'] ?? null,
             'certified_email' => $customer['certified_email'] ?? null,
             'ei_code' => $customer['ei_code'] ?? null,
-            // Emettibile da qui: senza questo il pulsante "Invia a Fatture in
-            // Cloud" non comparirebbe sulla fattura appena creata.
-            'invoicing_provider' => Client::PROVIDER_FIC,
+            // Cliente della società: le sue fatture partono da Fatture in Cloud.
+            'emittente_id' => Emittente::principale()->id,
         ]);
 
         return [$client, true];

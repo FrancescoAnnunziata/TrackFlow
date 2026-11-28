@@ -202,6 +202,7 @@ class PassiveInvoicesTable
 
         return BankTransaction::query()
             ->with('bankAccount')
+            ->dellEmittente($record->emittente_id)
             ->where('amount', '<', 0)
             ->whereBetween('booked_at', [$from, $to])
             ->whereRaw('ABS(amount) BETWEEN ? AND ?', [$total * 0.5, $total * 1.5])

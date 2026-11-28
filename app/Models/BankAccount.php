@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class BankAccount extends Model
 {
     protected $fillable = [
+        'emittente_id',
         'name',
         'bank_key',
         'iban',
@@ -26,6 +29,31 @@ class BankAccount extends Model
         'opening_balance_date' => 'date',
         'active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // Senza indicazione il conto è della società.
+        static::creating(function (BankAccount $account): void {
+            $account->emittente_id ??= Emittente::principale()->id;
+        });
+    }
+
+    /**
+     * Titolare del conto: i movimenti si riconciliano solo con documenti dello
+     * stesso emittente.
+     */
+    public function emittente(): BelongsTo
+    {
+        return $this->belongsTo(Emittente::class);
+    }
+
+    /**
+     * Solo i conti della società: cassa e prima nota di G8 Labs.
+     */
+    public function scopeDellaSocieta(Builder $query): Builder
+    {
+        return $query->where($query->qualifyColumn('emittente_id'), Emittente::principale()->id);
+    }
 
     public function transactions(): HasMany
     {

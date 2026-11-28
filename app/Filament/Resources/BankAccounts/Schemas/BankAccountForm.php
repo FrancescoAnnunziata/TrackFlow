@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BankAccounts\Schemas;
 
+use App\Models\Emittente;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -17,6 +18,12 @@ class BankAccountForm
                 TextInput::make('name')
                     ->label('Nome conto')
                     ->required(),
+                Select::make('emittente_id')
+                    ->label('Titolare')
+                    ->relationship('emittente', 'nome')
+                    ->default(fn (): int => Emittente::principale()->id)
+                    ->required()
+                    ->helperText('I movimenti si riconciliano solo con documenti dello stesso titolare.'),
                 Select::make('bank_key')
                     ->label('Banca (preset import CSV)')
                     ->options(fn (): array => collect(config('banks.presets', []))

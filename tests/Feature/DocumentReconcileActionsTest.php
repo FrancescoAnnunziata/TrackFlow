@@ -44,7 +44,7 @@ it('reconciles a passive invoice to a bank movement from its view page', functio
 it('lists the linked reconciliations on an active invoice view page', function () {
     $user = User::factory()->admin()->create();
     $this->actingAs($user);
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '3/2026',
         'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',
@@ -71,7 +71,7 @@ it('lists the linked reconciliations on an active invoice view page', function (
 it('shows the coverage action for an invoice covered only by a credit note', function () {
     $user = User::factory()->admin()->create();
     $this->actingAs($user);
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '9/2026',
         'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',

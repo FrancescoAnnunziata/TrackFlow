@@ -20,6 +20,9 @@ class BankAccountsTable
                     ->label('Conto')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('emittente.nome')
+                    ->label('Titolare')
+                    ->toggleable(),
                 TextColumn::make('bank_key')
                     ->label('Banca')
                     ->badge()

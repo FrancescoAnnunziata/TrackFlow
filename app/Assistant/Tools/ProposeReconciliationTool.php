@@ -5,6 +5,7 @@ namespace App\Assistant\Tools;
 use App\Assistant\AssistantTool;
 use App\Assistant\AssistantToolResult;
 use App\Models\BankTransaction;
+use App\Models\Emittente;
 use App\Services\Reconciliation\MovementReconciler;
 
 /**
@@ -27,6 +28,7 @@ class ProposeReconciliationTool implements AssistantTool
         return 'Prepara una proposta di riconciliazione di un movimento bancario verso uno o più documenti '
             .'(fatture attive, fatture passive, costi, rimborsi spese). NON esegue: crea una proposta che l\'utente deve confermare. '
             .'Puoi indicare più documenti la cui somma torna con l\'importo del movimento. '
+            .'Movimento e documenti devono avere lo stesso emittente (G8 Labs o la P.IVA personale di Giorgio): i tool di lettura lo indicano. '
             .'Verifica prima con gli altri tool che movimento e documenti esistano e che gli importi tornino.';
     }
 
@@ -77,6 +79,18 @@ class ProposeReconciliationTool implements AssistantTool
             $doc = $this->reconciler->resolve((string) ($t['type'] ?? ''), (int) ($t['id'] ?? 0));
             if ($doc === null) {
                 return AssistantToolResult::error('Documento non trovato: '.json_encode($t).'.');
+            }
+
+            // Mai fra emittenti diversi: un movimento di G8 Labs non chiude una
+            // fattura della P.IVA personale, e viceversa.
+            if (Emittente::idDi($doc) !== Emittente::idDi($tx)) {
+                return AssistantToolResult::error(sprintf(
+                    '%s è di %s, il movimento id %d è su un conto di %s: non si possono riconciliare.',
+                    $this->reconciler->label($doc),
+                    Emittente::find(Emittente::idDi($doc))?->nome ?? '—',
+                    $tx->id,
+                    Emittente::find(Emittente::idDi($tx))?->nome ?? '—',
+                ));
             }
 
             $residual = $this->reconciler->documentResidual($doc);

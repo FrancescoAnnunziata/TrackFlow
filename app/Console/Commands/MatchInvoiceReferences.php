@@ -107,6 +107,7 @@ class MatchInvoiceReferences extends Command
         $docDate = $invoice->document_date;
 
         $candidates = BankTransaction::query()
+            ->dellEmittente($invoice->emittente_id)
             ->where('amount', '<', 0)
             ->whereRaw('ABS(ABS(amount) - ?) < 0.01', [$gross])
             ->get()

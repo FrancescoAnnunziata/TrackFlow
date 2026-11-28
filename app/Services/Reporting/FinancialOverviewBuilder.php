@@ -4,9 +4,9 @@ namespace App\Services\Reporting;
 
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
-use App\Models\Client;
 use App\Models\Corrispettivo;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  *  - G8LABS (SRL, regime ordinario): ricavi, costi, margine e IVA del periodo,
  *    più una foto di liquidità/crediti/debiti;
  *  - Giorgio Giotto (P.IVA forfettaria): incassato e stima tasse/contributi.
- * La separazione si basa sull'invoicing_provider del cliente.
+ * La separazione si basa sull'emittente dei documenti e dei conti.
  */
 class FinancialOverviewBuilder
 {
@@ -63,7 +63,7 @@ class FinancialOverviewBuilder
         // Le note di credito attive entrano col segno negativo (stornano ricavo e
         // IVA a debito), come le note di credito passive sul lato costi.
         $invoices = Invoice::query()
-            ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FIC))
+            ->where('emittente_id', Emittente::principale()->id)
             ->where('status', '!=', 'draft')
             ->whereYear('issue_date', $year)
             ->with(['items', 'hours', 'expenses'])
@@ -78,7 +78,7 @@ class FinancialOverviewBuilder
         // Costi + IVA a credito: fatture passive (netto), costi e spese non
         // collegate a una passiva (per non contare due volte lo stesso costo).
         // Le note di credito entrano col segno negativo.
-        foreach (PassiveInvoice::whereYear('document_date', $year)->get() as $p) {
+        foreach (PassiveInvoice::dellaSocieta()->whereYear('document_date', $year)->get() as $p) {
             $m = Carbon::parse($p->document_date)->month;
             $sign = $p->isCreditNote() ? -1 : 1;
             $months[$m]['costi'] += $sign * (float) $p->amount_net;
@@ -110,7 +110,7 @@ class FinancialOverviewBuilder
         // I giroconti tra conti propri sono esclusi dal quadro operativo e mostrati
         // a parte: non sono ricavi né costi, si limitano a spostare liquidità.
         $transfers = $this->transferIds($year);
-        foreach (BankTransaction::whereYear('booked_at', $year)->withCount('reconciliations')->get() as $t) {
+        foreach (BankTransaction::whereYear('booked_at', $year)->whereRelation('bankAccount', 'emittente_id', Emittente::principale()->id)->withCount('reconciliations')->get() as $t) {
             $m = Carbon::parse($t->booked_at)->month;
             $amount = (float) $t->amount;
 
@@ -182,7 +182,7 @@ class FinancialOverviewBuilder
      */
     public function g8labsSnapshot(): array
     {
-        $accounts = BankAccount::orderBy('name')->get()
+        $accounts = BankAccount::dellaSocieta()->orderBy('name')->get()
             ->map(fn (BankAccount $a): array => ['name' => $a->name, 'balance' => $a->currentBalance()])
             ->all();
 
@@ -191,7 +191,7 @@ class FinancialOverviewBuilder
         // crediti: si limitano a ridurre la fattura stornata.
         $crediti = 0.0;
         $unpaidInvoices = Invoice::query()
-            ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FIC))
+            ->where('emittente_id', Emittente::principale()->id)
             ->whereNotIn('status', ['draft', 'paid'])
             ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
             ->with(['items', 'hours', 'expenses', 'reconciliations', 'creditNotes.items'])
@@ -201,7 +201,7 @@ class FinancialOverviewBuilder
         }
 
         $debiti = 0.0;
-        $unpaidPassives = PassiveInvoice::where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
+        $unpaidPassives = PassiveInvoice::dellaSocieta()->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
             ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->with('reconciliations')
             ->get();
@@ -252,8 +252,15 @@ class FinancialOverviewBuilder
             ];
         }
 
+        // Emittenti in forfettario quell'anno (la P.IVA personale, salvo gli anni
+        // in ordinario come il 2025: lì il quadro resta vuoto).
+        $forfettari = Emittente::with('regimiAnnuali')->get()
+            ->filter(fn (Emittente $e): bool => $e->isForfettarioNel($year))
+            ->pluck('id')
+            ->all();
+
         $invoices = Invoice::query()
-            ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FISCOZEN))
+            ->whereIn('emittente_id', $forfettari)
             ->where('status', '!=', 'draft')
             ->where(fn ($q) => $q->whereYear('issue_date', $year)->orWhereYear('paid_at', $year))
             ->with(['items', 'creditNotes.items'])
@@ -281,7 +288,7 @@ class FinancialOverviewBuilder
 
         // Incassi e-commerce: netto dei resi, per il giorno in cui l'ordine è
         // stato pagato (il forfettario ragiona per cassa).
-        $corrispettivi = Corrispettivo::query()
+        $corrispettivi = $forfettari === [] ? collect() : Corrispettivo::query()
             ->whereYear('date', $year)
             ->get();
         foreach ($corrispettivi as $giorno) {
@@ -315,6 +322,7 @@ class FinancialOverviewBuilder
             'fatture_anno' => $fatture,
             'corrispettivi_anno' => $eCommerce,
             'incassato_anno' => $incassato,
+            'regime_forfettario' => $forfettari !== [],
             'emesso_anno' => round($emesso, 2),
             'da_incassare' => round($daIncassare, 2),
             'limite' => $limite,

@@ -17,7 +17,7 @@ uses(RefreshDatabase::class);
 function sentInvoice(int $net): Invoice
 {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '3/2026',
         'issue_date' => '2026-06-10', 'period_from' => '2026-06-01', 'period_to' => '2026-06-30',
@@ -49,8 +49,11 @@ it('hides Registra incasso for Fiscozen client invoices but shows it for FIC one
     $user = User::factory()->admin()->create();
     $this->actingAs($user);
 
-    $make = function (string $provider, string $number) use ($user): Invoice {
-        $client = Client::create(['name' => 'Cli '.$provider, 'invoicing_provider' => $provider]);
+    // G8 Labs ha un conto in TrackFlow, la P.IVA personale no.
+    BankAccount::create(['name' => 'InBank', 'bank_key' => 'inbank', 'emittente_id' => emittenteSocieta()->id]);
+
+    $make = function (int $emittenteId, string $number) use ($user): Invoice {
+        $client = Client::create(['name' => 'Cli '.$number, 'emittente_id' => $emittenteId]);
         $invoice = Invoice::create([
             'user_id' => $user->id, 'client_id' => $client->id, 'number' => $number,
             'issue_date' => '2026-06-10', 'period_from' => '2026-06-01', 'period_to' => '2026-06-30',
@@ -61,8 +64,8 @@ it('hides Registra incasso for Fiscozen client invoices but shows it for FIC one
         return $invoice;
     };
 
-    $fic = $make(Client::PROVIDER_FIC, '10/2026');
-    $fiscozen = $make(Client::PROVIDER_FISCOZEN, '11/2026');
+    $fic = $make(emittenteSocieta()->id, '10/2026');
+    $fiscozen = $make(emittentePiva()->id, '11/2026');
 
     Livewire::test(ListInvoices::class)
         ->assertActionVisible(TestAction::make('registra_incasso')->table($fic))

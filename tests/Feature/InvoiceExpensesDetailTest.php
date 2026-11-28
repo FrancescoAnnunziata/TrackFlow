@@ -20,7 +20,7 @@ uses(RefreshDatabase::class);
 function invoiceWithExpenses(array $expenses): Invoice
 {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Fedespedi', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Fedespedi', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id,
         'issue_date' => '2026-08-01', 'period_from' => '2026-07-01', 'period_to' => '2026-07-31',

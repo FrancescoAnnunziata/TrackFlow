@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Models\Emittente;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Illuminate\Support\Collection;
@@ -30,7 +31,7 @@ class InvoiceExpenseExtractor
     public function proposals(): Collection
     {
         return Invoice::query()
-            ->whereHas('client', fn ($q) => $q->where('invoicing_provider', 'fatture_in_cloud'))
+            ->whereRelation('emittente', 'canale_invio', Emittente::CANALE_FIC)
             // Idempotenza: salta le fatture che hanno già spese collegate
             // (le recenti registrate a mano o un'esecuzione precedente).
             ->whereDoesntHave('expenses')

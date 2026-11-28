@@ -10,6 +10,7 @@ use App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource;
 use App\Filament\Resources\Reimbursements\ReimbursementResource;
 use App\Models\BankTransaction;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
@@ -58,7 +59,7 @@ class EditBankTransaction extends EditRecord
             ->schema([
                 Select::make('passive_invoice_id')
                     ->label('Fattura passiva')
-                    ->options(fn (): array => self::passiveInvoiceOptions())
+                    ->options(fn (): array => self::passiveInvoiceOptions($this->getRecord()))
                     ->searchable()
                     ->required(),
                 TextInput::make('amount')
@@ -152,9 +153,10 @@ class EditBankTransaction extends EditRecord
      *
      * @return array<int, string>
      */
-    private static function passiveInvoiceOptions(): array
+    private static function passiveInvoiceOptions(BankTransaction $record): array
     {
         return PassiveInvoice::with('supplier')
+            ->dellEmittente(Emittente::idDi($record))
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
             ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)
             ->latest('document_date')

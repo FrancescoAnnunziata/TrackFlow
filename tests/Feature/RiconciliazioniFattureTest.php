@@ -24,7 +24,7 @@ function periodo(): array
 
 it('lists active invoices with their incasso movement and linked credit note', function () {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '5/2026',
         'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',
@@ -130,7 +130,7 @@ it('marks the giustificativo per document origin in the passive export', functio
 
 it('references issued invoices on Fatture in Cloud in the active export', function () {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Acme', 'invoicing_provider' => Client::PROVIDER_FIC]);
+    $client = Client::create(['name' => 'Acme', 'emittente_id' => emittenteSocieta()->id]);
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '7/2026',
         'issue_date' => '2026-03-01', 'period_from' => '2026-03-01', 'period_to' => '2026-03-31',

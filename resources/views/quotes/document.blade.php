@@ -4,7 +4,7 @@
     $euro = fn ($valore) => '€ ' . number_format((float) $valore, 2, ',', '.');
     // Chi emette questo preventivo: dà nome e logo anche alla cornice attorno
     // al documento, non solo al documento stesso.
-    $emittente = $quote->emittente();
+    $emittente = $quote->emittente;
     $logo = $emittente->logoDataUri();
 @endphp
 <!DOCTYPE html>
@@ -13,7 +13,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Preventivo {{ $quote->number }} — {{ $emittente->nome() }}</title>
+    <title>Preventivo {{ $quote->number }} — {{ $emittente->nome }}</title>
     @if ($logo)
         <link rel="icon" href="{{ $logo }}">
     @endif
@@ -152,7 +152,7 @@
             @if ($logo)
                 <img src="{{ $logo }}" alt="">
             @endif
-            <span>{{ $emittente->nome() }}</span>
+            <span>{{ $emittente->nome }}</span>
         </div>
         <div class="actions">
             @php

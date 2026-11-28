@@ -25,7 +25,7 @@ uses(RefreshDatabase::class);
 function fedespediScenario(bool $linked = true): array
 {
     $user = User::factory()->admin()->create();
-    $client = Client::create(['name' => 'Fedespedi', 'invoicing_provider' => Client::PROVIDER_FIC, 'vat_rate' => 22]);
+    $client = Client::create(['name' => 'Fedespedi', 'emittente_id' => emittenteSocieta()->id, 'vat_rate' => 22]);
 
     $invoice = Invoice::create([
         'user_id' => $user->id, 'client_id' => $client->id, 'number' => '3/2025',

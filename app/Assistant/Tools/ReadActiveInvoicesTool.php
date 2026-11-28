@@ -32,6 +32,7 @@ class ReadActiveInvoicesTool implements AssistantTool
                 'collected' => ['type' => 'boolean', 'description' => 'true = già incassate, false = ancora da incassare'],
                 'from_date' => ['type' => 'string', 'description' => 'Data emissione dal (YYYY-MM-DD)'],
                 'until_date' => ['type' => 'string', 'description' => 'Data emissione al (YYYY-MM-DD)'],
+                'emittente' => ['type' => 'string', 'enum' => ['g8labs', 'giorgio'], 'description' => 'Solo documenti di un emittente: g8labs = G8 Labs S.r.l., giorgio = P.IVA personale di Giorgio'],
                 'limit' => ['type' => 'integer', 'description' => 'Massimo risultati (default 25, max 100)'],
             ],
         ];
@@ -42,8 +43,9 @@ class ReadActiveInvoicesTool implements AssistantTool
         $limit = max(1, min(100, (int) ($input['limit'] ?? 25)));
 
         $rows = Invoice::query()
-            ->with('client')
+            ->with(['client', 'emittente'])
             ->where('type', '!=', Invoice::TYPE_CREDIT_NOTE)
+            ->when(filled($input['emittente'] ?? null), fn (Builder $q) => $q->whereRelation('emittente', 'chiave', $input['emittente']))
             ->when(filled($input['client'] ?? null), fn (Builder $q) => $q->whereHas('client', fn (Builder $c) => $c->where('name', 'like', '%'.$input['client'].'%')))
             ->when(filled($input['search'] ?? null), fn (Builder $q) => $q->where('number', 'like', '%'.$input['search'].'%'))
             ->when(filled($input['status'] ?? null), fn (Builder $q) => $q->where('status', $input['status']))
@@ -64,11 +66,12 @@ class ReadActiveInvoicesTool implements AssistantTool
         }
 
         $lines = $rows->map(fn (Invoice $i): string => sprintf(
-            '- id=%d | %s | %s | %s | tot € %s | da incassare € %s | %s%s | %s',
+            '- id=%d | %s | %s | %s | emittente %s | tot € %s | da incassare € %s | %s%s | %s',
             $i->id,
             $i->number ?: '(s.n.)',
             optional($i->issue_date)->format('d/m/Y') ?? '',
             $i->client->name ?? '—',
+            $i->emittente->nome ?? '—',
             number_format($i->total(), 2, ',', '.'),
             number_format($i->amountToCollect(), 2, ',', '.'),
             $i->status,

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Support\Emittente;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -47,7 +46,7 @@ class Quote extends Model
 
     protected $fillable = [
         'user_id',
-        'issuer_key',
+        'emittente_id',
         'client_id',
         'number',
         'issue_date',
@@ -161,12 +160,20 @@ class Quote extends Model
         );
     }
 
-    /**
-     * L'intestazione con cui esce il documento (default se non scelta).
-     */
-    public function emittente(): Emittente
+    protected static function booted(): void
     {
-        return Emittente::make($this->issuer_key);
+        // Senza scelta il preventivo esce a nome della società.
+        static::creating(function (Quote $quote): void {
+            $quote->emittente_id ??= Emittente::principale()->id;
+        });
+    }
+
+    /**
+     * L'intestazione con cui esce il documento.
+     */
+    public function emittente(): BelongsTo
+    {
+        return $this->belongsTo(Emittente::class);
     }
 
     /**

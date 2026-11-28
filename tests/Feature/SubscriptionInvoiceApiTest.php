@@ -130,7 +130,7 @@ it('crea la fattura, il cliente e le righe', function (): void {
 
     // P.IVA normalizzata: senza prefisso paese, com'è scritta in anagrafica.
     expect($client->vat_number)->toBe('01234567890')
-        ->and($client->invoicing_provider)->toBe(Client::PROVIDER_FIC);
+        ->and($client->emittente_id)->toBe(emittenteSocieta()->id);
 });
 
 it('non manda niente a Fatture in Cloud', function (): void {
@@ -198,7 +198,7 @@ it('riusa il cliente esistente anche se la P.IVA è scritta in un altro modo', f
     $client = Client::create([
         'name' => 'Rossi S.r.l.',
         'vat_number' => '01234567890',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
     ]);
 
     callSubscriptionApi(subscriptionPayload())
@@ -218,7 +218,7 @@ it('segnala il cliente che da qui non è fatturabile', function (): void {
     Client::create([
         'name' => 'Rossi Srl',
         'vat_number' => '01234567890',
-        'invoicing_provider' => Client::PROVIDER_FISCOZEN,
+        'emittente_id' => emittentePiva()->id,
     ]);
 
     $response = callSubscriptionApi(subscriptionPayload())->assertCreated();
@@ -231,7 +231,7 @@ it('usa la modalità di pagamento SDI dichiarata dall\'API, non quella del clien
     Client::create([
         'name' => 'Rossi Srl',
         'vat_number' => '01234567890',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'ei_payment_method' => 'MP05',
     ]);
 
@@ -244,7 +244,7 @@ it('ricade sull\'anagrafica cliente quando l\'API non dichiara la modalità', fu
     Client::create([
         'name' => 'Rossi Srl',
         'vat_number' => '01234567890',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'ei_payment_method' => 'MP05',
     ]);
 

@@ -357,7 +357,9 @@ class AssistenteAi extends Page
             }
             $outcome = app(MovementReconciler::class)->reconcile($tx, $action['targets'] ?? []);
             if ($outcome['attached'] === 0) {
-                $void('Niente da riconciliare', 'I documenti indicati risultano già riconciliati o pagati.');
+                $void('Niente da riconciliare', ($outcome['skipped'] ?? []) !== []
+                    ? 'I documenti indicati sono di un altro emittente rispetto al conto del movimento.'
+                    : 'I documenti indicati risultano già riconciliati o pagati.');
 
                 return;
             }

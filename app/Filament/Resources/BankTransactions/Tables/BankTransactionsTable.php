@@ -5,6 +5,7 @@ namespace App\Filament\Resources\BankTransactions\Tables;
 use App\Filament\Actions\SegnaAbbonamentoAction;
 use App\Models\BankTransaction;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
 use App\Models\Reimbursement;
@@ -221,7 +222,7 @@ class BankTransactionsTable
                             ->live(),
                         Select::make('manual_id')
                             ->label('Documento')
-                            ->options(fn (Get $get): array => self::manualOptions($get('manual_type')))
+                            ->options(fn (Get $get, BankTransaction $record): array => self::manualOptions($get('manual_type'), $record))
                             ->searchable(),
                     ]),
             ])
@@ -523,6 +524,7 @@ class BankTransactionsTable
         return BankTransaction::query()
             ->with('bankAccount')
             ->whereNull('transfer_group_id')
+            ->dellEmittente(Emittente::idDi($record))
             ->where('id', '!=', $record->id)
             ->where('amount', $amount < 0 ? '>' : '<', 0)
             ->whereBetween('booked_at', [$from, $to])
@@ -562,24 +564,29 @@ class BankTransactionsTable
     /**
      * @return array<int|string, string>
      */
-    private static function manualOptions(?string $type): array
+    private static function manualOptions(?string $type, BankTransaction $record): array
     {
+        // Solo documenti dello stesso emittente del conto. Costi e rimborsi sono
+        // della società: per i conti della P.IVA non si propongono.
+        $emittenteId = Emittente::idDi($record);
+        $dellaSocieta = $emittenteId === Emittente::principale()->id;
+
         return match ($type) {
-            'invoice' => Invoice::with('client')->where('status', '!=', 'paid')->latest('issue_date')->limit(100)->get()
+            'invoice' => Invoice::with('client')->dellEmittente($emittenteId)->where('status', '!=', 'paid')->latest('issue_date')->limit(100)->get()
                 ->mapWithKeys(fn (Invoice $i): array => [$i->id => sprintf('%s — %s (€%s)', $i->number, $i->client->name ?? '—', number_format($i->total(), 2, ',', '.'))])
                 ->all(),
-            'passive_invoice' => PassiveInvoice::with('supplier')->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->latest('document_date')->limit(100)->get()
+            'passive_invoice' => PassiveInvoice::with('supplier')->dellEmittente($emittenteId)->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->latest('document_date')->limit(100)->get()
                 ->mapWithKeys(fn (PassiveInvoice $p): array => [$p->id => sprintf('%s — %s (€%s)', $p->number, $p->supplier->name ?? '—', number_format($p->total(), 2, ',', '.'))])
                 ->all(),
             // Solo i costi non ancora coperti da riconciliazioni e non appartenenti
             // a un rimborso spese (quelli si saldano col bonifico, agganciato al
             // documento Rimborso spese): vedi MatchSuggestionService.
-            'costo' => Costo::withSum('reconciliations', 'amount')->whereNull('reimbursement_id')->latest('date')->limit(100)->get()
+            'costo' => ! $dellaSocieta ? [] : Costo::withSum('reconciliations', 'amount')->whereNull('reimbursement_id')->latest('date')->limit(100)->get()
                 ->filter(fn (Costo $c): bool => (float) ($c->reconciliations_sum_amount ?? 0) + 0.01 < $c->total())
                 ->mapWithKeys(fn (Costo $c): array => [$c->id => sprintf('%s (€%s)', $c->description, number_format($c->total(), 2, ',', '.'))])
                 ->all(),
             // Rimborsi spese ancora scoperti: il bonifico che li salda si aggancia qui.
-            'reimbursement' => Reimbursement::latest('date')->limit(100)->get()
+            'reimbursement' => ! $dellaSocieta ? [] : Reimbursement::latest('date')->limit(100)->get()
                 ->filter(fn (Reimbursement $r): bool => round($r->total() - $r->reconciledAmount(), 2) > 0.01)
                 ->mapWithKeys(fn (Reimbursement $r): array => [$r->id => sprintf(
                     '%s — %s (€%s)',

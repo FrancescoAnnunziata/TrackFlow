@@ -20,7 +20,7 @@ function clienteAnticipato(): Client
 {
     return Client::create([
         'name' => 'Anticipato SpA',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_timing' => Client::TIMING_ADVANCE,
         'billing_period_months' => 3,
@@ -34,7 +34,7 @@ function clienteAnticipato(): Client
 it('sul posticipato le spese seguono il periodo fatturato', function () {
     $client = Client::create([
         'name' => 'Posticipato SRL',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_timing' => Client::TIMING_ARREARS,
         'billing_period_months' => 1,
@@ -66,7 +66,7 @@ it('forfait e a giornata non conguagliano nemmeno se anticipati', function () {
     foreach ([Client::MODEL_FORFAIT, Client::MODEL_DAILY] as $modello) {
         $client = Client::create([
             'name' => 'Anticipato '.$modello,
-            'invoicing_provider' => Client::PROVIDER_FIC,
+            'emittente_id' => emittenteSocieta()->id,
             'billing_model' => $modello,
             'billing_timing' => Client::TIMING_ADVANCE,
             'billing_period_months' => 3,
@@ -106,7 +106,7 @@ it('il riepilogo nel modale dice da che periodo arrivano le spese', function () 
 it('il riepilogo distingue il canale e l\'IVA del cliente', function () {
     $fiscozen = Client::create([
         'name' => 'Forfettario SRL',
-        'invoicing_provider' => Client::PROVIDER_FISCOZEN,
+        'emittente_id' => emittentePiva()->id,
         'billing_model' => Client::MODEL_DAILY,
         'billing_timing' => Client::TIMING_ARREARS,
         'billing_period_months' => 1,

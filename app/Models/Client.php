@@ -3,15 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
 {
-    public const PROVIDER_FIC = 'fatture_in_cloud';
-
-    public const PROVIDER_FISCOZEN = 'fiscozen';
-
     public const MODEL_FORFAIT = 'forfait';
 
     public const MODEL_HOURLY = 'hourly';
@@ -39,7 +36,7 @@ class Client extends Model
         'email',
         'certified_email',
         'ei_code',
-        'invoicing_provider',
+        'emittente_id',
         'billing_model',
         'billing_period_months',
         'billing_timing',
@@ -88,27 +85,40 @@ class Client extends Model
         return $parti ? implode(' — ', $parti) : null;
     }
 
-    /**
-     * True se il cliente è fatturabile da TrackFlow (provider Fatture in Cloud).
-     * Gli altri (es. Fiscozen, no API) si fatturano fuori.
-     */
-    public function isBillableHere(): bool
+    protected static function booted(): void
     {
-        return $this->invoicing_provider === self::PROVIDER_FIC;
+        // Senza indicazione il cliente è della società.
+        static::creating(function (Client $client): void {
+            $client->emittente_id ??= Emittente::principale()->id;
+        });
     }
 
     /**
-     * Nome del sistema che emette le fatture di questo cliente e ne decide la
-     * numerazione. TrackFlow non assegna mai numeri da sé: per i clienti FIC
-     * arriva all'invio via API, per gli altri dal gestionale usato fuori.
+     * Chi fattura questo cliente: G8 Labs o la P.IVA personale.
+     */
+    public function emittente(): BelongsTo
+    {
+        return $this->belongsTo(Emittente::class);
+    }
+
+    /**
+     * True se le fatture di questo cliente partono da TrackFlow verso Fatture
+     * in Cloud. Gli altri si fatturano con lo strumento del loro emittente.
+     */
+    public function isBillableHere(): bool
+    {
+        return (bool) $this->emittente?->inviaConFic();
+    }
+
+    /**
+     * Nome dello strumento che emette le fatture di questo cliente e ne decide
+     * la numerazione.
      */
     public function invoicingProviderLabel(): string
     {
-        return match ($this->invoicing_provider) {
-            self::PROVIDER_FIC => 'Fatture in Cloud',
-            self::PROVIDER_FISCOZEN => 'Fiscozen',
-            default => 'il gestionale esterno',
-        };
+        return $this->emittente
+            ? Emittente::canaleLabel($this->emittente->canale_invio)
+            : 'il gestionale esterno';
     }
 
     /**

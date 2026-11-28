@@ -3,6 +3,7 @@
 namespace App\Services\Reconciliation;
 
 use App\Models\BankTransaction;
+use App\Models\Emittente;
 use App\Models\PassiveInvoice;
 use App\Models\Reconciliation;
 use Illuminate\Support\Collection;
@@ -144,6 +145,7 @@ class GroupedMatchService
         $to = $passive->document_date->copy()->addDays(self::WINDOW_DAYS);
 
         return BankTransaction::query()->where('amount', '<', 0)
+            ->dellEmittente($passive->emittente_id)
             ->whereBetween('booked_at', [$from, $to])->get()
             ->filter(fn (BankTransaction $t): bool => $t->unreconciledAmount() > self::TOLERANCE
                 && $this->nameMatches($name, $t))
@@ -161,6 +163,7 @@ class GroupedMatchService
         $to = $tx->booked_at->copy()->addDays(self::WINDOW_DAYS);
 
         return PassiveInvoice::with('supplier')
+            ->dellEmittente(Emittente::idDi($tx))
             ->where('payment_status', '!=', PassiveInvoice::STATUS_PAID)
             ->where('type', '!=', PassiveInvoice::TYPE_CREDIT_NOTE)->whereNull('reimbursement_id')
             ->whereBetween('document_date', [$from, $to])->get()

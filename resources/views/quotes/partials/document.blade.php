@@ -8,7 +8,7 @@
     $validoFino = $quote->validUntil();
     $firma = $quote->signatureDataUri();
     // L'intestazione scelta sul preventivo (default se non scelta).
-    $emittente = $quote->emittente();
+    $emittente = $quote->emittente;
     $logo = $emittente->logoDataUri();
 @endphp
 
@@ -74,11 +74,11 @@
                     <img src="{{ $logo }}" alt="" class="doc-logo">
                 @endif
                 <div class="doc-issuer">
-                    <span class="name">{{ $emittente->nome() }}</span>
+                    <span class="name">{{ $emittente->nome }}</span>
                     @if ($sottotitolo = $emittente->sottotitolo())
                         <div>{{ $sottotitolo }}</div>
                     @endif
-                    @if ($indirizzo = $emittente->indirizzo())
+                    @if ($indirizzo = $emittente->indirizzoCompleto())
                         <div>{{ $indirizzo }}</div>
                     @endif
                     @foreach ($emittente->righeIdentificative() as $riga)
@@ -181,7 +181,7 @@
         <div class="doc-note">{!! nl2br(e($quote->notes)) !!}</div>
     @endif
 
-    @if ($iban = $emittente->iban())
+    @if ($iban = $emittente->iban)
         <h2>Pagamento</h2>
         <p>Bonifico bancario — IBAN {{ $iban }}</p>
     @endif
@@ -205,7 +205,7 @@
             <td>
                 <div class="label">L'emittente</div>
                 <div class="box"></div>
-                <div class="who"><strong>{{ $emittente->nome() }}</strong></div>
+                <div class="who"><strong>{{ $emittente->nome }}</strong></div>
             </td>
             <td>
                 <div class="label">Per accettazione — il Cliente</div>

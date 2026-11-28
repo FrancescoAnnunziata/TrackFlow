@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Expenses\Tables;
 
 use App\Models\BankTransaction;
+use App\Models\Emittente;
 use App\Models\Expense;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -169,6 +170,7 @@ class ExpensesTable
         $data = $expense->date;
 
         return BankTransaction::query()
+            ->dellEmittente(Emittente::idDi($expense))
             ->where('amount', '<', 0)
             ->when($data !== null, fn (Builder $q) => $q
                 ->whereDate('booked_at', '>=', $data->copy()->subDays(20))

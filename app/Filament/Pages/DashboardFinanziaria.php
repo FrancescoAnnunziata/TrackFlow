@@ -7,8 +7,8 @@ use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\PassiveInvoices\PassiveInvoiceResource;
 use App\Models\BankTransaction;
-use App\Models\Client;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
@@ -103,6 +103,7 @@ class DashboardFinanziaria extends Page
             ->with('bankAccount')
             ->withCount('reconciliations')
             ->whereYear('booked_at', $anno)
+            ->whereRelation('bankAccount', 'emittente_id', Emittente::principale()->id)
             // I giroconti tra conti propri sono esclusi dal quadro operativo,
             // esattamente come nel FinancialOverviewBuilder.
             ->whereNull('transfer_group_id');
@@ -183,7 +184,7 @@ class DashboardFinanziaria extends Page
     private function documentiRicavi(?int $mese, int $anno): Collection
     {
         $query = Invoice::query()
-            ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FIC))
+            ->where('emittente_id', Emittente::principale()->id)
             ->where('status', '!=', 'draft')
             ->whereYear('issue_date', $anno)
             ->with(['client', 'items', 'hours', 'expenses'])
@@ -214,7 +215,7 @@ class DashboardFinanziaria extends Page
     {
         $rows = collect();
 
-        $passives = PassiveInvoice::query()
+        $passives = PassiveInvoice::dellaSocieta()
             ->with('supplier')
             ->whereYear('document_date', $anno)
             ->when($mese !== null, fn ($q) => $q->whereMonth('document_date', $mese))

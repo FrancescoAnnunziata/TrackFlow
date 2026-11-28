@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Quotes\Schemas;
 
+use App\Models\Emittente;
 use App\Models\Quote;
-use App\Support\Emittente;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -37,10 +37,10 @@ class QuoteForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                        Select::make('issuer_key')
+                        Select::make('emittente_id')
                             ->label('Intestazione')
-                            ->options(Emittente::opzioni())
-                            ->default(Emittente::chiaveDefault())
+                            ->relationship('emittente', 'nome')
+                            ->default(fn (): int => Emittente::principale()->id)
                             ->required()
                             ->selectablePlaceholder(false)
                             ->helperText('Con quale intestazione esce il documento che il cliente legge e firma.'),

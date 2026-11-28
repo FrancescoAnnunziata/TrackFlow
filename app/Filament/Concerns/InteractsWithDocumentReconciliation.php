@@ -5,6 +5,7 @@ namespace App\Filament\Concerns;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\BankTransaction;
+use App\Models\Emittente;
 use App\Models\Invoice;
 use App\Services\Reconciliation\ReconciliationService;
 use Filament\Actions\Action;
@@ -169,6 +170,7 @@ trait InteractsWithDocumentReconciliation
 
         return BankTransaction::query()
             ->with('bankAccount')
+            ->dellEmittente(Emittente::idDi($record))
             ->where('direction', $direction)
             ->where('reconciled', false)
             ->whereNull('transfer_group_id')

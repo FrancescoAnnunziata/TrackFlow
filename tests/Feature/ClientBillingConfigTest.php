@@ -13,7 +13,7 @@ function billableClient(): Client
 {
     return Client::create([
         'name' => 'Fioravanti',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'billing_timing' => Client::TIMING_ARREARS,
@@ -57,7 +57,7 @@ it('renders the client view page with fiscal and billing sections', function () 
     $admin = User::factory()->admin()->create();
     $client = Client::create([
         'name' => 'Acme',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'default_hourly_rate' => 50,
         'vat_number' => '01234567890',
@@ -76,7 +76,7 @@ it('renders the client view page with fiscal and billing sections', function () 
 it('persists the billing configuration', function () {
     $client = Client::create([
         'name' => 'Alsea',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 3,
         'billing_timing' => Client::TIMING_ADVANCE,
@@ -102,7 +102,7 @@ it('resolves per-user rates with fallback to the default', function () {
 
     $client = Client::create([
         'name' => 'Acme',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'default_hourly_rate' => 90,
     ]);
@@ -117,7 +117,7 @@ it('resolves per-user rates with fallback to the default', function () {
 it('marks non-fatture-in-cloud clients as not billable here', function () {
     $client = Client::create([
         'name' => 'Cliente Fiscozen',
-        'invoicing_provider' => 'fiscozen',
+        'emittente_id' => emittentePiva()->id,
     ]);
 
     expect($client->isBillableHere())->toBeFalse();

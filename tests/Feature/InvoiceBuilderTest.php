@@ -35,7 +35,7 @@ it('generates an invoice from the list "Genera fattura" action', function () {
     $user = User::factory()->create(['name' => 'Giorgio']);
     $client = Client::create([
         'name' => 'Acme',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'default_hourly_rate' => 50,
@@ -54,7 +54,7 @@ it('generates an invoice from the list "Genera fattura" action', function () {
 it('builds a forfait invoice with a single consulting line', function () {
     $client = Client::create([
         'name' => 'Forfait SpA',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_FORFAIT,
         'billing_period_months' => 1,
         'forfait_amount' => 1000,
@@ -71,7 +71,7 @@ it('builds a forfait invoice with a single consulting line', function () {
 it('splits a forfait into configured detail lines', function () {
     $client = Client::create([
         'name' => 'Fedespedi',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_FORFAIT,
         'billing_period_months' => 1,
         'forfait_amount' => 3600,
@@ -94,7 +94,7 @@ it('splits a forfait into configured detail lines', function () {
 it('multiplies forfait detail lines by the number of months', function () {
     $client = Client::create([
         'name' => 'ForfaitTrim',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_FORFAIT,
         'billing_period_months' => 3,
         'forfait_lines' => [['name' => 'Canone', 'amount' => 1000]],
@@ -110,7 +110,7 @@ it('bills a daily-rate client in rounded-up days', function () {
     $user = User::factory()->create();
     $client = Client::create([
         'name' => 'Calzedonia',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_DAILY,
         'billing_period_months' => 1,
         'hours_per_day' => 8,
@@ -133,7 +133,7 @@ it('bills expenses for forfait clients too', function () {
     $user = User::factory()->create();
     $client = Client::create([
         'name' => 'ForfaitConSpese',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_FORFAIT,
         'billing_period_months' => 1,
         'forfait_amount' => 1000,
@@ -155,7 +155,7 @@ it('builds per-user hourly lines and ignores non-billable hours', function () {
 
     $client = Client::create([
         'name' => 'Acme',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'default_hourly_rate' => 90,
@@ -187,7 +187,7 @@ it('tops up to the guaranteed minimum when hours worked are below it', function 
     $user = User::factory()->create(['name' => 'Giorgio']);
     $client = Client::create([
         'name' => 'MinCliente',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'default_hourly_rate' => 50,
@@ -210,7 +210,7 @@ it('builds an Alsea-style advance + reconciliation invoice', function () {
     $user = User::factory()->create(['name' => 'Giorgio']);
     $client = Client::create([
         'name' => 'Alsea',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 3,
         'billing_timing' => Client::TIMING_ADVANCE,
@@ -246,7 +246,7 @@ it('uses the configured label for the extra recurring line', function () {
     $user = User::factory()->create();
     $client = Client::create([
         'name' => 'ExtraCliente',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'default_hourly_rate' => 50,
@@ -268,7 +268,7 @@ it('always aggregates expenses into a single art.15 line', function () {
     $user = User::factory()->create();
     $client = Client::create([
         'name' => 'SpeseCliente',
-        'invoicing_provider' => Client::PROVIDER_FIC,
+        'emittente_id' => emittenteSocieta()->id,
         'billing_model' => Client::MODEL_HOURLY,
         'billing_period_months' => 1,
         'default_hourly_rate' => 50,

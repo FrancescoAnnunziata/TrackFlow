@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\EmittentiDiversiException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -30,6 +31,28 @@ class Reconciliation extends Model
         'amount' => 'decimal:2',
         'confidence' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        // Un movimento si riconcilia solo con documenti dello stesso emittente:
+        // vale per l'interfaccia, la riconciliazione automatica e l'assistente.
+        static::creating(function (Reconciliation $reconciliation): void {
+            $transaction = $reconciliation->bankTransaction;
+            $document = $reconciliation->reconcilable;
+            if ($transaction === null || $document === null) {
+                return;
+            }
+
+            if (Emittente::idDi($transaction) !== Emittente::idDi($document)) {
+                throw new EmittentiDiversiException(sprintf(
+                    'Il movimento è sul conto «%s» di %s, il documento è di %s: non si possono riconciliare.',
+                    $transaction->bankAccount?->name ?? '—',
+                    Emittente::find(Emittente::idDi($transaction))?->nome ?? '—',
+                    Emittente::find(Emittente::idDi($document))?->nome ?? '—',
+                ));
+            }
+        });
+    }
 
     public function bankTransaction(): BelongsTo
     {

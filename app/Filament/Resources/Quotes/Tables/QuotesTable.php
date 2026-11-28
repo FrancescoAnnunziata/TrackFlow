@@ -61,9 +61,9 @@ class QuotesTable
                 TextColumn::make('user.name')
                     ->label('Emesso da')
                     ->toggleable(),
-                TextColumn::make('issuer_key')
+                TextColumn::make('emittente.nome')
                     ->label('Intestazione')
-                    ->state(fn (Quote $record): string => $record->emittente()->nome())
+                    ->state(fn (Quote $record): string => $record->emittente?->nome ?? '—')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('issue_date', 'desc')

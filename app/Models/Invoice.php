@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -21,6 +22,9 @@ class Invoice extends Model
     protected $fillable = [
         'user_id',
         'client_id',
+        'emittente_id',
+        'canale',
+        'regime_fiscale',
         'number',
         'type',
         'related_invoice_id',
@@ -62,6 +66,21 @@ class Invoice extends Model
             if ($invoice->paid_at !== null && ! $invoice->isCreditNote() && $invoice->status === 'sent') {
                 $invoice->status = 'paid';
             }
+
+            // Emittente, canale e regime si copiano dal cliente finché la
+            // fattura è nuova o in bozza; da emessa restano quelli di allora.
+            if (! $invoice->exists || $invoice->status === 'draft' || $invoice->emittente_id === null) {
+                $emittente = Client::with('emittente')->find($invoice->client_id)?->emittente
+                    ?? Emittente::principale();
+                $invoice->emittente_id = $emittente->id;
+                if (! $invoice->exists || $invoice->status === 'draft' || $invoice->canale === null) {
+                    $invoice->canale = $invoice->fic_document_id ? Emittente::CANALE_FIC : $emittente->canale_invio;
+                }
+                if ($invoice->issue_date !== null) {
+                    $invoice->regime_fiscale = $emittente->regimeNel($invoice->issue_date->year);
+                }
+                $invoice->regime_fiscale ??= $emittente->regime_fiscale;
+            }
         });
     }
 
@@ -81,6 +100,16 @@ class Invoice extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function emittente(): BelongsTo
+    {
+        return $this->belongsTo(Emittente::class);
+    }
+
+    public function scopeDellEmittente(Builder $query, int $emittenteId): Builder
+    {
+        return $query->where($query->qualifyColumn('emittente_id'), $emittenteId);
     }
 
     public function hours(): BelongsToMany

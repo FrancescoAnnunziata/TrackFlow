@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invoices\Pages;
 
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\Client;
+use App\Models\Emittente;
 use App\Models\Expense;
 use App\Services\Billing\InvoiceBuilder;
 use App\Support\PeriodoFatturazione;
@@ -113,9 +114,10 @@ class ListInvoices extends ListRecords
         }
 
         $righe = [
-            'Canale' => match ($client->invoicing_provider) {
-                Client::PROVIDER_FIC => '<strong>Fatture in Cloud</strong> — si invia da qui col pulsante «Invia a Fatture in Cloud»',
-                Client::PROVIDER_FISCOZEN => '<strong>Fiscozen</strong> — da <u>ricreare a mano</u> su Fiscozen, qui resta la brutta copia',
+            'Emittente' => e($client->emittente?->nome ?? '—'),
+            'Canale' => match ($client->emittente?->canale_invio) {
+                Emittente::CANALE_FIC => '<strong>Fatture in Cloud</strong> — si invia da qui col pulsante «Invia a Fatture in Cloud»',
+                Emittente::CANALE_FISCOZEN => '<strong>Fiscozen</strong> — da <u>ricreare a mano</u> su Fiscozen, qui resta la brutta copia',
                 default => '<strong>Gestionale esterno</strong> — non si invia da qui',
             },
         ];

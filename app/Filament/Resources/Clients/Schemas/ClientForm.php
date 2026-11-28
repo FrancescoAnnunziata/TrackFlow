@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Clients\Schemas;
 
 use App\Models\Client;
+use App\Models\Emittente;
 use App\Models\User;
 use App\Services\Fic\PaymentMethods;
 use Filament\Forms\Components\FileUpload;
@@ -72,16 +73,14 @@ class ClientForm
                 Section::make('Fatturazione')
                     ->columns(2)
                     ->components([
-                        Select::make('invoicing_provider')
-                            ->label('Provider fatturazione')
-                            ->options([
-                                'fatture_in_cloud' => 'Fatture in Cloud',
-                                'fiscozen' => 'Fiscozen (no API)',
-                                'altro' => 'Altro / esterno',
-                            ])
-                            ->default('fatture_in_cloud')
+                        Select::make('emittente_id')
+                            ->label('Emittente')
+                            ->relationship('emittente', 'nome')
+                            ->getOptionLabelFromRecordUsing(fn (Emittente $record): string => $record->nome.' · '.Emittente::canaleLabel($record->canale_invio))
+                            ->default(fn (): int => Emittente::principale()->id)
                             ->required()
-                            ->helperText('Solo i clienti su Fatture in Cloud sono fatturabili da TrackFlow.'),
+                            ->preload()
+                            ->helperText('Chi fattura questo cliente. Lo strumento di invio è quello dell\'emittente: solo con Fatture in Cloud la fattura parte da TrackFlow.'),
                         Select::make('billing_model')
                             ->label('Modello')
                             ->options([

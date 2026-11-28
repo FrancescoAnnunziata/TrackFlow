@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Clients\Schemas;
 
 use App\Models\Client;
+use App\Models\Emittente;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -42,15 +43,13 @@ class ClientInfolist
                 Section::make('Fatturazione')
                     ->columns(2)
                     ->components([
-                        TextEntry::make('invoicing_provider')
-                            ->label('Provider')
+                        TextEntry::make('emittente.nome')
+                            ->label('Emittente')
                             ->badge()
-                            ->formatStateUsing(fn (?string $state): string => match ($state) {
-                                'fatture_in_cloud' => 'Fatture in Cloud',
-                                'fiscozen' => 'Fiscozen',
-                                default => 'Altro / esterno',
-                            })
-                            ->color(fn (?string $state): string => $state === 'fatture_in_cloud' ? 'success' : 'gray'),
+                            ->color(fn (Client $record): string => $record->emittente?->principale ? 'success' : 'gray'),
+                        TextEntry::make('emittente.canale_invio')
+                            ->label('Canale di invio')
+                            ->formatStateUsing(fn (?string $state): string => Emittente::canaleLabel($state)),
                         TextEntry::make('billing_model')
                             ->label('Modello')
                             ->formatStateUsing(fn (?string $state): string => match ($state) {

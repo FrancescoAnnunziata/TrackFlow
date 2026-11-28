@@ -4,6 +4,7 @@ namespace App\Services\Reconciliation;
 
 use App\Models\BankTransaction;
 use App\Models\Costo;
+use App\Models\Emittente;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\PassiveInvoice;
@@ -55,13 +56,14 @@ class MovementReconciler
      * Esegue la riconciliazione del movimento verso i documenti indicati.
      *
      * @param  array<int, array{type: string, id: int}>  $targets
-     * @return array{attached: int, remaining: float, lines: array<int, array{label: string, amount: float}>}
+     * @return array{attached: int, remaining: float, lines: array<int, array{label: string, amount: float}>, skipped: array<int, string>}
      */
     public function reconcile(BankTransaction $transaction, array $targets): array
     {
         $remaining = round($transaction->unreconciledAmount(), 2);
         $attached = 0;
         $lines = [];
+        $skipped = [];
 
         foreach ($targets as $target) {
             if ($remaining <= 0.01) {
@@ -70,6 +72,13 @@ class MovementReconciler
 
             $document = $this->resolve((string) ($target['type'] ?? ''), (int) ($target['id'] ?? 0));
             if ($document === null) {
+                continue;
+            }
+
+            // Documento di un altro emittente: non si aggancia e si dice perché.
+            if (Emittente::idDi($document) !== Emittente::idDi($transaction)) {
+                $skipped[] = $this->label($document);
+
                 continue;
             }
 
@@ -84,7 +93,7 @@ class MovementReconciler
             $lines[] = ['label' => $this->label($document), 'amount' => $alloc];
         }
 
-        return ['attached' => $attached, 'remaining' => $remaining, 'lines' => $lines];
+        return ['attached' => $attached, 'remaining' => $remaining, 'lines' => $lines, 'skipped' => $skipped];
     }
 
     public function label(Model $document): string

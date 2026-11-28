@@ -73,7 +73,7 @@ it('never suggests or auto-reconciles active invoices of Fiscozen clients', func
     $user = User::factory()->admin()->create();
     $client = Client::create([
         'name' => 'Forfait Cli',
-        'invoicing_provider' => Client::PROVIDER_FISCOZEN,
+        'emittente_id' => emittentePiva()->id,
         'vat_rate' => 0,
     ]);
     $invoice = Invoice::create([

@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Filament\Resources\Hours\HourResource;
 use App\Models\BankTransaction;
-use App\Models\Client;
 use App\Models\Invoice;
 use App\Services\Reconciliation\ReconciliationService;
 use Carbon\Carbon;
@@ -194,13 +193,13 @@ class InvoicesTable
             ->label(new HtmlString('Registra<br>incasso'))
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
-            // Niente riconciliazione incassi per i clienti Fiscozen (partita IVA
-            // forfettaria): quelle fatture non passano dai nostri conti, non ci sono
-            // movimenti bancari da agganciare.
+            // Si registra un incasso solo se TrackFlow ha un conto dell'emittente
+            // della fattura: oggi la P.IVA personale non ne ha, e per le sue
+            // fatture vale la data «Pagata il».
             ->visible(fn (Invoice $record): bool => $record->status === 'sent'
                 && ! $record->isCreditNote()
                 && $record->amountToCollect() > 0.01
-                && $record->client?->invoicing_provider !== Client::PROVIDER_FISCOZEN)
+                && (bool) $record->emittente?->haConti())
             ->modalHeading('Registra incasso')
             ->modalDescription(fn (Invoice $record): string => sprintf(
                 'Fattura %s — %s — da incassare € %s — %s',
@@ -343,6 +342,7 @@ class InvoicesTable
 
         return BankTransaction::query()
             ->with('bankAccount')
+            ->dellEmittente($record->emittente_id)
             ->where('amount', '>', 0)
             ->whereBetween('booked_at', [$from, $to])
             ->whereRaw('ABS(amount) BETWEEN ? AND ?', [$total * 0.5, $total * 1.5])
