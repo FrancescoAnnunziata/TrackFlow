@@ -221,15 +221,23 @@ class FinancialOverviewBuilder
      * Quadro forfettario (Giorgio Giotto): incassato mese per mese, progresso
      * verso la soglia annua e stima di contributi + imposta sostitutiva. Il
      * forfettario non ha IVA e non deduce i costi: si tassa una quota
-     * (coefficiente) del fatturato; i contributi INPS sono deducibili prima
+     * (coefficiente) dei ricavi; i contributi INPS sono deducibili prima
      * dell'imposta.
      *
      * L'incassato è la somma di due mondi che nessun gestionale vede insieme:
      * le fatture ai clienti della P.IVA personale e gli incassi giornalieri
-     * dell'e-commerce. Entrambi al lordo — nel forfettario le commissioni non
+     * dell'e-commerce. Entrambi al lordo: nel forfettario le commissioni non
      * si deducono e sottrarle sottostimerebbe la soglia.
      *
-     * @return array{months: array<int, array{mese: int, label: string, fatture: float, corrispettivi: float, incassato: float}>, fatture_anno: float, corrispettivi_anno: float, incassato_anno: float, limite: float, perc_limite: float, reddito_lordo: float, inps: float, imposta: float, tasse_totali: float, netto: float, coefficiente: float, aliquota: float, inps_rate: float}
+     * Le fatture contano per cassa, nel mese di `paid_at`, e per imponibile:
+     * l'IVA di una fattura emessa per errore non è un ricavo. Una nota di
+     * credito conta in negativo solo se c'è stato un rimborso (`paid_at`
+     * valorizzato): se storna una fattura mai pagata, non si è mosso niente.
+     * Accanto all'incassato si dà l'emesso dell'anno (note di credito
+     * sottratte) e quanto resta da incassare, per vedere in anticipo dove
+     * porteranno la soglia le fatture già fatte.
+     *
+     * @return array{months: array<int, array{mese: int, label: string, fatture: float, corrispettivi: float, incassato: float}>, fatture_anno: float, corrispettivi_anno: float, incassato_anno: float, emesso_anno: float, da_incassare: float, limite: float, perc_limite: float, reddito_lordo: float, inps: float, imposta: float, tasse_totali: float, netto: float, coefficiente: float, aliquota: float, inps_rate: float}
      */
     public function forfettario(int $year): array
     {
@@ -247,13 +255,28 @@ class FinancialOverviewBuilder
         $invoices = Invoice::query()
             ->whereHas('client', fn ($q) => $q->where('invoicing_provider', Client::PROVIDER_FISCOZEN))
             ->where('status', '!=', 'draft')
-            ->whereYear('issue_date', $year)
-            ->with(['items', 'hours', 'expenses'])
+            ->where(fn ($q) => $q->whereYear('issue_date', $year)->orWhereYear('paid_at', $year))
+            ->with(['items', 'creditNotes.items'])
             ->get();
+
+        $emesso = 0.0;
+        $daIncassare = 0.0;
         foreach ($invoices as $inv) {
-            $m = Carbon::parse($inv->issue_date)->month;
-            // Forfettario: fattura senza IVA, total() = imponibile.
-            $months[$m]['fatture'] += $inv->total();
+            $sign = $inv->isCreditNote() ? -1 : 1;
+            $net = $sign * $inv->taxableAmount();
+
+            if ($inv->issue_date->year === $year) {
+                $emesso += $net;
+
+                if (! $inv->isCreditNote() && $inv->paid_at === null) {
+                    $stornato = $inv->creditNotes->sum(fn (Invoice $nc): float => $nc->taxableAmount());
+                    $daIncassare += max(0, $net - $stornato);
+                }
+            }
+
+            if ($inv->paid_at !== null && $inv->paid_at->year === $year) {
+                $months[$inv->paid_at->month]['fatture'] += $net;
+            }
         }
 
         // Incassi e-commerce: netto dei resi, per il giorno in cui l'ordine è
@@ -292,6 +315,8 @@ class FinancialOverviewBuilder
             'fatture_anno' => $fatture,
             'corrispettivi_anno' => $eCommerce,
             'incassato_anno' => $incassato,
+            'emesso_anno' => round($emesso, 2),
+            'da_incassare' => round($daIncassare, 2),
             'limite' => $limite,
             'perc_limite' => $limite > 0 ? round($incassato / $limite * 100, 1) : 0.0,
             'reddito_lordo' => $redditoLordo,

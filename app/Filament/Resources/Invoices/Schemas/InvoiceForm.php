@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Invoices\Schemas;
 
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -55,6 +56,16 @@ class InvoiceForm
                             ])
                             ->default('draft')
                             ->required(),
+                        // Solo per i clienti fatturati fuori da FIC (P.IVA
+                        // personale): i loro incassi non passano dai conti di
+                        // G8 Labs, quindi la data si scrive a mano. Il
+                        // forfettario conta i ricavi in base a questa data.
+                        DatePicker::make('paid_at')
+                            ->label(fn (?Invoice $record): string => $record?->isCreditNote() ? 'Rimborsata il' : 'Pagata il')
+                            ->helperText(fn (?Invoice $record): string => $record?->isCreditNote()
+                                ? 'Solo se hai restituito dei soldi al cliente: data del bonifico di rimborso.'
+                                : 'Data in cui il bonifico è arrivato sul conto. Conta per la soglia del forfettario.')
+                            ->visible(fn (Get $get): bool => filled($get('client_id')) && ! self::billableHere($get)),
                     ]),
 
                 Section::make('Periodo')
