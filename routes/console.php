@@ -33,3 +33,8 @@ Schedule::command('fic:import-passive-invoices --pages=1 --create-suppliers')
     ->timezone('Europe/Rome')
     ->when(fn (): bool => FicCredential::isConnected())
     ->withoutOverlapping();
+
+// Promemoria dei rinnovi degli abbonamenti fornitori: una mail una settimana
+// prima, quando c'è ancora tempo per disdire. Sposta anche al giro dopo i
+// rinnovi già passati, così il promemoria dell'anno successivo parte comunque.
+Schedule::command('abbonamenti:promemoria')->dailyAt('08:30')->timezone('Europe/Rome');

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PassiveInvoices\Tables;
 
+use App\Filament\Actions\SegnaAbbonamentoAction;
 use App\Models\BankTransaction;
 use App\Models\PassiveInvoice;
 use App\Services\Reconciliation\ReconciliationService;
@@ -95,6 +96,15 @@ class PassiveInvoicesTable
             ->defaultSort('document_date', 'desc')
             ->recordActions([
                 self::reconcileAction(),
+                SegnaAbbonamentoAction::make(
+                    fn (PassiveInvoice $record): array => [
+                        'name' => (string) ($record->supplier->name ?? 'Abbonamento'),
+                        'amount' => round((float) $record->amount_gross, 2),
+                        'date' => $record->document_date,
+                        'supplier_id' => $record->supplier_id,
+                    ],
+                    fn (PassiveInvoice $record): bool => ! $record->isCreditNote(),
+                ),
                 ViewAction::make(),
                 EditAction::make(),
             ])

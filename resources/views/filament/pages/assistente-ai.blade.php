@@ -113,7 +113,7 @@
 
                             @foreach ($message->actions ?? [] as $action)
                                 @php $type = $action['type'] ?? ''; @endphp
-                                @if (in_array($type, ['reconcile', 'cost', 'transfer'], true))
+                                @if (in_array($type, ['reconcile', 'cost', 'transfer', 'subscription'], true))
                                     <div class="aia-prop">
                                         @if ($type === 'reconcile')
                                             <div class="pt">Proposta di riconciliazione</div>
@@ -130,6 +130,15 @@
                                             <div class="pl">
                                                 <div><span>Descrizione</span><span>{{ $action['description'] ?? '' }}</span></div>
                                                 <div><span>Categoria</span><span>{{ $action['category'] ?: '—' }}</span></div>
+                                                <div class="ptot"><span>Importo</span><span class="amt">€ {{ number_format((float) ($action['amount'] ?? 0), 2, ',', '.') }}</span></div>
+                                            </div>
+                                        @elseif ($type === 'subscription')
+                                            <div class="pt">Proposta: segna come abbonamento</div>
+                                            <div>{{ $action['source_label'] ?? '' }}</div>
+                                            <div class="pl">
+                                                <div><span>Abbonamento</span><span>{{ $action['name'] ?? '' }}{{ ! empty($action['existing_id']) ? ' (rinnovo)' : ' (nuovo)' }}</span></div>
+                                                <div><span>Cadenza</span><span>{{ \App\Models\Abbonamento::cadenceOptions()[$action['cadence'] ?? ''] ?? '' }}</span></div>
+                                                <div><span>Prossimo rinnovo</span><span>{{ isset($action['next_renewal_on']) ? \Illuminate\Support\Carbon::parse($action['next_renewal_on'])->format('d/m/Y') : '' }}</span></div>
                                                 <div class="ptot"><span>Importo</span><span class="amt">€ {{ number_format((float) ($action['amount'] ?? 0), 2, ',', '.') }}</span></div>
                                             </div>
                                         @else

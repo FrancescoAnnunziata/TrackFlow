@@ -48,7 +48,7 @@
                 <li><span class="g-num">5</span> Importa i movimenti delle banche</li>
                 <li><span class="g-num">6</span> Riconcilia le fatture <strong>attive</strong> (incassi)</li>
                 <li><span class="g-num">7</span> Riconcilia le fatture <strong>passive</strong> (pagamenti) <span class="g-muted">— arrivano da sole da Fatture in Cloud</span></li>
-                <li><span class="g-num">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti)</li>
+                <li><span class="g-num">8</span> Sistema i <strong>movimenti rimasti</strong> (costi, giroconti) e segna gli <strong>abbonamenti</strong></li>
                 <li><span class="g-num">9</span> Invia la documentazione al <strong>commercialista</strong> (Anna Messa)</li>
             </ol>
         </div>
@@ -635,6 +635,42 @@
                 in Cloud entro poche ore (passo 6b): in quel caso conviene aspettare invece di segnare un costo che poi
                 andrebbe disfatto.
             </div>
+        </div>
+
+        {{-- STEP 8c: abbonamenti --}}
+        <div class="g-card">
+            <div class="g-head"><span class="g-num alt">8c</span><p class="g-h">🔁 Segna gli abbonamenti</p></div>
+            <p>Alcune spese si rinnovano da sole <strong>ogni tre mesi o ogni anno</strong>: domini, hosting, licenze
+                software. Se nessuno se ne ricorda, si pagano anche quando non servono più. Per questo TrackFlow tiene
+                l'elenco degli <strong>abbonamenti</strong> (menu <strong>Controllo Finanziario → Abbonamenti</strong>)
+                e <strong>una settimana prima di ogni rinnovo manda una mail a Giorgio</strong>, così c'è tempo per
+                disdire.</p>
+            <p>Mentre sistemi i movimenti del mese, quando trovi una spesa di questo tipo:</p>
+            <ol class="g-ol">
+                <li>Sul movimento (menu <strong>Movimenti bancari</strong>) o sulla fattura passiva (menu
+                    <strong>Fatture passive</strong>) premi <span class="g-kbd">Segna come abbonamento</span>.</li>
+                <li>Se è il <strong>rinnovo</strong> di un abbonamento già in elenco, sceglilo nella prima tendina:
+                    TrackFlow aggiorna la data del prossimo rinnovo e l'importo. Spesso lo trova da solo. Se invece è
+                    un abbonamento <strong>nuovo</strong>, lascia la tendina vuota e scrivi un nome chiaro (per esempio
+                    <em>«SiteGround — dominio esempio.it»</em>, non solo «SiteGround»).</li>
+                <li>Scegli ogni quanto si rinnova: <strong>trimestrale</strong> o <strong>annuale</strong>. La data del
+                    prossimo rinnovo la calcola TrackFlow dalla data della spesa.</li>
+            </ol>
+            <div class="g-callout g-info">
+                <strong>Non sostituisce la riconciliazione.</strong> Una spesa si riconcilia come sempre (passi 7 e 8)
+                <em>e in più</em> si segna come abbonamento: sono due cose diverse e si possono fare in qualsiasi
+                ordine.
+            </div>
+            <div class="g-callout g-warn">
+                <strong>I costi mensili non si segnano</strong> (AWS, Google Workspace, Claude, telefono…): un
+                promemoria ogni mese diventerebbe una mail che nessuno legge. Se non sai ogni quanto si rinnova una
+                spesa, guarda i mesi precedenti o chiedi a Giorgio.
+            </div>
+            <p class="g-muted">Lo può fare anche l'assistente AI: chiedigli per esempio «segna questo movimento come
+                abbonamento annuale» e conferma la proposta. Se un rinnovo passa senza che nessuno segni la spesa,
+                TrackFlow sposta comunque la data all'anno (o al trimestre) dopo, così il promemoria successivo parte lo
+                stesso. Giorgio può anche vedere i rinnovi sul suo Google Calendar, dal pulsante
+                <span class="g-kbd">Collega a Google Calendar</span> nella pagina Abbonamenti.</p>
         </div>
 
         <div class="g-card">

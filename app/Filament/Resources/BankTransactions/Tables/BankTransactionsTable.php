@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BankTransactions\Tables;
 
+use App\Filament\Actions\SegnaAbbonamentoAction;
 use App\Models\BankTransaction;
 use App\Models\Costo;
 use App\Models\Invoice;
@@ -146,6 +147,7 @@ class BankTransactionsTable
                 self::reconcileAction(),
                 self::markAsCostoAction(),
                 self::markAsTransferAction(),
+                self::markAsAbbonamentoAction(),
                 self::unreconcileAction(),
                 self::unmarkTransferAction(),
                 EditAction::make(),
@@ -389,6 +391,45 @@ class BankTransactionsTable
 
                 Notification::make()->success()->title('Costo creato e riconciliato')->send();
             });
+    }
+
+    /**
+     * Segna l'uscita come addebito di un abbonamento trimestrale o annuale, per
+     * il promemoria del rinnovo. Indipendente dalla riconciliazione: un
+     * movimento si può segnare prima o dopo averlo riconciliato.
+     */
+    private static function markAsAbbonamentoAction(): Action
+    {
+        return SegnaAbbonamentoAction::make(
+            fn (BankTransaction $record): array => [
+                'name' => self::merchantName($record),
+                'amount' => round(abs((float) $record->amount), 2),
+                'date' => $record->booked_at,
+                'supplier_id' => null,
+            ],
+            fn (BankTransaction $record): bool => $record->direction === BankTransaction::DIRECTION_OUT && ! $record->isTransfer(),
+        );
+    }
+
+    /**
+     * Il nome dell'esercente dentro una causale bancaria: nei pagamenti con
+     * carta è fra «C/O» e «Carta» (dopo la città), altrimenti la controparte o
+     * l'inizio della descrizione. È solo un suggerimento da correggere.
+     */
+    public static function merchantName(BankTransaction $record): string
+    {
+        $description = (string) $record->description;
+
+        if (preg_match('/C\/O\s+(.+?)\s+Carta\b/i', $description, $m)) {
+            return str($m[1])->squish()->limit(60, '')->value();
+        }
+
+        $counterparty = trim((string) $record->counterparty);
+        if ($counterparty !== '' && ! ctype_digit($counterparty)) {
+            return str($counterparty)->before(',')->squish()->limit(60, '')->value();
+        }
+
+        return str($description ?: 'Abbonamento')->squish()->limit(60, '')->value();
     }
 
     /**

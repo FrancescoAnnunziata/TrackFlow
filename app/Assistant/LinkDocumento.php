@@ -2,6 +2,7 @@
 
 namespace App\Assistant;
 
+use App\Filament\Resources\Abbonamenti\AbbonamentoResource;
 use App\Filament\Resources\BankTransactions\BankTransactionResource;
 use App\Filament\Resources\Costi\CostoResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
@@ -59,6 +60,12 @@ class LinkDocumento
     {
         // I costi non hanno la pagina di sola lettura.
         return self::costruisci(CostoResource::class, 'edit', $id);
+    }
+
+    public static function abbonamento(int $id): string
+    {
+        // Gli abbonamenti non hanno la pagina di sola lettura.
+        return self::costruisci(AbbonamentoResource::class, 'edit', $id);
     }
 
     /**

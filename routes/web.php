@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\FattureInCloud;
+use App\Http\Controllers\AbbonamentiCalendarController;
 use App\Http\Controllers\AssetLabelController;
 use App\Http\Controllers\AssetLookupController;
 use App\Http\Controllers\DeviceExportController;
@@ -121,3 +122,10 @@ Route::middleware('auth')->group(function () {
         return redirect(FattureInCloud::getUrl());
     })->name('fic.callback');
 });
+
+// Calendario dei rinnovi degli abbonamenti, per Google Calendar «da URL».
+// Google lo scarica senza sessione: lo protegge la firma del link, che si copia
+// dalla pagina Abbonamenti (AbbonamentoResource).
+Route::get('/abbonamenti/calendario.ics', AbbonamentiCalendarController::class)
+    ->middleware('signed')
+    ->name('abbonamenti.calendario');

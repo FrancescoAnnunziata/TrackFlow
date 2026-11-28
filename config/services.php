@@ -125,4 +125,11 @@ return [
         'resync_days' => (int) env('SHOPIFY_RESYNC_DAYS', 14),
     ],
 
+    // Promemoria dei rinnovi degli abbonamenti fornitori (App\Models\Abbonamento).
+    // Il default è quello giusto per la produzione, così non serve toccare il
+    // .env condiviso; la variabile resta per cambiarlo senza un rilascio.
+    'abbonamenti' => [
+        'promemoria_a' => env('ABBONAMENTI_PROMEMORIA_A', 'giorgio.giotto@g8labs.it'),
+    ],
+
 ];

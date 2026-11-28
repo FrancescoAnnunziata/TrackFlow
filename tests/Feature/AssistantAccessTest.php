@@ -122,3 +122,13 @@ it('non offre al modello tipi di documento che l\'interfaccia non permette', fun
     expect(file_get_contents((new ReflectionClass($ui))->getFileName()))
         ->not->toContain("'expense' => 'Spesa'");
 });
+
+it('exposes subscriptions reading to the accountant but proposing only to finance users', function () {
+    // Decisione esplicita di Giorgio (28/11/2026): il commercialista legge
+    // l'elenco degli abbonamenti; segnarli resta a chi gestisce la finanza.
+    $admin = User::factory()->admin()->create();
+    $accountant = User::factory()->create(['role' => 'accountant']);
+
+    expect(toolNamesFor($admin))->toContain('read_subscriptions')->toContain('propose_mark_as_subscription');
+    expect(toolNamesFor($accountant))->toContain('read_subscriptions')->not->toContain('propose_mark_as_subscription');
+});

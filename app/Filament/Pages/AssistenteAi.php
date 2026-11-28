@@ -3,9 +3,12 @@
 namespace App\Filament\Pages;
 
 use App\Jobs\RunAssistantTurnJob;
+use App\Models\Abbonamento;
 use App\Models\AssistantMessage;
 use App\Models\AssistantThread;
 use App\Models\BankTransaction;
+use App\Models\PassiveInvoice;
+use App\Services\Abbonamenti\SegnaAbbonamento;
 use App\Services\Ai\AiUsageRecorder;
 use App\Services\Reconciliation\MovementActions;
 use App\Services\Reconciliation\MovementReconciler;
@@ -280,6 +283,37 @@ class AssistenteAi extends Page
 
                 app(MovementActions::class)->markAsTransferGroup($members);
                 $apply($members->count() > 2 ? 'Segnato come partita di giro' : 'Segnato come giroconto');
+
+                return;
+            }
+
+            // Abbonamento: la spesa (movimento o fattura passiva) è l'addebito di
+            // un abbonamento trimestrale/annuale. Stesso servizio dell'azione del
+            // pannello, con i dati riletti dal documento e non dalla proposta.
+            if (($action['type'] ?? '') === 'subscription') {
+                $source = isset($action['passive_invoice_id'])
+                    ? PassiveInvoice::find($action['passive_invoice_id'])
+                    : BankTransaction::find($action['movement_id'] ?? 0);
+                if ($source === null) {
+                    $void('Non più applicabile', 'La spesa indicata non esiste più.');
+
+                    return;
+                }
+                $existingId = filled($action['existing_id'] ?? null) ? (int) $action['existing_id'] : null;
+                if ($existingId !== null && ! Abbonamento::whereKey($existingId)->exists()) {
+                    $void('Non più applicabile', "L'abbonamento indicato non esiste più.");
+
+                    return;
+                }
+                $abbonamento = app(SegnaAbbonamento::class)->segna(
+                    (string) ($action['name'] ?? 'Abbonamento'),
+                    (string) ($action['cadence'] ?? ''),
+                    $source instanceof PassiveInvoice ? $source->document_date : $source->booked_at,
+                    isset($action['amount']) ? (float) $action['amount'] : null,
+                    $source instanceof PassiveInvoice ? $source->supplier_id : null,
+                    $existingId,
+                );
+                $apply('Segnato come abbonamento', 'Prossimo rinnovo: '.$abbonamento->next_renewal_on->format('d/m/Y').'.');
 
                 return;
             }
